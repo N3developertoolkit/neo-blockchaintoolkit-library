@@ -58,6 +58,17 @@ namespace Neo.Seattle.Persistence
         private static string GetAddressFilePath(string directory) =>
             Path.Combine(directory, ADDRESS_FILENAME);
 
+        private static string GetTempPath()
+        {
+            string tempPath;
+            do
+            {
+                tempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            }
+            while (Directory.Exists(tempPath));
+            return tempPath;
+        }
+
         public void CreateCheckpoint(string checkPointFileName, long magic, string scriptHash)
         {
             if (File.Exists(checkPointFileName))
@@ -65,13 +76,7 @@ namespace Neo.Seattle.Persistence
                 throw new ArgumentException("checkpoint file already exists", nameof(checkPointFileName));
             }
 
-            string tempPath;
-            do
-            {
-                tempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            }
-            while (Directory.Exists(tempPath));
-
+            var tempPath = GetTempPath();
             try
             {
                 {
@@ -96,33 +101,28 @@ namespace Neo.Seattle.Persistence
 
         public static void RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
         {
+            ValidateCheckpoint(checkPointArchive, magic, scriptHash);
             ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
-            var addressFile = ValidateCheckpoint(restorePath, magic, scriptHash);
+            var addressFile = GetAddressFilePath(restorePath);
             if (File.Exists(addressFile))
             {
                 File.Delete(addressFile);
             }
         }
 
-        static string ValidateCheckpoint(string checkPointDirectory, long magic, string scriptHash)
+        static void ValidateCheckpoint(string checkPointArchive, long magic, string scriptHash)
         {
-            var addressFile = GetAddressFilePath(checkPointDirectory);
-            if (!File.Exists(addressFile))
-            {
-                throw new Exception("Invalid Checkpoint");
-            }
-
-            using var stream = File.OpenRead(addressFile);
-            using var reader = new StreamReader(stream);
-            var checkPointMagic = long.Parse(reader.ReadLine() ?? string.Empty);
-            var checkPointScriptHash = reader.ReadLine() ?? string.Empty;
+            using var archive = ZipFile.OpenRead(checkPointArchive);
+            var addressEntry = archive.GetEntry(ADDRESS_FILENAME);
+            using var addressStream = addressEntry.Open();
+            using var addressReader = new StreamReader(addressStream);
+            var checkPointMagic = long.Parse(addressReader.ReadLine() ?? string.Empty);
+            var checkPointScriptHash = addressReader.ReadLine() ?? string.Empty;
 
             if (magic != checkPointMagic || scriptHash != checkPointScriptHash)
             {
                 throw new Exception("Invalid Checkpoint");
             }
-            
-            return addressFile;
         }
 
         static ColumnFamilies GetColumnFamilies(string path)
