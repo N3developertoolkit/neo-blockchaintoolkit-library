@@ -2,7 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using Neo.Persistence;
 using OneOf;
 
@@ -10,7 +9,7 @@ namespace Neo.Seattle.Persistence
 {
     using TrackingMap = ImmutableDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
-    partial class CheckpointStore : IStore
+    public partial class CheckpointStore : IStore
     {
         private readonly static OneOf.Types.None NONE_INSTANCE = new OneOf.Types.None();
 

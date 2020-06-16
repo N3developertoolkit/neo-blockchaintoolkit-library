@@ -5,7 +5,7 @@ using RocksDbSharp;
 
 namespace Neo.Seattle.Persistence
 {
-    partial class RocksDbStore
+    public partial class RocksDbStore
     {
         class Snapshot : ISnapshot
         {

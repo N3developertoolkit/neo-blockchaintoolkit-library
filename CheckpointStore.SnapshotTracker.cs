@@ -11,7 +11,7 @@ namespace Neo.Seattle.Persistence
     using TrackingMap = ImmutableDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
     using WriteBatchMap = ConcurrentDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
-    partial class CheckpointStore
+    public partial class CheckpointStore
     {
         class SnapshotTracker
         {

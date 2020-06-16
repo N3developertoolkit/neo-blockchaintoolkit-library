@@ -9,7 +9,7 @@ namespace Neo.Seattle.Persistence
 {
     using TrackingMap = ImmutableDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
-    partial class CheckpointStore
+    public partial class CheckpointStore
     {
         partial class DataTracker
         {
