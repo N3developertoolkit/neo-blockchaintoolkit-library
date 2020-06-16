@@ -8,6 +8,10 @@
     <Nullable>enable</Nullable>
     <PackageIcon>ngdsea.png</PackageIcon>
     <PackageId>Neo.Seattle.Persistence</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/ngdseattle/neo-persistence</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/ngdseattle/neo-persistence.git</RepositoryUrl>
     <RootNamespace>Neo.Seattle.Persistence</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <TargetFramework>netstandard2.1</TargetFramework>
