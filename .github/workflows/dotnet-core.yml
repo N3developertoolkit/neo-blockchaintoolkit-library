@@ -24,4 +24,11 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --include-symbols --verbosity normal
+      run: dotnet pack --configuration Release --no-build --include-symbols --verbosity normal -o out
+    - name: Push Nupkg to GitHub Packages
+      uses: tanaka-takayoshi/nuget-publish-to-github-packages-action@v2.1
+      with:
+        nupkg-path:  './out/*.nupkg'
+        repo-owner:  'ngdseattle'
+        gh-user:  'devhawk'
+        token:  ${{ secrets.GITHUB_TOKEN }}
