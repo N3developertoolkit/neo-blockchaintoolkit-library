@@ -6,11 +6,17 @@
     <Copyright>2015-2020 The Neo Project</Copyright>
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
+    <PackageIcon>ngdsea.png</PackageIcon>
     <PackageId>Neo.Seattle.Persistence</PackageId>
     <RootNamespace>Neo.Seattle.Persistence</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="ngdsea.png" Pack="true" Visible="false" PackagePath="" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Neo" Version="3.0.0-preview2-00"/>
     <PackageReference Include="RocksDB" Version="6.8.1.7680"/>
