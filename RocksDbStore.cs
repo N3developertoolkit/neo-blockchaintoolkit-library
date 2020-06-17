@@ -102,6 +102,11 @@ namespace Neo.Seattle.Persistence
         public static void RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
         {
             ValidateCheckpoint(checkPointArchive, magic, scriptHash);
+            RestoreCheckpoint(checkPointArchive, restorePath);
+        }
+
+        public static void RestoreCheckpoint(string checkPointArchive, string restorePath)
+        {
             ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
             var addressFile = GetAddressFilePath(restorePath);
             if (File.Exists(addressFile))
