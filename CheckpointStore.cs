@@ -14,19 +14,19 @@ namespace Neo.Seattle.Persistence
         private readonly static OneOf.Types.None NONE_INSTANCE = new OneOf.Types.None();
 
         private readonly IReadOnlyStore store;
+        private readonly IDisposable? checkpointCleanup;
         private readonly ConcurrentDictionary<byte, DataTracker> dataTrackers = new ConcurrentDictionary<byte, DataTracker>();
 
-        public CheckpointStore(IReadOnlyStore store)
+        public CheckpointStore(IReadOnlyStore store, IDisposable? checkpointCleanup = null)
         {
             this.store = store;
+            this.checkpointCleanup = checkpointCleanup;
         }
 
         public void Dispose()
         {
-            if (store is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
+            if (store is IDisposable disposable) disposable.Dispose();
+            if (checkpointCleanup != null) checkpointCleanup.Dispose();
         }
 
         DataTracker GetDataTracker(byte table) 
