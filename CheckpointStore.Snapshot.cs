@@ -2,12 +2,13 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Neo.IO.Caching;
 using Neo.Persistence;
 using OneOf;
 
 namespace Neo.Seattle.Persistence
 {
-    using TrackingMap = ImmutableDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
+    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
     public partial class CheckpointStore
     {
@@ -35,8 +36,8 @@ namespace Neo.Seattle.Persistence
             public byte[]? TryGet(byte table, byte[]? key)
                 => GetSnapshotTracker(table).TryGet(key);
 
-            public IEnumerable<(byte[] Key, byte[] Value)> Find(byte table, byte[] prefix)
-                => GetSnapshotTracker(table).Find(prefix);
+            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[] prefix, SeekDirection direction)
+               => GetSnapshotTracker(table).Seek(prefix, direction);
 
             public void Put(byte table, byte[]? key, byte[] value) 
                 => GetSnapshotTracker(table).Update(key, value);

@@ -7,7 +7,8 @@ using OneOf;
 
 namespace Neo.Seattle.Persistence
 {
-    using TrackingMap = ImmutableDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
+    using SeekDirection = Neo.IO.Caching.SeekDirection;
+    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
     public partial class CheckpointStore
     {
@@ -29,8 +30,8 @@ namespace Neo.Seattle.Persistence
             public byte[]? TryGet(byte[]? key) 
                 => CheckpointStore.TryGet(store, table, key, trackingMap);
 
-            public IEnumerable<(byte[] Key, byte[] Value)> Find(byte[]? prefix)
-                => CheckpointStore.Find(store, table, prefix, trackingMap);
+            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? prefix, SeekDirection direction)
+                => CheckpointStore.Seek(store, table, prefix, direction, trackingMap);
 
             public void Update(byte[]? key, OneOf<byte[], OneOf.Types.None> value)
             {

@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading;
+using Neo.IO.Caching;
 using Neo.Persistence;
 using RocksDbSharp;
 
@@ -33,7 +34,31 @@ namespace Neo.Seattle.Persistence
             return new RocksDbStore(db, columnFamilies, true);
         }
 
-        RocksDbStore(RocksDb db, ColumnFamilies columnFamilies, bool readOnly = false)
+        private static ColumnFamilies GetColumnFamilies(string path)
+        {
+            try
+            {
+                var names = RocksDb.ListColumnFamilies(new DbOptions(), path);
+                var columnFamilyOptions = new ColumnFamilyOptions();
+                var families = new ColumnFamilies();
+                foreach (var name in names)
+                {
+                    families.Add(name, columnFamilyOptions);
+                }
+                return families;
+            }
+            catch (RocksDbException)
+            {
+                return new ColumnFamilies();
+            }
+        }
+
+        public void Dispose()
+        {
+            db.Dispose();
+        }
+
+        private RocksDbStore(RocksDb db, ColumnFamilies columnFamilies, bool readOnly = false)
         {
             this.readOnly = readOnly;
             this.db = db;
@@ -115,7 +140,7 @@ namespace Neo.Seattle.Persistence
             }
         }
 
-        static void ValidateCheckpoint(string checkPointArchive, long magic, string scriptHash)
+        private static void ValidateCheckpoint(string checkPointArchive, long magic, string scriptHash)
         {
             using var archive = ZipFile.OpenRead(checkPointArchive);
             var addressEntry = archive.GetEntry(ADDRESS_FILENAME);
@@ -130,45 +155,11 @@ namespace Neo.Seattle.Persistence
             }
         }
 
-        static ColumnFamilies GetColumnFamilies(string path)
+        private ColumnFamilyHandle GetColumnFamily(byte table)
         {
-            try
-            {
-                var names = RocksDb.ListColumnFamilies(new DbOptions(), path);
-                var columnFamilyOptions = new ColumnFamilyOptions();
-                var families = new ColumnFamilies();
-                foreach (var name in names)
-                {
-                    families.Add(name, columnFamilyOptions);
-                }
-                return families;
-            }
-            catch (RocksDbException)
-            {
-                return new ColumnFamilies();
-            }
-        }
+            return columnFamilyCache.GetOrAdd(table, t => GetColumnFamilyFromDatabase(db, t));
 
-        public void Dispose()
-        {
-            db.Dispose();
-        }
-
-        ColumnFamilyHandle GetColumnFamily(byte table)
-        {
-            if (columnFamilyCache.TryGetValue(table, out var columnFamily))
-            {
-                return columnFamily;
-            }
-
-            lock (columnFamilyCache) 
-            {
-                columnFamily = GetColumnFamilyFromDatabase();
-                columnFamilyCache.TryAdd(table, columnFamily);
-                return columnFamily;
-            }
-
-            ColumnFamilyHandle GetColumnFamilyFromDatabase()
+            static ColumnFamilyHandle GetColumnFamilyFromDatabase(RocksDb db, byte table)
             {
                 var familyName = table.ToString();
                 try
@@ -187,11 +178,11 @@ namespace Neo.Seattle.Persistence
             return db.Get(key ?? Array.Empty<byte>(), GetColumnFamily(table), readOptions);
         }
 
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Find(byte table, byte[]? prefix)
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
         {
-            return Find(db, prefix, GetColumnFamily(table), readOptions);
+            return Seek(db, key, GetColumnFamily(table), direction, readOptions);
         }
-        
+
         ISnapshot IStore.GetSnapshot() => readOnly 
             ? throw new InvalidOperationException() 
             : new Snapshot(this);
@@ -214,16 +205,27 @@ namespace Neo.Seattle.Persistence
             db.Remove(key ?? Array.Empty<byte>(), GetColumnFamily(table), writeOptions);
         }
 
-        static IEnumerable<(byte[] key, byte[] value)> Find(RocksDb db, byte[]? prefix, ColumnFamilyHandle columnFamily, ReadOptions? readOptions = null)
+        private static IEnumerable<(byte[] key, byte[] value)> Seek(RocksDb db, byte[]? prefix, ColumnFamilyHandle columnFamily, SeekDirection direction, ReadOptions? readOptions)
         {
             prefix ??= Array.Empty<byte>();
             using var iterator = db.NewIterator(columnFamily, readOptions);
-            for (iterator.Seek(prefix); iterator.Valid(); iterator.Next())
+
+            Func<Iterator> iteratorNext;
+            if (direction == SeekDirection.Forward)
             {
-                var key = iterator.Key();
-                if (key.Length < prefix.Length) break;
-                if (!key.AsSpan().StartsWith(prefix)) break;
-                yield return (key, iterator.Value());
+                iterator.Seek(prefix);
+                iteratorNext = iterator.Next;
+            }
+            else
+            {
+                iterator.SeekForPrev(prefix);
+                iteratorNext = iterator.Prev;
+            }
+
+            while (iterator.Valid())
+            {
+                yield return (iterator.Key(), iterator.Value());
+                iteratorNext();
             }
         }
     }

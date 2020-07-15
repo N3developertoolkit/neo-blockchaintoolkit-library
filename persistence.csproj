@@ -22,8 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Neo" Version="3.0.0-preview2-00"/>
     <PackageReference Include="RocksDB" Version="6.8.1.7680"/>
     <PackageReference Include="OneOf" Version="2.1.151"/>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\official\neo3\core\src\neo\neo.csproj"/>
   </ItemGroup>
 </Project>

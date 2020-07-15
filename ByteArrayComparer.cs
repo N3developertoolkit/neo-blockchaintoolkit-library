@@ -4,10 +4,21 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.Seattle.Persistence
 {
-    class ByteArrayComparer : IEqualityComparer<byte[]>
+    internal class ByteArrayComparer : IEqualityComparer<byte[]>, IComparer<byte[]>
     {
-        static Lazy<ByteArrayComparer> defaultComparer = new Lazy<ByteArrayComparer>(() => new ByteArrayComparer());
-        public static ByteArrayComparer Default => defaultComparer.Value;
+        private static readonly Lazy<ByteArrayComparer> @default = new Lazy<ByteArrayComparer>(() => new ByteArrayComparer());
+        public static ByteArrayComparer Default => @default.Value;
+
+        public int Compare([AllowNull] byte[] x, [AllowNull] byte[] y)
+        {
+            if (x == null && y == null)
+                return 0;
+            if (x == null)
+                return -1;
+            if (y == null)
+                return 1;
+            return x.AsSpan().SequenceCompareTo(y.AsSpan());
+        }
 
         public bool Equals([AllowNull] byte[] x, [AllowNull] byte[] y)
         {

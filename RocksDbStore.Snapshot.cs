@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Neo.IO.Caching;
 using Neo.Persistence;
 using RocksDbSharp;
 
@@ -40,9 +41,9 @@ namespace Neo.Seattle.Persistence
                 return store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
             }
 
-            public IEnumerable<(byte[] Key, byte[] Value)> Find(byte table, byte[]? prefix)
+            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
             {
-                return RocksDbStore.Find(store.db, prefix, store.GetColumnFamily(table), readOptions);
+                return RocksDbStore.Seek(store.db, key, store.GetColumnFamily(table), direction, readOptions);
             }
 
             public void Put(byte table, byte[]? key, byte[] value)

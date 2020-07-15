@@ -2,12 +2,14 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using Neo.IO.Caching;
 using Neo.Persistence;
 using OneOf;
 
 namespace Neo.Seattle.Persistence
 {
-    using TrackingMap = ImmutableDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
+    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
     public partial class CheckpointStore : IStore
     {
@@ -26,17 +28,17 @@ namespace Neo.Seattle.Persistence
         public void Dispose()
         {
             if (store is IDisposable disposable) disposable.Dispose();
-            if (checkpointCleanup != null) checkpointCleanup.Dispose();
+            checkpointCleanup?.Dispose();
         }
 
-        DataTracker GetDataTracker(byte table) 
+        private DataTracker GetDataTracker(byte table) 
             => dataTrackers.GetOrAdd(table, _ => new DataTracker(store, table));
 
         byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
             => GetDataTracker(table).TryGet(key);
 
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Find(byte table, byte[]? prefix)
-            => GetDataTracker(table).Find(prefix);
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
+            => GetDataTracker(table).Seek(prefix, direction);
 
         void IStore.Put(byte table, byte[]? key, byte[] value) 
             => GetDataTracker(table).Update(key, value);
@@ -56,23 +58,19 @@ namespace Neo.Seattle.Persistence
             return store.TryGet(table, key);
         }
 
-        static IEnumerable<(byte[] Key, byte[] Value)> Find(IReadOnlyStore store, byte table, byte[]? prefix, TrackingMap trackingMap)
+        private static IEnumerable<(byte[] Key, byte[] Value)> Seek(IReadOnlyStore store, byte table, byte[]? prefix, SeekDirection direction, TrackingMap trackingMap)
         {
-            foreach (var kvp in trackingMap)
-            {
-                if (kvp.Key.AsSpan().StartsWith(prefix ?? Array.Empty<byte>()) && kvp.Value.IsT0)
-                {
-                    yield return (kvp.Key, kvp.Value.AsT0);
-                }
-            }
+            var memoryItems = trackingMap
+                .Where(kvp => kvp.Key.AsSpan().StartsWith(prefix ?? Array.Empty<byte>()) && kvp.Value.IsT0)
+                .Select(kvp => (key: kvp.Key, value: kvp.Value.AsT0));
 
-            foreach (var kvp in store.Find(table, prefix))
-            {
-                if (!trackingMap.ContainsKey(kvp.Key))
-                {
-                    yield return kvp;
-                }
-            }
+            IEnumerable<(byte[] key, byte[] value)> allItems = store.Seek(table, prefix, SeekDirection.Forward)
+                .Where(kvp => !trackingMap.ContainsKey(kvp.Key))
+                .Concat(memoryItems);
+
+            return direction == SeekDirection.Forward
+                ? allItems.OrderBy(t => t.key, ByteArrayComparer.Default)
+                : allItems.OrderByDescending(t => t.key, ByteArrayComparer.Default);
         }
     }
 }
