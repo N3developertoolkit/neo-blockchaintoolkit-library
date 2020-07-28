@@ -27,7 +27,7 @@ namespace Neo.Seattle.Persistence
             public SnapshotTracker GetSnapshot()
                 => new SnapshotTracker(this.store, this.table, this.trackingMap);
 
-            public byte[]? TryGet(byte[]? key) 
+            public byte[]? TryGet(byte[]? key)
                 => CheckpointStore.TryGet(store, table, key, trackingMap);
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? prefix, SeekDirection direction)

@@ -183,8 +183,8 @@ namespace Neo.Seattle.Persistence
             return Seek(db, key, GetColumnFamily(table), direction, readOptions);
         }
 
-        ISnapshot IStore.GetSnapshot() => readOnly 
-            ? throw new InvalidOperationException() 
+        ISnapshot IStore.GetSnapshot() => readOnly
+            ? throw new InvalidOperationException()
             : new Snapshot(this);
 
         void IStore.Put(byte table, byte[]? key, byte[] value)

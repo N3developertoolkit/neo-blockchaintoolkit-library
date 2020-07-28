@@ -31,7 +31,7 @@ namespace Neo.Seattle.Persistence
             checkpointCleanup?.Dispose();
         }
 
-        private DataTracker GetDataTracker(byte table) 
+        private DataTracker GetDataTracker(byte table)
             => dataTrackers.GetOrAdd(table, _ => new DataTracker(store, table));
 
         byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
@@ -40,7 +40,7 @@ namespace Neo.Seattle.Persistence
         IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
             => GetDataTracker(table).Seek(prefix, direction);
 
-        void IStore.Put(byte table, byte[]? key, byte[] value) 
+        void IStore.Put(byte table, byte[]? key, byte[] value)
             => GetDataTracker(table).Update(key, value);
 
         void IStore.Delete(byte table, byte[]? key)

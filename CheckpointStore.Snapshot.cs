@@ -30,8 +30,8 @@ namespace Neo.Seattle.Persistence
             {
             }
 
-            SnapshotTracker GetSnapshotTracker(byte table) 
-                => snapshotTrackers.GetOrAdd(table, t => new SnapshotTracker(store.store, t, TrackingMap.Empty)); 
+            SnapshotTracker GetSnapshotTracker(byte table)
+                => snapshotTrackers.GetOrAdd(table, t => new SnapshotTracker(store.store, t, TrackingMap.Empty));
 
             public byte[]? TryGet(byte table, byte[]? key)
                 => GetSnapshotTracker(table).TryGet(key);
@@ -39,10 +39,10 @@ namespace Neo.Seattle.Persistence
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[] prefix, SeekDirection direction)
                => GetSnapshotTracker(table).Seek(prefix, direction);
 
-            public void Put(byte table, byte[]? key, byte[] value) 
+            public void Put(byte table, byte[]? key, byte[] value)
                 => GetSnapshotTracker(table).Update(key, value);
 
-            public void Delete(byte table, byte[] key) 
+            public void Delete(byte table, byte[] key)
                 => GetSnapshotTracker(table).Update(key, CheckpointStore.NONE_INSTANCE);
 
             public void Commit()
