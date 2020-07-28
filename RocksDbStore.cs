@@ -124,34 +124,44 @@ namespace Neo.Seattle.Persistence
             }
         }
 
-        public static void RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
+        public static long RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
         {
-            ValidateCheckpoint(checkPointArchive, magic, scriptHash);
-            RestoreCheckpoint(checkPointArchive, restorePath);
+            var (cpMagic, cpScriptHash) = GetCheckpointMetadata(checkPointArchive);
+            if (magic != cpMagic || scriptHash != cpScriptHash)
+            {
+                throw new Exception("Invalid Checkpoint");
+            }
+
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return cpMagic;
         }
 
-        public static void RestoreCheckpoint(string checkPointArchive, string restorePath)
+        public static long RestoreCheckpoint(string checkPointArchive, string restorePath)
+        {
+            var (cpMagic, _) = GetCheckpointMetadata(checkPointArchive);
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return cpMagic;
+        }
+
+        private static (long magic, string scriptHash) GetCheckpointMetadata(string checkPointArchive)
+        {
+            using var archive = ZipFile.OpenRead(checkPointArchive);
+            var addressEntry = archive.GetEntry(ADDRESS_FILENAME);
+            using var addressStream = addressEntry.Open();
+            using var addressReader = new StreamReader(addressStream);
+            var magic = long.Parse(addressReader.ReadLine() ?? string.Empty);
+            var scriptHash = addressReader.ReadLine() ?? string.Empty;
+
+            return (magic, scriptHash);
+        }
+
+        private static void ExtractCheckpoint(string checkPointArchive, string restorePath)
         {
             ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
             var addressFile = GetAddressFilePath(restorePath);
             if (File.Exists(addressFile))
             {
                 File.Delete(addressFile);
-            }
-        }
-
-        private static void ValidateCheckpoint(string checkPointArchive, long magic, string scriptHash)
-        {
-            using var archive = ZipFile.OpenRead(checkPointArchive);
-            var addressEntry = archive.GetEntry(ADDRESS_FILENAME);
-            using var addressStream = addressEntry.Open();
-            using var addressReader = new StreamReader(addressStream);
-            var checkPointMagic = long.Parse(addressReader.ReadLine() ?? string.Empty);
-            var checkPointScriptHash = addressReader.ReadLine() ?? string.Empty;
-
-            if (magic != checkPointMagic || scriptHash != checkPointScriptHash)
-            {
-                throw new Exception("Invalid Checkpoint");
             }
         }
 
