@@ -1,18 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Neo.Seattle.Persistence</AssemblyName>
+    <AssemblyName>Neo.BlockchainToolkit.Persistence</AssemblyName>
     <Authors>Neo Global Development Seattle</Authors>
     <Company>The Neo Project</Company>
     <Copyright>2015-2020 The Neo Project</Copyright>
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
     <PackageIcon>ngdsea.png</PackageIcon>
-    <PackageId>Neo.Seattle.Persistence</PackageId>
+    <PackageId>Neo.BlockchainToolkit.Persistence</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ngdseattle/neo-persistence</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/ngdseattle/neo-persistence.git</RepositoryUrl>
-    <RootNamespace>Neo.Seattle.Persistence</RootNamespace>
+    <RootNamespace>Neo.BlockchainToolkit.Persistence</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>

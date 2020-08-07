@@ -5,7 +5,7 @@ using System.Linq;
 using Neo.Persistence;
 using OneOf;
 
-namespace Neo.Seattle.Persistence
+namespace Neo.BlockchainToolkit.Persistence
 {
     using SeekDirection = Neo.IO.Caching.SeekDirection;
     using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;

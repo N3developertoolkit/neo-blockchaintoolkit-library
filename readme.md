@@ -1,4 +1,4 @@
-# NGD Seattle Persistence Library
+# Neo Blockchain Toolkit Persistence Library
 
 [![Build Status](https://dev.azure.com/NGDSeattle/Public/_apis/build/status/ngdseattle.neo-persistence?branchName=master)](https://dev.azure.com/NGDSeattle/Public/_build/latest?definitionId=33&branchName=master)
 

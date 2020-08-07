@@ -4,7 +4,7 @@ using Neo.IO.Caching;
 using Neo.Persistence;
 using RocksDbSharp;
 
-namespace Neo.Seattle.Persistence
+namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class RocksDbStore
     {

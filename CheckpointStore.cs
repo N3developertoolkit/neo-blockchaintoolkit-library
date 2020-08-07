@@ -7,7 +7,7 @@ using Neo.IO.Caching;
 using Neo.Persistence;
 using OneOf;
 
-namespace Neo.Seattle.Persistence
+namespace Neo.BlockchainToolkit.Persistence
 {
     using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 

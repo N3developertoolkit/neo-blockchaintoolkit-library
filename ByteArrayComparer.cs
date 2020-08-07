@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Neo.Seattle.Persistence
+namespace Neo.BlockchainToolkit.Persistence
 {
     internal class ByteArrayComparer : IEqualityComparer<byte[]>, IComparer<byte[]>
     {

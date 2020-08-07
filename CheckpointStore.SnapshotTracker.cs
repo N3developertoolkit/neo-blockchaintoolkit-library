@@ -6,7 +6,7 @@ using Neo.Persistence;
 using OneOf;
 using RocksDbSharp;
 
-namespace Neo.Seattle.Persistence
+namespace Neo.BlockchainToolkit.Persistence
 {
     using SeekDirection = Neo.IO.Caching.SeekDirection;
     using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
