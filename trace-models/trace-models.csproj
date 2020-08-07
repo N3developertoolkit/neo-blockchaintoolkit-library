@@ -3,13 +3,17 @@
     <AssemblyName>Neo.BlockchainToolkit.TraceDebug</AssemblyName>
     <Authors>Neo Global Development Seattle</Authors>
     <Company>The Neo Project</Company>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <Copyright>2015-2020 The Neo Project</Copyright>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
     <PackageIcon>ngdsea.png</PackageIcon>
     <PackageId>Neo.BlockchainToolkit.TraceDebug</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ngdseattle/neo-blockchaintoolkit-library</PackageProjectUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/ngdseattle/neo-blockchaintoolkit-library.git</RepositoryUrl>
     <RootNamespace>Neo.BlockchainToolkit.TraceDebug</RootNamespace>
@@ -22,8 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Neo" Version="3.0.0-preview3-00"/>
     <PackageReference Include="MessagePack" Version="2.1.152"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Neo" Version="3.0.0-preview3-00"/>
   </ItemGroup>
 
   <ItemGroup>
