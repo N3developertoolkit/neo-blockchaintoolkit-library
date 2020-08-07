@@ -30,8 +30,4 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
     <PackageReference Include="Neo" Version="3.0.0-preview3-00"/>
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="gen/*"/>
-  </ItemGroup>
 </Project>

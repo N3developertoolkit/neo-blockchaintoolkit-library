@@ -2,9 +2,10 @@ using System;
 using System.Buffers;
 using MessagePack;
 using MessagePack.Formatters;
+using Neo;
 using Neo.IO;
 
-namespace Neo.BlockchainToolkit.TraceDebug.Formatters
+namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 {
     public class UInt160Formatter : IMessagePackFormatter<UInt160>
     {
