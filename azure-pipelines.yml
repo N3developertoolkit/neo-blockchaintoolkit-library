@@ -45,7 +45,7 @@ stages:
       displayName: 'publish package to azure artifacts'
       inputs:
         command: 'push'
-        packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
         nuGetFeedType: 'internal'
         publishVstsFeed: '4b2bd186-f7a1-4f00-a22c-521ae5c47cd7/fc59ee4d-b5ed-4a8d-9520-240cd3712671'
 
