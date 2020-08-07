@@ -22,6 +22,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <SourceRoot Include="$(MSBuildThisFileDirectory)/"/>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath=""/>
   </ItemGroup>
 
