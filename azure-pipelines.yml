@@ -17,30 +17,74 @@ trigger:
     - 'changelog.md'
     - 'docs/*'
 
-pool:
-  vmImage: 'ubuntu-latest'
+stages:
+- stage: build
+  variables:
+    buildConfiguration: Release
+  jobs:
+  - job:
+    pool:
+      vmImage: 'ubuntu-latest'
+    workspace:
+      clean: all
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
 
-steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'pack'
+        packagesToPack: '**/*.csproj'
+        includesymbols: true
+        versioningScheme: 'off'
 
-- task: UseDotNet@2
-  inputs:
-    packageType: 'sdk'
-    useGlobalJson: true
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'publish build artifact'
+      artifact: NugetPackage
 
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'pack'
-    packagesToPack: '**/*.csproj'
-    includesymbols: true
-    versioningScheme: 'off'
+- stage: publishAzure
+  displayName: 'publish artifacts to azure feed'
+  dependsOn: build
+  jobs:
+  - job:
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: none
+    - download: current
+      artifact: NugetPackage
 
-- publish: '$(Build.ArtifactStagingDirectory)'
-  displayName: 'publish build artifact'
-  name: nugetPackage
+    - task: NuGetCommand@2
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
+        nuGetFeedType: 'internal'
+        publishVstsFeed: '4b2bd186-f7a1-4f00-a22c-521ae5c47cd7/fc59ee4d-b5ed-4a8d-9520-240cd3712671'
 
-- task: NuGetCommand@2
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
-    nuGetFeedType: 'internal'
-    publishVstsFeed: '4b2bd186-f7a1-4f00-a22c-521ae5c47cd7/fc59ee4d-b5ed-4a8d-9520-240cd3712671'
+- stage: publishNugetOrg
+  displayName: 'publish artifacts to nuget.org'
+  dependsOn: build
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))
+  jobs:
+    - deployment: 
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'nuget-org'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: NuGetCommand@2
+                inputs:
+                  command: 'push'
+                  packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
+                  nuGetFeedType: 'external'
+                  publishFeedCredentials: 'nuget-org'
+              - task: NuGetCommand@2
+                inputs:
+                  command: 'push'
+                  packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.snupkg'
+                  nuGetFeedType: 'external'
+                  publishFeedCredentials: 'nuget-org'
