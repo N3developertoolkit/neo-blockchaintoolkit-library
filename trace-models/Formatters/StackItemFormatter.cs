@@ -1,8 +1,6 @@
 using System;
 using System.Buffers;
 using System.Numerics;
-using MessagePack;
-using MessagePack.Formatters;
 
 using StackItem = Neo.VM.Types.StackItem;
 using StackItemType = Neo.VM.Types.StackItemType;
@@ -30,7 +28,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
             var count = reader.ReadArrayHeader();
             if (count != 2) throw new MessagePackSerializationException();
 
-            var type = (StackItemType)reader.ReadByte();
+            var type = options.Resolver.GetFormatterWithVerify<StackItemType>().Deserialize(ref reader, options);
 
             switch (type)
             {
@@ -98,26 +96,26 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
             switch (value)
             {
                 case NeoBoolean _:
-                    writer.Write((byte)StackItemType.Boolean);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.Boolean, options);
                     writer.Write(value.GetBoolean());
                     break;
                 case NeoBuffer buffer:
-                    writer.Write((byte)StackItemType.Buffer);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.Buffer, options);
                     writer.Write(buffer.InnerBuffer.AsSpan());
                     break;
                 case NeoByteString byteString:
-                    writer.Write((byte)StackItemType.ByteString);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.ByteString, options);
                     writer.Write(byteString);
                     break;
                 case NeoInteger integer:
-                    writer.Write((byte)StackItemType.Integer);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.Integer, options);
                     resolver.GetFormatterWithVerify<BigInteger>().Serialize(ref writer, integer.GetInteger(), options);
                     break;
                 case NeoInteropInterface interopInterface:
-                    writer.Write((byte)StackItemType.InteropInterface);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.InteropInterface, options);
                     throw new NotImplementedException();
                 case NeoMap map:
-                    writer.Write((byte)StackItemType.Map);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.Map, options);
                     writer.WriteMapHeader(map.Count);
                     foreach (var kvp in map)
                     {
@@ -126,15 +124,16 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     }
                     break;
                 case NeoNull _:
-                    writer.Write((byte)StackItemType.Any);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.Any, options);
                     writer.WriteNil();
                     break;
                 case NeoPointer pointer:
-                    writer.Write((byte)StackItemType.Pointer);
+                    resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, StackItemType.Pointer, options);
                     throw new NotImplementedException();
                 case NeoArray array:
                     {
-                        writer.Write((byte)(array is NeoStruct ? StackItemType.Struct : StackItemType.Array));
+                        var stackItemType = array is NeoStruct ? StackItemType.Struct : StackItemType.Array;
+                        resolver.GetFormatterWithVerify<StackItemType>().Serialize(ref writer, stackItemType, options);
                         writer.WriteArrayHeader(array.Count);
                         for (int i = 0; i < array.Count; i++)
                         {

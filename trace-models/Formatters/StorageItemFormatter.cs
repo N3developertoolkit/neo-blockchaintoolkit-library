@@ -1,8 +1,4 @@
-using System;
 using System.Buffers;
-using System.Numerics;
-using MessagePack;
-using MessagePack.Formatters;
 using Neo.Ledger;
 
 namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug

@@ -1,7 +1,5 @@
 using System;
 using System.Buffers;
-using MessagePack;
-using MessagePack.Formatters;
 using Neo;
 using Neo.IO;
 

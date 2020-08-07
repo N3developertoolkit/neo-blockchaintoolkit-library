@@ -14,7 +14,7 @@ namespace MessagePack.Resolvers
             },
             new IFormatterResolver[]
             {
-                MessagePack.Resolvers.StandardResolver.Instance
+                StandardResolver.Instance
             });
     }
 }
