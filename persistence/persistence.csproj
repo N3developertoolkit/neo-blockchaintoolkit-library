@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="ngdsea.png" Pack="true" Visible="false" PackagePath=""/>
+    <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>
