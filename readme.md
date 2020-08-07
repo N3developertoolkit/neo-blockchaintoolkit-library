@@ -1,9 +1,28 @@
 # Neo Blockchain Toolkit Persistence Library
 
-[![Build Status](https://dev.azure.com/NGDSeattle/Public/_apis/build/status/ngdseattle.neo-persistence?branchName=master)](https://dev.azure.com/NGDSeattle/Public/_build/latest?definitionId=33&branchName=master)
+[![Build Status](https://dev.azure.com/NGDSeattle/Public/_apis/build/status/ngdseattle.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/NGDSeattle/Public/_build/latest?definitionId=34&branchName=master)
 
-This repo contains the Neo3 versions of RocksDBStore and CheckpointStore used in
-[Neo-Express](https://github.com/neo-project/neo-express) and
-[Neo-debugger](https://github.com/neo-project/neo-debugger). Eventually, these
-classes are expected to move into an official
-[Neo project repo](https://github.com/neo-project/).
+This repo projects for code shared between managed projects in the Neo Blockchain Toolkit.
+In particular, these libraries are used in [Neo-Express](https://github.com/neo-project/neo-express)
+and the [Neo Smart Contract Debugger for VS Code](https://github.com/neo-project/neo-debugger).
+
+## Persistence
+
+This library contains two `Neo.Persistence.IStore` implementations:
+
+* **RocksDbStore**: This implementation stores blockchain information in a
+  [RocksDb](https://rocksdb.org/). It is similar to the RocksDbStore implementation in
+  [neo-modules](https://github.com/neo-project/neo-modules), but is optimized for
+  fast startup and includes live checkpoint support.
+
+* **CheckpointStore**: This implementation sits on top of any `Neo.Persistence.IReadOnlyStore`
+  implementation and stores all changes in memory. This enables test/debug runs to
+  use live data without persisting further changes.
+
+## Trace Models
+
+This library contains the model classes that read/write Time Travel Debugging (TTD) traces.
+TTD traces are encoded using [MessagePack](https://msgpack.org/). These model classes
+use the [MessagePack](https://github.com/neuecc/MessagePack-CSharp) managed library.
+In addition to the trace model classes, this library includes message pack formatters for
+Neo types that are serialized in TTD traces as well as a MessagePack resolver.
