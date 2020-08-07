@@ -32,31 +32,17 @@ stages:
       inputs:
         packageType: 'sdk'
         useGlobalJson: true
-
     - task: DotNetCoreCLI@2
       inputs:
         command: 'pack'
         packagesToPack: '**/*.csproj'
         includesymbols: true
         versioningScheme: 'off'
-
     - publish: '$(Build.ArtifactStagingDirectory)'
       displayName: 'publish build artifact'
       artifact: NugetPackage
-
-- stage: publishAzure
-  displayName: 'publish artifacts to azure feed'
-  dependsOn: build
-  jobs:
-  - job:
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - checkout: none
-    - download: current
-      artifact: NugetPackage
-
     - task: NuGetCommand@2
+      displayName: 'publish package to azure artifacts'
       inputs:
         command: 'push'
         packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
