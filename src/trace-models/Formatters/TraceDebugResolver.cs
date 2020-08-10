@@ -8,6 +8,7 @@ namespace MessagePack.Resolvers
         public static readonly IFormatterResolver Instance = CompositeResolver.Create(
             new IMessagePackFormatter[]
             {
+                ScriptFormatter.Instance,
                 StackItemFormatter.Instance,
                 StorageItemFormatter.Instance,
                 UInt160Formatter.Instance

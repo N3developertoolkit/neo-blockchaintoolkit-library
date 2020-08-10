@@ -20,9 +20,9 @@ namespace Neo.BlockchainToolkit.TraceDebug
 
         public ResultsRecord(VMState vmState, long gasConsumed, IReadOnlyList<StackItem> resultStack)
         {
-            this.State = vmState;
-            this.GasConsumed = gasConsumed;
-            this.ResultStack = resultStack;
+            State = vmState;
+            GasConsumed = gasConsumed;
+            ResultStack = resultStack;
         }
 
         public static void Write(IBufferWriter<byte> writer, MessagePackSerializerOptions options, VMState vmState, long gasConsumed, IReadOnlyCollection<StackItem> resultStack)
