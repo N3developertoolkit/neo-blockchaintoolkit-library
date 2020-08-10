@@ -12,6 +12,7 @@ using NeoBuffer = Neo.VM.Types.Buffer;
 using NeoByteString = Neo.VM.Types.ByteString;
 using NeoInteger = Neo.VM.Types.Integer;
 using NeoInteropInterface = Neo.VM.Types.InteropInterface;
+using TraceInteropInterface = Neo.BlockchainToolkit.TraceDebug.TraceInteropInterface;
 using NeoMap = Neo.VM.Types.Map;
 using NeoNull = Neo.VM.Types.Null;
 using NeoPointer = Neo.VM.Types.Pointer;
@@ -25,10 +26,12 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 
         public StackItem Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
         {
+            var resolver = options.Resolver;
+
             var count = reader.ReadArrayHeader();
             if (count != 2) throw new MessagePackSerializationException();
 
-            var type = options.Resolver.GetFormatterWithVerify<StackItemType>().Deserialize(ref reader, options);
+            var type = resolver.GetFormatterWithVerify<StackItemType>().Deserialize(ref reader, options);
 
             switch (type)
             {
@@ -55,12 +58,14 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     }
                 case StackItemType.Integer:
                     {
-                        var integer = options.Resolver.GetFormatterWithVerify<BigInteger>().Deserialize(ref reader, options);
+                        var integer = resolver.GetFormatterWithVerify<BigInteger>().Deserialize(ref reader, options);
                         return new NeoInteger(integer);
                     }
                 case StackItemType.InteropInterface:
-                    reader.ReadNil();
-                    return new NeoInteropInterface(new object());
+                {
+                    var typeName = resolver.GetFormatterWithVerify<string>().Deserialize(ref reader, options);
+                    return new TraceInteropInterface(typeName);
+                }
                 case StackItemType.Pointer:
                     reader.ReadNil();
                     return new NeoPointer(null, 0);
@@ -96,7 +101,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
         {
             var resolver = options.Resolver;
             var stackItemTypeResolver = resolver.GetFormatterWithVerify<StackItemType>();
-            
+
             writer.WriteArrayHeader(2);
             switch (value)
             {
@@ -116,9 +121,12 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.Integer, options);
                     resolver.GetFormatterWithVerify<BigInteger>().Serialize(ref writer, integer.GetInteger(), options);
                     break;
-                case NeoInteropInterface _:
+                case NeoInteropInterface interopInterface:
+                {
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.InteropInterface, options);
-                    writer.WriteNil();
+                    var typeName = interopInterface.GetInterface<object>().GetType().FullName;
+                    resolver.GetFormatterWithVerify<string>().Serialize(ref writer, typeName, options);
+                }
                     break;
                 case NeoMap map:
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.Map, options);
