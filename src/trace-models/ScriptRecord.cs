@@ -17,7 +17,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
         [Key(1)]
         public readonly Script Script;
 
-        public ScriptRecord(UInt160 scriptHash, byte[] script)
+        public ScriptRecord(UInt160 scriptHash, Script script)
         {
             ScriptHash = scriptHash;
             Script = script;
