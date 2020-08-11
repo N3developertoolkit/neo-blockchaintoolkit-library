@@ -16,7 +16,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
             [Key(1)]
             public readonly int InstructionPointer;
             [Key(2)]
-            public readonly IReadOnlyCollection<StackItem> EvaluationStack;
+            public readonly IReadOnlyList<StackItem> EvaluationStack;
             [Key(3)]
             public readonly IReadOnlyList<StackItem> LocalVariables;
             [Key(4)]
@@ -27,7 +27,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
             public StackFrame(
                 UInt160 scriptHash,
                 int instructionPointer,
-                IReadOnlyCollection<StackItem> evaluationStack,
+                IReadOnlyList<StackItem> evaluationStack,
                 IReadOnlyList<StackItem> localVariables,
                 IReadOnlyList<StackItem> staticFields,
                 IReadOnlyList<StackItem> arguments)

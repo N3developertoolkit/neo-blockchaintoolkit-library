@@ -8,6 +8,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
     [Union(ResultsRecord.RecordKey, typeof(ResultsRecord))]
     [Union(FaultRecord.RecordKey, typeof(FaultRecord))]
     [Union(ScriptRecord.RecordKey, typeof(ScriptRecord))]
+    [Union(StorageRecord.RecordKey, typeof(StorageRecord))]
     public interface ITraceDebugRecord
     {
     }
