@@ -4,7 +4,7 @@ using MessagePack;
 namespace Neo.BlockchainToolkit.TraceDebug
 {
     [MessagePackObject]
-    public readonly struct LogRecord : ITraceDebugRecord
+    public class LogRecord : ITraceDebugRecord
     {
         public const int RecordKey = 2;
 

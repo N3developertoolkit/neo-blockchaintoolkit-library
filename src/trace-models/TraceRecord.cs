@@ -6,16 +6,16 @@ using Neo.VM;
 namespace Neo.BlockchainToolkit.TraceDebug
 {
     [MessagePackObject]
-    public readonly partial struct TraceRecord : ITraceDebugRecord
+    public partial class TraceRecord : ITraceDebugRecord
     {
         public const int RecordKey = 0;
 
         [Key(0)]
         public readonly VMState State;
         [Key(1)]
-        public readonly IReadOnlyCollection<StackFrame> StackFrames;
+        public readonly IReadOnlyList<StackFrame> StackFrames;
 
-        public TraceRecord(VMState state, IReadOnlyCollection<StackFrame> stackFrames)
+        public TraceRecord(VMState state, IReadOnlyList<StackFrame> stackFrames)
         {
             State = state;
             StackFrames = stackFrames;

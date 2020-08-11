@@ -6,10 +6,10 @@ using StackItem = Neo.VM.Types.StackItem;
 
 namespace Neo.BlockchainToolkit.TraceDebug
 {
-    public readonly partial struct TraceRecord
+    public partial class TraceRecord
     {
         [MessagePackObject]
-        public readonly struct StackFrame
+        public class StackFrame
         {
             [Key(0)]
             public readonly UInt160 ScriptHash;

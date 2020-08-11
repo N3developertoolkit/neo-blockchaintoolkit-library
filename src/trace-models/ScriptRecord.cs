@@ -7,7 +7,7 @@ using StackItem = Neo.VM.Types.StackItem;
 namespace Neo.BlockchainToolkit.TraceDebug
 {
     [MessagePackObject]
-    public readonly struct ScriptRecord : ITraceDebugRecord
+    public class ScriptRecord : ITraceDebugRecord
     {
         public const int RecordKey = 5;
 
