@@ -1,7 +1,8 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+variables:
+  isMasterBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  isReleaseBranch: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
+  azureArtifactsBranch: $[or(eq(variables.isMasterBranch, true), eq(variables.isReleaseBranch, true))]
+  nugetOrgBranch: $[eq(variables.isReleaseBranch, true)]
 
 trigger:
   batch: false
@@ -43,7 +44,7 @@ stages:
       artifact: NugetPackage
     - task: NuGetCommand@2
       displayName: 'publish package to azure artifacts'
-      condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/master'))
+      condition: and(succeeded(), eq(variables.azureArtifactsBranch, true))
       inputs:
         command: 'push'
         packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
@@ -53,7 +54,7 @@ stages:
 - stage: publishNugetOrg
   displayName: 'publish artifacts to nuget.org'
   dependsOn: build
-  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))
+  condition: and(succeeded(), eq(variables.nugetOrgBranch, true))
   jobs:
     - deployment: 
       pool:
