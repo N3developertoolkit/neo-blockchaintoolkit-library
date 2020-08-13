@@ -43,6 +43,7 @@ stages:
       artifact: NugetPackage
     - task: NuGetCommand@2
       displayName: 'publish package to azure artifacts'
+      condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/master'))
       inputs:
         command: 'push'
         packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
