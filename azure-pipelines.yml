@@ -35,7 +35,7 @@ stages:
     - task: DotNetCoreCLI@2
       inputs:
         command: 'pack'
-        packagesToPack: '**/*.csproj'
+        packagesToPack: 'src/**/*.csproj'
         includesymbols: true
         versioningScheme: 'off'
     - publish: '$(Build.ArtifactStagingDirectory)'
