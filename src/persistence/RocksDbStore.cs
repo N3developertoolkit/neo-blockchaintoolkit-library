@@ -19,6 +19,7 @@ namespace Neo.BlockchainToolkit.Persistence
         private readonly ReadOptions readOptions = new ReadOptions();
         private readonly WriteOptions writeOptions = new WriteOptions();
         private readonly WriteOptions writeSyncOptions = new WriteOptions().SetSync(true);
+        private static readonly ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
 
         public static RocksDbStore Open(string path)
         {
@@ -39,11 +40,10 @@ namespace Neo.BlockchainToolkit.Persistence
             try
             {
                 var names = RocksDb.ListColumnFamilies(new DbOptions(), path);
-                var columnFamilyOptions = new ColumnFamilyOptions();
                 var families = new ColumnFamilies();
                 foreach (var name in names)
                 {
-                    families.Add(name, columnFamilyOptions);
+                    families.Add(name, defaultColumnFamilyOptions);
                 }
                 return families;
             }
@@ -178,7 +178,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 catch (KeyNotFoundException)
                 {
-                    return db.CreateColumnFamily(new ColumnFamilyOptions(), familyName);
+                    return db.CreateColumnFamily(defaultColumnFamilyOptions, familyName);
                 }
             }
         }
