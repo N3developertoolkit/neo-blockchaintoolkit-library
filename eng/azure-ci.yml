@@ -44,7 +44,7 @@ stages:
       displayName: 'dotnet test'
       inputs:
         command: 'test'
-        arguments: -c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --settings ./tests/runsettings.xml
+        arguments: -c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --settings ./test/runsettings.xml
     - task: PublishCodeCoverageResults@1
       displayName: 'Publish code coverage'
       inputs:
