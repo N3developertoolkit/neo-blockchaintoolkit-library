@@ -183,33 +183,33 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
+        public byte[]? TryGet(byte table, byte[]? key)
         {
             return db.Get(key ?? Array.Empty<byte>(), GetColumnFamily(table), readOptions);
         }
 
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
+        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
         {
             return Seek(db, key, GetColumnFamily(table), direction, readOptions);
         }
 
-        ISnapshot IStore.GetSnapshot() => readOnly
+        public ISnapshot GetSnapshot() => readOnly
             ? throw new InvalidOperationException()
             : new Snapshot(this);
 
-        void IStore.Put(byte table, byte[]? key, byte[] value)
+        public void Put(byte table, byte[]? key, byte[] value)
         {
             if (readOnly) throw new InvalidOperationException();
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeOptions);
         }
 
-        void IStore.PutSync(byte table, byte[]? key, byte[] value)
+        public void PutSync(byte table, byte[]? key, byte[] value)
         {
             if (readOnly) throw new InvalidOperationException();
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeSyncOptions);
         }
 
-        void IStore.Delete(byte table, byte[]? key)
+        public void Delete(byte table, byte[]? key)
         {
             if (readOnly) throw new InvalidOperationException();
             db.Remove(key ?? Array.Empty<byte>(), GetColumnFamily(table), writeOptions);

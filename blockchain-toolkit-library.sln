@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{1E007B7B-D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "trace-testapp", "test\trace-testapp\trace-testapp.csproj", "{7F4ECA42-AA5F-4B7E-B9C9-118AD205DB12}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "persistence-test", "test\persistence\persistence-test.csproj", "{9614769D-A594-40A5-96F7-0CBDEA404D4D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -60,8 +62,21 @@ Global
 		{7F4ECA42-AA5F-4B7E-B9C9-118AD205DB12}.Release|x64.Build.0 = Release|Any CPU
 		{7F4ECA42-AA5F-4B7E-B9C9-118AD205DB12}.Release|x86.ActiveCfg = Release|Any CPU
 		{7F4ECA42-AA5F-4B7E-B9C9-118AD205DB12}.Release|x86.Build.0 = Release|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Debug|x64.Build.0 = Debug|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Debug|x86.Build.0 = Debug|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Release|x64.ActiveCfg = Release|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Release|x64.Build.0 = Release|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Release|x86.ActiveCfg = Release|Any CPU
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{7F4ECA42-AA5F-4B7E-B9C9-118AD205DB12} = {1E007B7B-DFC0-4936-9F73-8DD0DCBFF8DD}
+		{9614769D-A594-40A5-96F7-0CBDEA404D4D} = {1E007B7B-DFC0-4936-9F73-8DD0DCBFF8DD}
 	EndGlobalSection
 EndGlobal
