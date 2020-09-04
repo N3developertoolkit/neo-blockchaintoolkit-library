@@ -34,19 +34,19 @@ namespace Neo.BlockchainToolkit.Persistence
         private DataTracker GetDataTracker(byte table)
             => dataTrackers.GetOrAdd(table, _ => new DataTracker(store, table));
 
-        byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
+        public byte[]? TryGet(byte table, byte[]? key)
             => GetDataTracker(table).TryGet(key);
 
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
+        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? prefix, SeekDirection direction)
             => GetDataTracker(table).Seek(prefix, direction);
 
-        void IStore.Put(byte table, byte[]? key, byte[] value)
+        public void Put(byte table, byte[]? key, byte[] value)
             => GetDataTracker(table).Update(key, value);
 
-        void IStore.Delete(byte table, byte[]? key)
+        public void Delete(byte table, byte[]? key)
             => GetDataTracker(table).Update(key, NONE_INSTANCE);
 
-        ISnapshot IStore.GetSnapshot() => new Snapshot(this);
+        public ISnapshot GetSnapshot() => new Snapshot(this);
 
         static byte[]? TryGet(IReadOnlyStore store, byte table, byte[]? key, TrackingMap trackingMap)
         {
@@ -60,17 +60,30 @@ namespace Neo.BlockchainToolkit.Persistence
 
         private static IEnumerable<(byte[] Key, byte[] Value)> Seek(IReadOnlyStore store, byte table, byte[]? prefix, SeekDirection direction, TrackingMap trackingMap)
         {
+            prefix ??= Array.Empty<byte>();
+            var comparer = direction == SeekDirection.Forward ? ByteArrayComparer.Default : ByteArrayComparer.Reverse;
+
             var memoryItems = trackingMap
-                .Where(kvp => kvp.Key.AsSpan().StartsWith(prefix ?? Array.Empty<byte>()) && kvp.Value.IsT0)
-                .Select(kvp => (key: kvp.Key, value: kvp.Value.AsT0));
+                .Where(kvp => kvp.Value.IsT0)
+                .Where(kvp => prefix.Length == 0 || comparer.Compare(kvp.Key, prefix) >= 0)
+                .Select(kvp => (kvp.Key, Value: kvp.Value.AsT0));
 
-            IEnumerable<(byte[] key, byte[] value)> allItems = store.Seek(table, prefix, SeekDirection.Forward)
-                .Where(kvp => !trackingMap.ContainsKey(kvp.Key))
-                .Concat(memoryItems);
+            var storeItems = store.Seek(table, prefix, direction)
+                .Where(kvp => !trackingMap.ContainsKey(kvp.Key));
 
-            return direction == SeekDirection.Forward
-                ? allItems.OrderBy(t => t.key, ByteArrayComparer.Default)
-                : allItems.OrderByDescending(t => t.key, ByteArrayComparer.Default);
+            return memoryItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
+            // if (prefix?.Length > 0)
+            //     memoryItems = memoryItems.Where(kvp => );
+
+            // memoryItems = memoryItems;
+
+            // foreach (var kvp in memoryItems)
+            // {
+            //     yield return (kvp.Key, kvp.Value.AsT0);
+            // }
+                // .Where(kvp => (prefix.Length == 0) || comparer.Compare(kvp.Key, prefix) >= 0)
+
+
         }
     }
 }
