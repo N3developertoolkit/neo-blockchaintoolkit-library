@@ -34,11 +34,29 @@ stages:
         packageType: 'sdk'
         useGlobalJson: true
     - task: DotNetCoreCLI@2
+      displayName: 'dotnet build'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        versioningScheme: 'off'
+        arguments: -c $(buildConfiguration)
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test'
+      inputs:
+        command: 'test'
+        arguments: -c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --settings ./tests/runsettings.xml
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      inputs:
+          codeCoverageTool: cobertura
+          summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+    - task: DotNetCoreCLI@2
       inputs:
         command: 'pack'
         packagesToPack: 'src/**/*.csproj'
         includesymbols: true
         versioningScheme: 'off'
+        arguments: --no-build
     - publish: '$(Build.ArtifactStagingDirectory)'
       displayName: 'publish build artifact'
       artifact: NugetPackage
