@@ -26,12 +26,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath=""/>
+    <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.1.152"/>
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
-    <PackageReference Include="Neo" Version="3.0.0-preview3-00"/>
+    <!-- <PackageReference Include="Neo" Version="3.0.0-preview3-00" /> -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\official\3neo-monorepo\core\src\neo\neo.csproj" />
   </ItemGroup>
 </Project>
