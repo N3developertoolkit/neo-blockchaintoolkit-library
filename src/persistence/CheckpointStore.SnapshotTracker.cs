@@ -35,9 +35,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 => CheckpointStore.Seek(store, table, prefix, direction, trackingMap);
 
             public void Update(byte[]? key, OneOf<byte[], OneOf.Types.None> value)
-            {
-                writeBatch[key ?? Array.Empty<byte>()] = value;
-            }
+                => writeBatch[key ?? Array.Empty<byte>()] = value;
 
             public void Commit(DataTracker dataTracker)
             {

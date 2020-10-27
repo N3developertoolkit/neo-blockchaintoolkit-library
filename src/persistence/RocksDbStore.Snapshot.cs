@@ -31,35 +31,22 @@ namespace Neo.BlockchainToolkit.Persistence
                 writeBatch.Dispose();
             }
 
-            public void Commit()
-            {
-                store.db.Write(writeBatch);
-            }
+            public void Commit() => store.db.Write(writeBatch);
 
             public byte[] TryGet(byte table, byte[]? key)
-            {
-                return store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
-            }
+                => store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
 
             public bool Contains(byte table, byte[] key)
-            {
-                return null != store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
-            }
+                => null != store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
-            {
-                return RocksDbStore.Seek(store.db, key, store.GetColumnFamily(table), direction, readOptions);
-            }
+                => RocksDbStore.Seek(store.db, key, store.GetColumnFamily(table), direction, readOptions);
 
             public void Put(byte table, byte[]? key, byte[] value)
-            {
-                writeBatch.Put(key ?? Array.Empty<byte>(), value, store.GetColumnFamily(table));
-            }
+                => writeBatch.Put(key ?? Array.Empty<byte>(), value, store.GetColumnFamily(table));
 
             public void Delete(byte table, byte[]? key)
-            {
-                writeBatch.Delete(key ?? Array.Empty<byte>(), store.GetColumnFamily(table));
-            }
+                => writeBatch.Delete(key ?? Array.Empty<byte>(), store.GetColumnFamily(table));
         }
     }
 }
