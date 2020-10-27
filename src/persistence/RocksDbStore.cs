@@ -192,23 +192,23 @@ namespace Neo.BlockchainToolkit.Persistence
         IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
             => Seek(db, key, GetColumnFamily(table), direction, readOptions);
 
-        public ISnapshot GetSnapshot() => readOnly
+        ISnapshot IStore.GetSnapshot() => readOnly
             ? throw new InvalidOperationException()
             : new Snapshot(this);
 
-        public void Put(byte table, byte[]? key, byte[] value)
+        void IStore.Put(byte table, byte[]? key, byte[] value)
         {
             if (readOnly) throw new InvalidOperationException();
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeOptions);
         }
 
-        public void PutSync(byte table, byte[]? key, byte[] value)
+        void IStore.PutSync(byte table, byte[]? key, byte[] value)
         {
             if (readOnly) throw new InvalidOperationException();
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeSyncOptions);
         }
 
-        public void Delete(byte table, byte[]? key)
+        void IStore.Delete(byte table, byte[]? key)
         {
             if (readOnly) throw new InvalidOperationException();
             db.Remove(key ?? Array.Empty<byte>(), GetColumnFamily(table), writeOptions);

@@ -92,7 +92,7 @@ namespace persistence
                 yield return new object[] { memStore, NoopDisposable.Instance };
                 yield return new object[] { new CheckpointStore(memStore), NoopDisposable.Instance };
 
-                var cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
+                IStore cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
                 cpStore.Put(1, new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
                 cpStore.Put(1, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
                 cpStore.Put(1, new byte[] { 0x00, 0x00, 0x02 }, new byte[] { 0x02 });
@@ -112,7 +112,7 @@ namespace persistence
                 yield return new object[] { cpStore, NoopDisposable.Instance };
 
                 var (tempPath, disposable) = GetTempPath();
-                var rocksStore = RocksDbStore.Open(tempPath);
+                IStore rocksStore = RocksDbStore.Open(tempPath);
                 rocksStore.Put(1, new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
                 rocksStore.Put(1, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
                 rocksStore.Put(1, new byte[] { 0x00, 0x00, 0x02 }, new byte[] { 0x02 });
@@ -150,7 +150,7 @@ namespace persistence
                 yield return new object[] { memStore, NoopDisposable.Instance };
                 yield return new object[] { new CheckpointStore(memStore), NoopDisposable.Instance };
 
-                var cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
+                IStore cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
                 cpStore.Put(2, new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
                 cpStore.Put(2, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
                 cpStore.Put(2, new byte[] { 0x00, 0x01, 0x02 }, new byte[] { 0x02 });
@@ -165,7 +165,7 @@ namespace persistence
                 yield return new object[] { cpStore, NoopDisposable.Instance };
 
                 var (tempPath, disposable) = GetTempPath();
-                var rocksStore = RocksDbStore.Open(tempPath);
+                IStore rocksStore = RocksDbStore.Open(tempPath);
                 rocksStore.Put(2, new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
                 rocksStore.Put(2, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
                 rocksStore.Put(2, new byte[] { 0x00, 0x01, 0x02 }, new byte[] { 0x02 });

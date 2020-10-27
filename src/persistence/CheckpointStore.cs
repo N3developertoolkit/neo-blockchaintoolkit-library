@@ -13,11 +13,12 @@ namespace Neo.BlockchainToolkit.Persistence
 
     public partial class CheckpointStore : IStore
     {
-        private readonly static OneOf.Types.None NONE_INSTANCE = new OneOf.Types.None();
+        readonly static OneOf.Types.None NONE_INSTANCE = new OneOf.Types.None();
+        readonly static TrackingMap EMPTY_TRACKING_MAP = TrackingMap.Empty.WithComparers(ByteArrayComparer.Default);
 
-        private readonly IReadOnlyStore store;
-        private readonly IDisposable? checkpointCleanup;
-        private readonly ConcurrentDictionary<byte, DataTracker> dataTrackers = new ConcurrentDictionary<byte, DataTracker>();
+        readonly IReadOnlyStore store;
+        readonly IDisposable? checkpointCleanup;
+        ImmutableDictionary<byte, TrackingMap> trackingMaps = ImmutableDictionary<byte, TrackingMap>.Empty;
 
         public CheckpointStore(IReadOnlyStore store, IDisposable? checkpointCleanup = null)
         {
@@ -31,37 +32,46 @@ namespace Neo.BlockchainToolkit.Persistence
             checkpointCleanup?.Dispose();
         }
 
-        private DataTracker GetDataTracker(byte table)
-            => dataTrackers.GetOrAdd(table, _ => new DataTracker(store, table));
-
-        public byte[]? TryGet(byte table, byte[]? key)
-            => GetDataTracker(table).TryGet(key);
-
-        bool IReadOnlyStore.Contains(byte table, byte[] key)
-            => null != GetDataTracker(table).TryGet(key);
-
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
-            => GetDataTracker(table).Seek(prefix, direction);
-
-        public void Put(byte table, byte[]? key, byte[] value)
-            => GetDataTracker(table).Update(key, value);
-
-        public void Delete(byte table, byte[]? key)
-            => GetDataTracker(table).Update(key, NONE_INSTANCE);
-
-        public ISnapshot GetSnapshot() => new Snapshot(this);
-
-        static byte[]? TryGet(IReadOnlyStore store, byte table, byte[]? key, TrackingMap trackingMap)
+        byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
         {
-            if (trackingMap.TryGetValue(key ?? Array.Empty<byte>(), out var value))
+            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+            return TryGet(trackingMap, table, key);
+        }
+
+        byte[]? TryGet(TrackingMap trackingMap, byte table, byte[]? key)
+        {
+            if (trackingMap.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
             {
-                return value.Match<byte[]?>(v => v, _ => null);
+                return mapValue.Match<byte[]?>(v => v, n => null);
             }
 
             return store.TryGet(table, key);
         }
 
-        private static IEnumerable<(byte[] Key, byte[] Value)> Seek(IReadOnlyStore store, byte table, byte[]? prefix, SeekDirection direction, TrackingMap trackingMap)
+        bool IReadOnlyStore.Contains(byte table, byte[] key) 
+        {
+            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+            return Contains(trackingMap, table, key);
+        }
+
+        bool Contains(TrackingMap trackingMap, byte table, byte[] key)
+        {
+            if (trackingMap.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
+            {
+                return mapValue.Match(v => true, n => false);
+            }
+
+            return store.Contains(table, key);
+        }
+
+
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
+        {
+            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+            return Seek(trackingMap, table, prefix, direction);
+        }
+
+        IEnumerable<(byte[] Key, byte[] Value)> Seek(TrackingMap trackingMap, byte table, byte[]? prefix, SeekDirection direction)
         {
             prefix ??= Array.Empty<byte>();
             var comparer = direction == SeekDirection.Forward ? ByteArrayComparer.Default : ByteArrayComparer.Reverse;
@@ -75,18 +85,25 @@ namespace Neo.BlockchainToolkit.Persistence
                 .Where(kvp => !trackingMap.ContainsKey(kvp.Key));
 
             return memoryItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
-            // if (prefix?.Length > 0)
-            //     memoryItems = memoryItems.Where(kvp => );
+        }
 
-            // memoryItems = memoryItems;
+        ISnapshot IStore.GetSnapshot() => new Snapshot(this);
 
-            // foreach (var kvp in memoryItems)
-            // {
-            //     yield return (kvp.Key, kvp.Value.AsT0);
-            // }
-                // .Where(kvp => (prefix.Length == 0) || comparer.Compare(kvp.Key, prefix) >= 0)
+        void Put(byte table, byte[]? key, OneOf<byte[], OneOf.Types.None> value)
+        {
+            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+            trackingMap = trackingMap.SetItem(key ?? Array.Empty<byte>(), value);
+            trackingMaps = trackingMaps.SetItem(table, trackingMap);
+        }
 
+        void IStore.Put(byte table, byte[]? key, byte[] value)
+        {
+            Put(table, key, value);
+        }
 
+        void IStore.Delete(byte table, byte[]? key)
+        {
+            Put(table, key, NONE_INSTANCE);
         }
     }
 }

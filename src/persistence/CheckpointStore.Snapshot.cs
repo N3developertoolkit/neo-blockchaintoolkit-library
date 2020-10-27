@@ -14,47 +14,66 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         class Snapshot : ISnapshot
         {
-            private readonly CheckpointStore store;
-            private readonly ConcurrentDictionary<byte, SnapshotTracker> snapshotTrackers = new ConcurrentDictionary<byte, SnapshotTracker>();
+            readonly CheckpointStore store;
+            readonly ImmutableDictionary<byte, TrackingMap> trackingMaps;
+            Dictionary<byte, TrackingMap> writeBatchMap = new Dictionary<byte, TrackingMap>();
 
             public Snapshot(CheckpointStore store)
             {
                 this.store = store;
-                foreach (var kvp in store.dataTrackers)
-                {
-                    snapshotTrackers.TryAdd(kvp.Key, kvp.Value.GetSnapshot());
-                }
+                trackingMaps = store.trackingMaps;
             }
 
             public void Dispose()
             {
             }
 
-            SnapshotTracker GetSnapshotTracker(byte table)
-                => snapshotTrackers.GetOrAdd(table, t => new SnapshotTracker(store.store, t, TrackingMap.Empty));
+            // SnapshotTracker GetSnapshotTracker(byte table)
+            //     => snapshotTrackers.GetOrAdd(table, t => new SnapshotTracker(store.store, t, TrackingMap.Empty));
 
             byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
-                => GetSnapshotTracker(table).TryGet(key);
+            {
+                var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+                return store.TryGet(trackingMap, table, key);
+            }
 
             bool IReadOnlyStore.Contains(byte table, byte[] key)
-                => null != GetSnapshotTracker(table).TryGet(key);
+            {
+                var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+                return store.Contains(trackingMap, table, key);
+            }
 
             IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[] prefix, SeekDirection direction)
-               => GetSnapshotTracker(table).Seek(prefix, direction);
+            {
+                var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+                return store.Seek(trackingMap, table, prefix, direction);
+            }
 
             void ISnapshot.Put(byte table, byte[]? key, byte[] value)
-                => GetSnapshotTracker(table).Update(key, value);
+            {
+                var map = writeBatchMap.GetValueOrDefault(table, EMPTY_TRACKING_MAP) ?? throw new NullReferenceException();
+                writeBatchMap[table] = map.SetItem(key ?? Array.Empty<byte>(), value);
+            }
 
-            void ISnapshot.Delete(byte table, byte[] key)
-                => GetSnapshotTracker(table).Update(key, CheckpointStore.NONE_INSTANCE);
+            void ISnapshot.Delete(byte table, byte[]? key)
+            {
+                var map = writeBatchMap.GetValueOrDefault(table, EMPTY_TRACKING_MAP) ?? throw new NullReferenceException();
+                writeBatchMap[table] = map.SetItem(key ?? Array.Empty<byte>(), NONE_INSTANCE);
+            }
 
             void ISnapshot.Commit()
             {
-                foreach (var kvp in snapshotTrackers)
+                var trackingMaps = store.trackingMaps;
+                foreach (var (table, changes) in writeBatchMap)
                 {
-                    var tracker = store.GetDataTracker(kvp.Key);
-                    kvp.Value.Commit(tracker);
+                    var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
+                    foreach (var change in changes)
+                    {
+                        trackingMap = trackingMap.SetItem(change.Key, change.Value);
+                    }
+                    trackingMaps = trackingMaps.SetItem(table, trackingMap);
                 }
+                store.trackingMaps = trackingMaps;
             }
         }
     }
