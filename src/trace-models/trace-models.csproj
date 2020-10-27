@@ -32,10 +32,6 @@
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.1.152"/>
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
-    <!-- <PackageReference Include="Neo" Version="3.0.0-preview3-00" /> -->
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\official\3neo-monorepo\core\src\neo\neo.csproj" />
+    <PackageReference Include="Neo" Version="3.0.0-CI01050" />
   </ItemGroup>
 </Project>
