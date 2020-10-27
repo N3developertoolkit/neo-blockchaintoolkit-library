@@ -41,6 +41,11 @@ namespace Neo.BlockchainToolkit.Persistence
                 return store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
             }
 
+            public bool Contains(byte table, byte[] key)
+            {
+                return null != store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
+            }
+
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
             {
                 return RocksDbStore.Seek(store.db, key, store.GetColumnFamily(table), direction, readOptions);

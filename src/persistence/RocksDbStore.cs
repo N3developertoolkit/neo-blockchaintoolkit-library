@@ -188,7 +188,12 @@ namespace Neo.BlockchainToolkit.Persistence
             return db.Get(key ?? Array.Empty<byte>(), GetColumnFamily(table), readOptions);
         }
 
-        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
+        bool IReadOnlyStore.Contains(byte table, byte[] key)
+        {
+            return null != db.Get(key ?? Array.Empty<byte>(), GetColumnFamily(table), readOptions);
+        }
+
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
         {
             return Seek(db, key, GetColumnFamily(table), direction, readOptions);
         }

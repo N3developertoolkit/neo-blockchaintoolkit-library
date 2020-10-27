@@ -36,6 +36,9 @@ namespace Neo.BlockchainToolkit.Persistence
             public byte[]? TryGet(byte table, byte[]? key)
                 => GetSnapshotTracker(table).TryGet(key);
 
+            public bool Contains(byte table, byte[] key)
+                => null != GetSnapshotTracker(table).TryGet(key);
+
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[] prefix, SeekDirection direction)
                => GetSnapshotTracker(table).Seek(prefix, direction);
 

@@ -37,7 +37,10 @@ namespace Neo.BlockchainToolkit.Persistence
         public byte[]? TryGet(byte table, byte[]? key)
             => GetDataTracker(table).TryGet(key);
 
-        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? prefix, SeekDirection direction)
+        bool IReadOnlyStore.Contains(byte table, byte[] key)
+            => null != GetDataTracker(table).TryGet(key);
+
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
             => GetDataTracker(table).Seek(prefix, direction);
 
         public void Put(byte table, byte[]? key, byte[] value)
