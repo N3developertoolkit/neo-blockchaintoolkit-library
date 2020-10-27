@@ -33,22 +33,22 @@ namespace Neo.BlockchainToolkit.Persistence
             SnapshotTracker GetSnapshotTracker(byte table)
                 => snapshotTrackers.GetOrAdd(table, t => new SnapshotTracker(store.store, t, TrackingMap.Empty));
 
-            public byte[]? TryGet(byte table, byte[]? key)
+            byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
                 => GetSnapshotTracker(table).TryGet(key);
 
-            public bool Contains(byte table, byte[] key)
+            bool IReadOnlyStore.Contains(byte table, byte[] key)
                 => null != GetSnapshotTracker(table).TryGet(key);
 
-            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[] prefix, SeekDirection direction)
+            IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[] prefix, SeekDirection direction)
                => GetSnapshotTracker(table).Seek(prefix, direction);
 
-            public void Put(byte table, byte[]? key, byte[] value)
+            void ISnapshot.Put(byte table, byte[]? key, byte[] value)
                 => GetSnapshotTracker(table).Update(key, value);
 
-            public void Delete(byte table, byte[] key)
+            void ISnapshot.Delete(byte table, byte[] key)
                 => GetSnapshotTracker(table).Update(key, CheckpointStore.NONE_INSTANCE);
 
-            public void Commit()
+            void ISnapshot.Commit()
             {
                 foreach (var kvp in snapshotTrackers)
                 {

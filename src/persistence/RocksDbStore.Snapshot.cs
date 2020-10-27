@@ -31,21 +31,21 @@ namespace Neo.BlockchainToolkit.Persistence
                 writeBatch.Dispose();
             }
 
-            public void Commit() => store.db.Write(writeBatch);
-
-            public byte[] TryGet(byte table, byte[]? key)
+            byte[] IReadOnlyStore.TryGet(byte table, byte[]? key)
                 => store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
 
-            public bool Contains(byte table, byte[] key)
+            bool IReadOnlyStore.Contains(byte table, byte[] key)
                 => null != store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
 
-            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
+            IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
                 => RocksDbStore.Seek(store.db, key, store.GetColumnFamily(table), direction, readOptions);
 
-            public void Put(byte table, byte[]? key, byte[] value)
+            void ISnapshot.Commit() => store.db.Write(writeBatch);
+
+            void ISnapshot.Put(byte table, byte[]? key, byte[] value)
                 => writeBatch.Put(key ?? Array.Empty<byte>(), value, store.GetColumnFamily(table));
 
-            public void Delete(byte table, byte[]? key)
+            void ISnapshot.Delete(byte table, byte[]? key)
                 => writeBatch.Delete(key ?? Array.Empty<byte>(), store.GetColumnFamily(table));
         }
     }
