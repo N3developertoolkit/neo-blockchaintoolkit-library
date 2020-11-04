@@ -51,6 +51,7 @@ stages:
           codeCoverageTool: cobertura
           summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
     - task: DotNetCoreCLI@2
+      displayName: 'dotnet pack'
       inputs:
         command: 'pack'
         packagesToPack: 'src/**/*.csproj'
