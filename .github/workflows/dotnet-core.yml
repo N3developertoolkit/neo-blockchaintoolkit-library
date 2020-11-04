@@ -27,9 +27,9 @@ jobs:
       run: dotnet pack --output ./out --configuration Release --no-build --verbosity normal
     - uses: actions/upload-artifact@v2
       with:
-#        name: persistence
-        path: ./out/
-#    - uses: actions/upload-artifact@v2
-#      with:
-#        name: trace-models
-#        path: ./out/Neo.BlockchainToolkit.TraceDebug.*.nupkg
+        name: persistence
+        path: ./out/Neo.BlockchainToolkit.Persistence.*
+    - uses: actions/upload-artifact@v2
+      with:
+        name: trace-models
+        path: ./out/Neo.BlockchainToolkit.TraceDebug.*
