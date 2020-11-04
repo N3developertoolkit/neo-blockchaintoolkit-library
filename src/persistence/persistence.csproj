@@ -31,12 +31,8 @@
 
   <ItemGroup>
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
-    <!-- <PackageReference Include="Neo" Version="3.0.0-preview3-00" /> -->
+    <PackageReference Include="Neo" Version="3.0.0-CI01060" />
     <PackageReference Include="OneOf" Version="2.1.155" />
     <PackageReference Include="RocksDB" Version="6.11.4.10538" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\..\official\3neo-monorepo\core\src\neo\neo.csproj" />
   </ItemGroup>
 </Project>
