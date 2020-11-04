@@ -21,12 +21,10 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --configuration Release --no-restore
-    - name: Test
-      run: dotnet test --no-restore --verbosity normal
-    - name: Pack persistence
-      run: dotnet dotnet pack .\src\persistence\ --output ./out --no-build --verbosity normal
-    - name: Pack trace-models
-      run: dotnet dotnet pack .\src\trace-models\ --output ./out --no-build --verbosity normal
+#    - name: Test
+#      run: dotnet test --no-restore --verbosity normal
+    - name: Pack 
+      run: dotnet pack --output ./out --no-build --verbosity normal
     - uses: actions/upload-artifact@v2
       with:
         name: persistence
