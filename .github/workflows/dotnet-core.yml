@@ -24,7 +24,7 @@ jobs:
 #    - name: Test
 #      run: dotnet test --no-restore --verbosity normal
     - name: Pack 
-      run: dotnet pack --output ./out --no-build --verbosity normal
+      run: dotnet pack --output ./out --configuration Release --no-build --verbosity normal
     - uses: actions/upload-artifact@v2
       with:
         name: persistence
