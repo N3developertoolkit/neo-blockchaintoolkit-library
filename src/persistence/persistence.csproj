@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(Configuration)'!='Debug'">
-    <SourceRoot Include="$(MSBuildThisFileDirectory)/"/>
+    <SourceRoot Include="$(MSBuildThisFileDirectory)/" />
   </ItemGroup>
   
   <ItemGroup>
@@ -30,9 +30,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+    <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     <PackageReference Include="Neo" Version="3.0.0-CI01060" />
     <PackageReference Include="OneOf" Version="2.1.155" />
-    <PackageReference Include="RocksDB" Version="6.11.4.10538" />
+    <PackageReference Include="RocksDB" Version="6.12.7.13237" />
   </ItemGroup>
 </Project>
