@@ -21,8 +21,6 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --configuration Release --no-restore
-#    - name: Test
-#      run: dotnet test --no-restore --verbosity normal
     - name: Pack 
       run: dotnet pack --output ./out --configuration Release --no-build --verbosity normal
     - uses: actions/upload-artifact@v2
@@ -33,3 +31,7 @@ jobs:
       with:
         name: trace-models
         path: ./out/Neo.BlockchainToolkit.TraceDebug.*
+    - name: Install rocksdb dependencies
+      run: sudo apt install libsnappy-dev libc6-dev -y
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal
