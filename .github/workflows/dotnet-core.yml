@@ -17,21 +17,29 @@ jobs:
         fetch-depth: 0
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
+      with:
+        source-url: https://nuget.pkg.github.com/ngdseattle/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
     - name: Install dependencies
       run: dotnet restore
     - name: Build
       run: dotnet build --configuration Release --no-restore
     - name: Pack 
       run: dotnet pack --output ./out --configuration Release --no-build --verbosity normal
-    - uses: actions/upload-artifact@v2
+    - name: Upload persistence artifact
+      uses: actions/upload-artifact@v2
       with:
         name: persistence
         path: ./out/Neo.BlockchainToolkit.Persistence.*
-    - uses: actions/upload-artifact@v2
+    - name: Upload trace-models artifact
+      uses: actions/upload-artifact@v2
       with:
         name: trace-models
         path: ./out/Neo.BlockchainToolkit.TraceDebug.*
     - name: Install rocksdb dependencies
       run: sudo apt install libsnappy-dev libc6-dev -y
-    - name: Test
+    - name: Run tests
       run: dotnet test --no-restore --verbosity normal
+    - name: Publish Packages
+      run: dotnet nuget push ./out/*.nupkg --skip-duplicate --no-symbols true
