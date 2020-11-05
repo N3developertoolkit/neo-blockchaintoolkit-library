@@ -26,18 +26,22 @@ jobs:
     - name: Upload persistence artifact
       uses: actions/upload-artifact@v2
       with:
-        name: persistence
+        name: persistence-package
         path: ./out/Neo.BlockchainToolkit.Persistence.*
     - name: Upload trace-models artifact
       uses: actions/upload-artifact@v2
       with:
-        name: trace-models
+        name: trace-models-package
         path: ./out/Neo.BlockchainToolkit.TraceDebug.*
     - name: Install rocksdb dependencies
       run: sudo apt install libsnappy-dev libc6-dev -y
     - name: Run tests
       run: dotnet test --no-restore --verbosity normal
-    - name: Publish Packages
-      run: dotnet nuget push ./out/*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate --no-symbols true
+    - name: Publish persistence package
+      run: dotnet nuget push ./out/Neo.BlockchainToolkit.Persistence.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate --no-symbols true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Publish trace-models package
+      run: dotnet nuget push ./out/Neo.BlockchainToolkit.TraceDebug.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate --no-symbols true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}    
