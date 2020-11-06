@@ -68,7 +68,7 @@ stages:
         command: 'push'
         packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
         nuGetFeedType: 'internal'
-        publishVstsFeed: '2111a051-13cc-4708-9473-ba20025c9997'
+        publishVstsFeed: 'c96908c2-e4b5-4c77-b955-4b690f24380b/9e84eb49-63f0-4b48-a8c4-039901073643'
 
 # - stage: publishNugetOrg
 #   displayName: 'publish artifacts to nuget.org'
