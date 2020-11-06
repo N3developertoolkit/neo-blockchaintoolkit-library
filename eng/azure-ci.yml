@@ -70,28 +70,28 @@ stages:
         nuGetFeedType: 'internal'
         publishVstsFeed: '2111a051-13cc-4708-9473-ba20025c9997'
 
-- stage: publishNugetOrg
-  displayName: 'publish artifacts to nuget.org'
-  dependsOn: build
-  condition: and(succeeded(), eq(variables.nugetOrgBranch, true))
-  jobs:
-    - deployment: 
-      pool:
-        vmImage: 'ubuntu-latest'
-      environment: 'nuget-org'
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              - task: NuGetCommand@2
-                inputs:
-                  command: 'push'
-                  packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
-                  nuGetFeedType: 'external'
-                  publishFeedCredentials: 'nuget-org'
-              - task: NuGetCommand@2
-                inputs:
-                  command: 'push'
-                  packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.snupkg'
-                  nuGetFeedType: 'external'
-                  publishFeedCredentials: 'nuget-org'
+# - stage: publishNugetOrg
+#   displayName: 'publish artifacts to nuget.org'
+#   dependsOn: build
+#   condition: and(succeeded(), eq(variables.nugetOrgBranch, true))
+#   jobs:
+#     - deployment: 
+#       pool:
+#         vmImage: 'ubuntu-latest'
+#       environment: 'nuget-org'
+#       strategy:
+#         runOnce:
+#           deploy:
+#             steps:
+#               - task: NuGetCommand@2
+#                 inputs:
+#                   command: 'push'
+#                   packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
+#                   nuGetFeedType: 'external'
+#                   publishFeedCredentials: 'nuget-org'
+#               - task: NuGetCommand@2
+#                 inputs:
+#                   command: 'push'
+#                   packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.snupkg'
+#                   nuGetFeedType: 'external'
+#                   publishFeedCredentials: 'nuget-org'
