@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <AssemblyName>Neo.BlockchainToolkit.Persistence</AssemblyName>
-    <Authors>Neo Global Development Seattle</Authors>
+    <AssemblyName>neo-bctklib-3</AssemblyName>
+    <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <Copyright>2015-2020 The Neo Project</Copyright>
@@ -10,13 +11,13 @@
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
     <PackageIcon>ngdsea.png</PackageIcon>
-    <PackageId>Neo.BlockchainToolkit.Persistence</PackageId>
+    <PackageId>Neo3.BlockchainToolkit</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ngdseattle/neo-blockchaintoolkit-library</PackageProjectUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/ngdseattle/neo-blockchaintoolkit-library.git</RepositoryUrl>
-    <RootNamespace>Neo.BlockchainToolkit.Persistence</RootNamespace>
+    <RootNamespace>Neo.BlockchainToolkit</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
@@ -30,9 +31,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MessagePack" Version="2.2.60" />
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     <PackageReference Include="Neo" Version="3.0.0-CI01060" />
     <PackageReference Include="OneOf" Version="2.1.155" />
     <PackageReference Include="RocksDB" Version="6.12.7.13237" />
   </ItemGroup>
+
+
 </Project>

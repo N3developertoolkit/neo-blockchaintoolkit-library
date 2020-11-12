@@ -19,6 +19,6 @@
     <PackageReference Include="Nito.Disposables" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\persistence\persistence.csproj" />
+    <ProjectReference Include="..\..\src\bctklib-3\bctklib-3.csproj" />
   </ItemGroup>
 </Project>
