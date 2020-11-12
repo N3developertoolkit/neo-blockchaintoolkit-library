@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using Neo;
 using System;
 using Neo.IO;
+using System.Runtime.InteropServices;
 
 namespace test.bctklib3
 {
@@ -130,10 +131,14 @@ namespace test.bctklib3
             param.Value.ShouldBe(hashString);
         }
 
-        [Fact]
+        static string FakeRootPath()
+        {
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? @"x:\fakepath" : "/fakepath";
+        }
+                [Fact]
         public void TestParseStringParameter_hash_script_absolute()
         {
-            const string nefPath = @"x:\fakepath\contract.nef";
             var nef = new NefFile
             {
                 Compiler = "".PadLeft(32, ' '),
@@ -144,6 +149,7 @@ namespace test.bctklib3
             nef.CheckSum = NefFile.ComputeChecksum(nef);
 
             var fileSystem = new MockFileSystem();
+            var nefPath = fileSystem.Path.Combine(FakeRootPath(), "contract.nef");
             fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
 
             var accounts = new Dictionary<string, UInt160>();
@@ -156,7 +162,6 @@ namespace test.bctklib3
         [Fact]
         public void TestParseStringParameter_hash_script_relative()
         {
-            const string nefPath = @"x:\fakepath\contract.nef";
             var nef = new NefFile
             {
                 Compiler = "".PadLeft(32, ' '),
@@ -167,11 +172,15 @@ namespace test.bctklib3
             nef.CheckSum = NefFile.ComputeChecksum(nef);
 
             var fileSystem = new MockFileSystem();
+            var rootPath = FakeRootPath();
+            var nefPath = fileSystem.Path.Combine(rootPath, "contract.nef");
             fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
+
+            var relativePath = fileSystem.Path.GetRelativePath(rootPath, nefPath);
 
             var accounts = new Dictionary<string, UInt160>();
             var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
-            var param = parser.ParseStringParameter("#contract.nef", @"x:\fakepath");
+            var param = parser.ParseStringParameter($"#{relativePath}", rootPath);
             param.Type.ShouldBe(ContractParameterType.Hash160);
             param.Value.ShouldBe(nef.ScriptHash);
         }

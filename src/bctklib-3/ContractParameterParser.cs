@@ -207,7 +207,7 @@ namespace Neo.BlockchainToolkit
         {
             if (text.EndsWith(".nef"))
             {
-                var resolvedPath = ResolvePath(text);
+                var resolvedPath = fileSystem.Path.GetFullPath(text, basePath);
                 if (fileSystem.File.Exists(resolvedPath))
                 {
                     using var stream = fileSystem.File.OpenRead(resolvedPath);
@@ -219,16 +219,6 @@ namespace Neo.BlockchainToolkit
 
             value = null!;
             return false;
-
-            string ResolvePath(string path)
-            {
-                if (fileSystem.Path.IsPathFullyQualified(path))
-                {
-                    return path;
-                }
-
-                return fileSystem.Path.GetFullPath(path, basePath);
-            }
         }
 
         internal ContractParameter ParseObjectParameter(JsonElement json, string basePath)
