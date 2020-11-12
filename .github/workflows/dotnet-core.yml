@@ -2,14 +2,18 @@ name: .NET Core
 
 on:
   push:
-    branches: [ master ]
+    branches: 
+    - master
+    - release/*
   pull_request:
-    branches: [ master ]
+    branches:
+    - master
+    - release/*
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '*NO_CI*') == false
 
     steps:
     - uses: actions/checkout@v2
@@ -17,32 +21,27 @@ jobs:
         fetch-depth: 0
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
+      # with:
+      #   source-url: https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
+      # env:
+      #   NUGET_AUTH_TOKEN: ${{ secrets.AZURE_ARTIFACTS_PAT }}
+
     - name: Install dependencies
-      run: dotnet restore
+      run: dotnet restore --verbosity normal
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --configuration Release --no-restore --verbosity normal
     - name: Pack 
       run: dotnet pack --output ./out --configuration Release --no-build --verbosity normal
-    - name: Upload persistence artifact
+    - name: Upload neo-bctklib-3 artifact
       uses: actions/upload-artifact@v2
       with:
-        name: persistence-package
-        path: ./out/Neo.BlockchainToolkit.Persistence.*
-    - name: Upload trace-models artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: trace-models-package
-        path: ./out/Neo.BlockchainToolkit.TraceDebug.*
+        name: neo-bctklib-3
+        path: ./out/Neo.BlockchainToolkit3.*
     - name: Install rocksdb dependencies
-      run: sudo apt install libsnappy-dev libc6-dev -y
+      run: sudo apt-get install libsnappy-dev libc6-dev -y
     - name: Run tests
       run: dotnet test --no-restore --verbosity normal
     - name: Publish persistence package
-      run: dotnet nuget push ./out/Neo.BlockchainToolkit.Persistence.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate --no-symbols true
+      run: dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Publish trace-models package
-      if: ${{ github.event_name == 'push' }}
-      run: dotnet nuget push ./out/Neo.BlockchainToolkit.TraceDebug.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate --no-symbols true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}    
