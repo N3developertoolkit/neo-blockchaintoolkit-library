@@ -31,11 +31,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="test.bctklib-3" /> 
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.2.60" />
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     <PackageReference Include="Neo" Version="3.0.0-CI01060" />
     <PackageReference Include="OneOf" Version="2.1.155" />
-    <PackageReference Include="RocksDB" Version="6.12.7.13237" />
+    <PackageReference Include="rocksdb" Version="6.12.7.13237" />
+    <PackageReference Include="System.IO.Abstractions" Version="12.2.19" />
+    <PackageReference Include="System.Text.Json" Version="5.0.0" />
   </ItemGroup>
 
 
