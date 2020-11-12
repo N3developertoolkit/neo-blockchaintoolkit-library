@@ -9,7 +9,7 @@ using Nito.Disposables;
 using Xunit;
 using Xunit.Extensions;
 
-namespace persistence
+namespace test.bctklib3
 {
     public class PersistenceTest
     {
