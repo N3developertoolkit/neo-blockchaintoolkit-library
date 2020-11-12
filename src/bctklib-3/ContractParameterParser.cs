@@ -44,7 +44,12 @@ namespace Neo.BlockchainToolkit
 
             using var stream = fileSystem.File.OpenRead(invokeFile);
             using var document = JsonDocument.Parse(stream);
-            using var scriptBuilder = new ScriptBuilder();
+            return LoadInvocationScript(document, basePath);
+        }
+
+        private Script LoadInvocationScript(JsonDocument document, string basePath)
+        {
+            var scriptBuilder = new ScriptBuilder();
             switch (document.RootElement.ValueKind)
             {
                 case JsonValueKind.Object:
@@ -157,7 +162,7 @@ namespace Neo.BlockchainToolkit
                 }
             }
 
-            if (TryParseHexString(value[2..], out var byteArray))
+            if (TryParseHexString(value, out var byteArray))
             {
                 return new ContractParameter(ContractParameterType.ByteArray) { Value = byteArray };
             }
@@ -220,11 +225,6 @@ namespace Neo.BlockchainToolkit
                 if (fileSystem.Path.IsPathFullyQualified(path))
                 {
                     return path;
-                }
-
-                if (string.IsNullOrEmpty(basePath))
-                {
-                    throw new ArgumentException("base path must be specified when using relative paths", nameof(basePath));
                 }
 
                 return fileSystem.Path.GetFullPath(path, basePath);
