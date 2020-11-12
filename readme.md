@@ -1,6 +1,6 @@
 # Neo Blockchain Toolkit Persistence Library
 
-[![Build Status](https://dev.azure.com/NGDSeattle/Public/_apis/build/status/ngdseattle.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/NGDSeattle/Public/_build/latest?definitionId=34&branchName=master)
+[![Build Status](https://dev.azure.com/ngdenterprise/Build/_apis/build/status/ngdseattle.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/ngdenterprise/Build/_build/latest?definitionId=1&branchName=master)
 ![.NET Core](https://github.com/ngdseattle/neo-blockchaintoolkit-library/workflows/.NET%20Core/badge.svg?branch=master&event=push)
 
 This repo projects for code shared between managed projects in the Neo Blockchain Toolkit.
