@@ -21,10 +21,10 @@ jobs:
         fetch-depth: 0
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
-      # with:
-      #   source-url: https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
-      # env:
-      #   NUGET_AUTH_TOKEN: ${{ secrets.AZURE_ARTIFACTS_PAT }}
+      with:
+        source-url: https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.AZURE_ARTIFACTS_PAT }}
 
     - name: Install dependencies
       run: dotnet restore --verbosity normal
@@ -42,6 +42,9 @@ jobs:
     - name: Run tests
       run: dotnet test --no-restore --verbosity normal
     - name: Publish persistence package
-      run: dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
+        dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key AzureDevOps
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
