@@ -136,7 +136,8 @@ namespace test.bctklib3
             return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? @"x:\fakepath" : "/fakepath";
         }
-                [Fact]
+
+        [Fact]
         public void TestParseStringParameter_hash_script_absolute()
         {
             var nef = new NefFile

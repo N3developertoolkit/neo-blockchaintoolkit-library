@@ -207,7 +207,8 @@ namespace Neo.BlockchainToolkit
         {
             if (text.EndsWith(".nef"))
             {
-                var resolvedPath = fileSystem.Path.GetFullPath(text, basePath);
+                var resolvedPath = fileSystem.Path.IsPathFullyQualified(text)
+                    ? text : fileSystem.Path.GetFullPath(text, basePath);
                 if (fileSystem.File.Exists(resolvedPath))
                 {
                     using var stream = fileSystem.File.OpenRead(resolvedPath);
