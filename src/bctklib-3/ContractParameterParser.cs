@@ -21,18 +21,22 @@ namespace Neo.BlockchainToolkit
         public delegate bool TryGetAccount(string value, [MaybeNullWhen(false)] out UInt160 account);
 
         private readonly IFileSystem fileSystem;
-        private readonly TryGetAccount tryGetAccount;
+        private readonly TryGetAccount? tryGetAccount;
+
+        public ContractParameterParser()
+            : this(new FileSystem())
+        {
+        }
+
+        public ContractParameterParser(TryGetAccount tryGetAccount)
+            : this(new FileSystem(), tryGetAccount)
+        {
+        }
 
         public ContractParameterParser(IFileSystem fileSystem, TryGetAccount? tryGetAccount = null)
         {
             this.fileSystem = fileSystem;
-            this.tryGetAccount = tryGetAccount ?? DefaultTryGetAccount;
-        }
-
-        private static bool DefaultTryGetAccount(string _, [MaybeNullWhen(false)] out UInt160 account)
-        {
-            account = null!;
-            return false;
+            this.tryGetAccount = tryGetAccount;
         }
 
         public Script LoadInvocationScript(string path)
@@ -131,7 +135,7 @@ namespace Neo.BlockchainToolkit
             {
                 var substring = value[1..];
 
-                if (tryGetAccount(substring, out var account))
+                if (tryGetAccount != null && tryGetAccount(substring, out var account))
                 {
                     return new ContractParameter(ContractParameterType.Hash160) { Value = account };
                 }
@@ -203,7 +207,12 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        internal bool TryLoadScriptHash(string text, string basePath, [MaybeNullWhen(false)] out UInt160 value)
+        public bool TryLoadScriptHash(string text, [MaybeNullWhen(false)] out UInt160 value)
+        {
+            return TryLoadScriptHash(text, string.Empty, out value);
+        }
+
+        public bool TryLoadScriptHash(string text, string basePath, [MaybeNullWhen(false)] out UInt160 value)
         {
             if (text.EndsWith(".nef"))
             {
