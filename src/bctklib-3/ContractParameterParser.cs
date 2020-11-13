@@ -216,14 +216,18 @@ namespace Neo.BlockchainToolkit
         {
             if (text.EndsWith(".nef"))
             {
-                var resolvedPath = fileSystem.Path.IsPathFullyQualified(text)
-                    ? text : fileSystem.Path.GetFullPath(text, basePath);
-                if (fileSystem.File.Exists(resolvedPath))
+                if (fileSystem.Path.IsPathFullyQualified(text) || fileSystem.Path.IsPathFullyQualified(basePath))
                 {
-                    using var stream = fileSystem.File.OpenRead(resolvedPath);
-                    using var reader = new BinaryReader(stream, Encoding.UTF8, false);
-                    value = reader.ReadSerializable<NefFile>().ScriptHash;
-                    return true;
+                    var resolvedPath = fileSystem.Path.IsPathFullyQualified(text)
+                        ? text 
+                        : fileSystem.Path.GetFullPath(text, basePath);
+                    if (fileSystem.File.Exists(resolvedPath))
+                    {
+                        using var stream = fileSystem.File.OpenRead(resolvedPath);
+                        using var reader = new BinaryReader(stream, Encoding.UTF8, false);
+                        value = reader.ReadSerializable<NefFile>().ScriptHash;
+                        return true;
+                    }
                 }
             }
 

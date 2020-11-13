@@ -204,7 +204,10 @@ namespace test.bctklib3
 
             var accounts = new Dictionary<string, UInt160>();
             var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
-            Assert.Throws<ArgumentException>(() => parser.ParseStringParameter("#contract.nef", string.Empty));
+
+            var param = parser.ParseStringParameter("#contract.nef", string.Empty);
+            param.Type.ShouldBe(ContractParameterType.String);
+            param.Value.ShouldBe("#contract.nef");
         }
 
         [Fact]
