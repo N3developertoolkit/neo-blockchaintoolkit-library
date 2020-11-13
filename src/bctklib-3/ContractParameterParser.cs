@@ -11,6 +11,7 @@ using System.Text.Json;
 using Neo.Cryptography.ECC;
 using Neo.IO;
 using Neo.SmartContract;
+using Neo.SmartContract.Native;
 using Neo.VM;
 using Neo.Wallets;
 
@@ -229,6 +230,13 @@ namespace Neo.BlockchainToolkit
                         return true;
                     }
                 }
+            }
+
+            var nativeContract = NativeContract.Contracts.SingleOrDefault(c => c.Name.Equals(text, StringComparison.OrdinalIgnoreCase));
+            if (nativeContract != null)
+            {
+                value = nativeContract.Hash;
+                return true;
             }
 
             value = null!;

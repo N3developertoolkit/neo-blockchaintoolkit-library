@@ -211,6 +211,17 @@ namespace test.bctklib3
         }
 
         [Fact]
+        public void TestParseStringParameter_hash_script_native()
+        {
+            var fileSystem = new MockFileSystem();
+            var accounts = new Dictionary<string, UInt160>();
+            var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
+            var param = parser.ParseStringParameter("#oracle", string.Empty);
+            param.Type.ShouldBe(ContractParameterType.Hash160);
+            param.Value.ShouldBe(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
+        }
+
+        [Fact]
         public void TestParseStringParameter_hex_string()
         {
             var expectedValue = new byte[] {
