@@ -86,7 +86,9 @@ namespace Neo.BlockchainToolkit
                         : throw new FormatException($"Invalid contract value \"{json.GetProperty("contract").GetString()}\"");
 
                 var operation = json.GetProperty("operation").GetString() ?? throw new FormatException("Missing operation property");
-                var args = ParseParameters(json.GetProperty("args"), basePath).ToArray();
+                var args = json.TryGetProperty("args", out var argsElement)
+                    ? ParseParameters(argsElement, basePath).ToArray()
+                    : Array.Empty<ContractParameter>();
                 scriptBuilder.EmitAppCall(scriptHash, operation, args);
             }
         }
