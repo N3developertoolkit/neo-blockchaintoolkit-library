@@ -34,7 +34,11 @@ jobs:
     - name: Install rocksdb dependencies
       run: sudo apt-get install libsnappy-dev libc6-dev -y
     - name: Run tests
-      run: dotnet test --no-restore --verbosity normal
+      run: dotnet test --no-restore /p:CollectCoverage=true /p:CoverletOutputFormat=lcov /p:CoverletOutput=./coverage/lcov
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Publish persistence package
       if: ${{ github.event_name == 'push' }}
       run: dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
