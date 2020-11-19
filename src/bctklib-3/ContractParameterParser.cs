@@ -7,13 +7,14 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-using System.Text.Json;
 using Neo.Cryptography.ECC;
 using Neo.IO;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
 using Neo.VM;
 using Neo.Wallets;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Neo.BlockchainToolkit
 {
@@ -47,24 +48,25 @@ namespace Neo.BlockchainToolkit
 
             var basePath = fileSystem.Path.GetDirectoryName(invokeFile);
 
-            using var stream = fileSystem.File.OpenRead(invokeFile);
-            using var document = JsonDocument.Parse(stream);
+            using var streamReader = fileSystem.File.OpenText(invokeFile);
+            using var jsonReader = new JsonTextReader(streamReader);
+            var document = JContainer.Load(jsonReader);
             return LoadInvocationScript(document, basePath);
         }
 
-        private Script LoadInvocationScript(JsonDocument document, string basePath)
+        private Script LoadInvocationScript(JToken document, string basePath)
         {
             var scriptBuilder = new ScriptBuilder();
-            switch (document.RootElement.ValueKind)
+            switch (document.Type)
             {
-                case JsonValueKind.Object:
-                    EmitAppCall(document.RootElement, basePath);
+                case JTokenType.Object:
+                    EmitAppCall((JObject)document, basePath);
                     break;
-                case JsonValueKind.Array:
+                case JTokenType.Array:
                     {
-                        foreach (var arrayElement in document.RootElement.EnumerateArray())
+                        foreach (var item in document)
                         {
-                            EmitAppCall(arrayElement, basePath);
+                            EmitAppCall((JObject)item, basePath);
                         }
                     }
                     break;
@@ -73,9 +75,9 @@ namespace Neo.BlockchainToolkit
             }
             return scriptBuilder.ToArray();
 
-            void EmitAppCall(JsonElement json, string basePath)
+            void EmitAppCall(JObject json, string basePath)
             {
-                var contract = json.GetProperty("contract").GetString() ?? string.Empty;
+                var contract = json.Value<string>("contract");
                 contract = contract.Length > 0 && contract[0] == '#'
                     ? contract[1..] : contract;
 
@@ -83,53 +85,48 @@ namespace Neo.BlockchainToolkit
                     ? value
                     : UInt160.TryParse(contract, out var uint160)
                         ? uint160
-                        : throw new FormatException($"Invalid contract value \"{json.GetProperty("contract").GetString()}\"");
+                        : throw new FormatException($"Invalid contract value \"{json.Value<string>("contract")}\"");
 
-                var operation = json.GetProperty("operation").GetString() ?? throw new FormatException("Missing operation property");
-                var args = json.TryGetProperty("args", out var argsElement)
-                    ? ParseParameters(argsElement, basePath).ToArray()
+                var operation = json.Value<string>("operation");
+                var args = json.TryGetValue("args", out var jsonArgs)
+                    ? ParseParameters(jsonArgs, basePath).ToArray()
                     : Array.Empty<ContractParameter>();
+
                 scriptBuilder.EmitAppCall(scriptHash, operation, args);
             }
         }
 
-        public IEnumerable<ContractParameter> ParseParameters(JsonElement json, string basePath = "")
-            => json.ValueKind switch
+        public IEnumerable<ContractParameter> ParseParameters(JToken json, string basePath = "")
+            => json.Type switch
             {
-                JsonValueKind.Array => json.EnumerateArray()
-                    .Select(e => ParseParameter(e, basePath)),
-                JsonValueKind.Object => Enumerable.Repeat(ParseParameter(json, basePath), 1),
-                _ => throw new ArgumentException($"Invalid JsonValueKind {json.ValueKind}", nameof(json)),
+                JTokenType.Array => json.Select(e => ParseParameter(e, basePath)),
+                JTokenType.Object => Enumerable.Repeat(ParseParameter(json, basePath), 1),
+                _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json)),
             };
 
-        public ContractParameter ParseParameter(JsonElement json, string basePath = "")
-            => json.ValueKind switch
+        public ContractParameter ParseParameter(JToken json, string basePath = "")
+            => json.Type switch
             {
-                JsonValueKind.True => new ContractParameter()
+                JTokenType.Boolean => new ContractParameter()
                 {
                     Type = ContractParameterType.Boolean,
-                    Value = true,
+                    Value = json.Value<bool>(),
                 },
-                JsonValueKind.False => new ContractParameter()
-                {
-                    Type = ContractParameterType.Boolean,
-                    Value = false,
-                },
-                JsonValueKind.Number => new ContractParameter()
+                JTokenType.Integer => new ContractParameter()
                 {
                     Type = ContractParameterType.Integer,
-                    Value = new BigInteger(json.GetInt64())
+                    Value = new BigInteger(json.Value<long>())
                 },
-                JsonValueKind.Array => new ContractParameter()
+                JTokenType.Array => new ContractParameter()
                 {
                     Type = ContractParameterType.Array,
-                    Value = json.EnumerateArray()
+                    Value = ((JArray)json)
                         .Select(e => ParseParameter(e, basePath))
                         .ToList()
                 },
-                JsonValueKind.String => ParseStringParameter(json.GetString() ?? throw new JsonException(), basePath),
-                JsonValueKind.Object => ParseObjectParameter(json, basePath),
-                _ => throw new ArgumentException($"Invalid JsonValueKind {json.ValueKind}", nameof(json))
+                JTokenType.String => ParseStringParameter(json.Value<string>(), basePath),
+                JTokenType.Object => ParseObjectParameter((JObject)json, basePath),
+                _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
             };
 
         internal ContractParameter ParseStringParameter(string value, string basePath)
@@ -180,7 +177,7 @@ namespace Neo.BlockchainToolkit
             {
                 try
                 {
-                    // NOTE, Neo.Wallets.Helper.ToScriptHash uses up ProtocolSettings.Default.AddressVersion
+                    // NOTE: Neo.Wallets.Helper.ToScriptHash uses up ProtocolSettings.Default.AddressVersion
                     scriptHash = address.ToScriptHash();
                     return true;
                 }
@@ -245,39 +242,34 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        internal ContractParameter ParseObjectParameter(JsonElement json, string basePath)
+        internal ContractParameter ParseObjectParameter(JObject json, string basePath)
         {
-            if (json.ValueKind != JsonValueKind.Object)
-            {
-                throw new ArgumentException($"Invalid JsonValueKind {json.ValueKind}", nameof(json));
-            }
-
-            var type = Enum.Parse<ContractParameterType>(json.GetProperty("type").GetString() ?? throw new JsonException());
-            var valueProp = json.GetProperty("value");
+            var type = Enum.Parse<ContractParameterType>(json.Value<string>("type"));
+            var valueProp = json["value"] ?? throw new JsonException();
 
             object value = type switch
             {
-                ContractParameterType.Signature => valueProp.GetString().HexToBytes(),
-                ContractParameterType.ByteArray => valueProp.GetString().HexToBytes(),
-                ContractParameterType.Boolean => valueProp.GetBoolean(),
-                ContractParameterType.Integer => BigInteger.Parse(valueProp.GetString()),
-                ContractParameterType.Hash160 => UInt160.Parse(valueProp.GetString()),
-                ContractParameterType.Hash256 => UInt256.Parse(valueProp.GetString()),
-                ContractParameterType.PublicKey => ECPoint.Parse(valueProp.GetString(), ECCurve.Secp256r1),
-                ContractParameterType.String => valueProp.GetString() ?? throw new JsonException(),
-                ContractParameterType.Array => valueProp.EnumerateArray()
+                ContractParameterType.Signature => valueProp.Value<string>().HexToBytes(),
+                ContractParameterType.ByteArray => valueProp.Value<string>().HexToBytes(),
+                ContractParameterType.Boolean => valueProp.Value<bool>(),
+                ContractParameterType.Integer => BigInteger.Parse(valueProp.Value<string>()),
+                ContractParameterType.Hash160 => UInt160.Parse(valueProp.Value<string>()),
+                ContractParameterType.Hash256 => UInt256.Parse(valueProp.Value<string>()),
+                ContractParameterType.PublicKey => ECPoint.Parse(valueProp.Value<string>(), ECCurve.Secp256r1),
+                ContractParameterType.String => valueProp.Value<string>() ?? throw new JsonException(),
+                ContractParameterType.Array => valueProp
                     .Select(e => ParseParameter(e, basePath))
                     .ToList(),
-                ContractParameterType.Map => valueProp.EnumerateArray().Select(ParseMapElement).ToList(),
+                ContractParameterType.Map => valueProp.Select(ParseMapElement).ToList(),
                 _ => throw new ArgumentException($"invalid type {type}", nameof(json)),
             };
 
             return new ContractParameter() { Type = type, Value = value };
 
-            KeyValuePair<ContractParameter, ContractParameter> ParseMapElement(JsonElement json)
+            KeyValuePair<ContractParameter, ContractParameter> ParseMapElement(JToken json)
                 => KeyValuePair.Create(
-                    ParseParameter(json.GetProperty("key"), basePath),
-                    ParseParameter(json.GetProperty("value"), basePath));
+                    ParseParameter(json["key"] ?? throw new JsonException(), basePath),
+                    ParseParameter(json["value"] ?? throw new JsonException(), basePath));
         }
     }
 }
