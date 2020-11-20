@@ -7,6 +7,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading.Tasks;
 using Neo.Cryptography.ECC;
 using Neo.IO;
 using Neo.SmartContract;
@@ -41,7 +42,7 @@ namespace Neo.BlockchainToolkit
             this.tryGetAccount = tryGetAccount;
         }
 
-        public Script LoadInvocationScript(string path)
+        public async Task<Script> LoadInvocationScriptAsync(string path)
         {
             var invokeFile = fileSystem.Path.GetFullPath(path);
             if (!fileSystem.File.Exists(invokeFile)) throw new ArgumentException($"{path} doens't exist", nameof(path));
@@ -50,7 +51,7 @@ namespace Neo.BlockchainToolkit
 
             using var streamReader = fileSystem.File.OpenText(invokeFile);
             using var jsonReader = new JsonTextReader(streamReader);
-            var document = JContainer.Load(jsonReader);
+            var document = await JContainer.LoadAsync(jsonReader).ConfigureAwait(false);
             return LoadInvocationScript(document, basePath);
         }
 
