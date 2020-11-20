@@ -101,17 +101,19 @@ namespace Neo.BlockchainToolkit
             => json.Type switch
             {
                 JTokenType.Array => json.Select(e => ParseParameter(e, basePath)),
-                JTokenType.Object => Enumerable.Repeat(ParseParameter(json, basePath), 1),
-                _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json)),
+                _ => new[] { ParseParameter(json, basePath) }
             };
 
-        public ContractParameter ParseParameter(JToken json, string basePath = "")
-            => json.Type switch
+        public ContractParameter ParseParameter(JToken? json, string basePath = "")
+        {
+            if (json == null)
             {
-                JTokenType.Null => new ContractParameter()
-                {
-                    Type = ContractParameterType.Any
-                },
+                return new ContractParameter() { Type = ContractParameterType.Any };
+            }
+
+            return json.Type switch
+            {
+                JTokenType.Null => new ContractParameter() { Type = ContractParameterType.Any },
                 JTokenType.Boolean => new ContractParameter()
                 {
                     Type = ContractParameterType.Boolean,
@@ -133,6 +135,7 @@ namespace Neo.BlockchainToolkit
                 JTokenType.Object => ParseObjectParameter((JObject)json, basePath),
                 _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
             };
+        }
 
         internal ContractParameter ParseStringParameter(string value, string basePath)
         {
