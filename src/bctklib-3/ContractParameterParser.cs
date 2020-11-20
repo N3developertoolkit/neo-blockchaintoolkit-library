@@ -108,6 +108,10 @@ namespace Neo.BlockchainToolkit
         public ContractParameter ParseParameter(JToken json, string basePath = "")
             => json.Type switch
             {
+                JTokenType.Null => new ContractParameter()
+                {
+                    Type = ContractParameterType.Any
+                },
                 JTokenType.Boolean => new ContractParameter()
                 {
                     Type = ContractParameterType.Boolean,
