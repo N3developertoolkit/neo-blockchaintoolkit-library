@@ -93,7 +93,27 @@ namespace Neo.BlockchainToolkit
                     ? ParseParameters(jsonArgs, basePath).ToArray()
                     : Array.Empty<ContractParameter>();
 
-                scriptBuilder.EmitAppCall(scriptHash, operation, args);
+                // the following code is lifted + modified from Neo.VM.Helper.EmitAppCall
+                // EmitPush(ContractParameter) doesn't correctly handle Any/null instances
+                // TODO: replace with scriptBuilder.EmitAppCall(scriptHash, operation, args);
+                //       once https://github.com/neo-project/neo/issues/2104 is fixed
+
+                for (int i = args.Length - 1; i >= 0; i--)
+                {
+                    if (args[i].Type == ContractParameterType.Any && args[i].Value == null)
+                    {
+                        scriptBuilder.Emit(OpCode.PUSHNULL);
+                    }
+                    else
+                    {
+                        scriptBuilder.EmitPush(args[i]);
+                    }
+                }
+                scriptBuilder.EmitPush(args.Length);
+                scriptBuilder.Emit(OpCode.PACK);
+                scriptBuilder.EmitPush(operation);
+                scriptBuilder.EmitPush(scriptHash);
+                scriptBuilder.EmitSysCall(ApplicationEngine.System_Contract_Call);
             }
         }
 
