@@ -41,6 +41,12 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Publish persistence package
       if: ${{ github.event_name == 'push' }}
-      run: dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
+      run: |
+        dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
+        dotnet tool install -g sleet
+        sleet push ./out --skip-existing
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SLEET_FEED_TYPE: azure
+        SLEET_FEED_CONTAINER: packages
+        SLEET_FEED_CONNECTIONSTRING: ${{secrets.SLEET_CONNECTIONSTRING}}

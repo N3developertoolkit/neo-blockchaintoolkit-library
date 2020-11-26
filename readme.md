@@ -1,8 +1,9 @@
 # Neo Blockchain Toolkit Persistence Library
 
-[![Build Status](https://dev.azure.com/ngdenterprise/Build/_apis/build/status/ngdseattle.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/ngdenterprise/Build/_build/latest?definitionId=1&branchName=master)
-![.NET Core](https://github.com/ngdseattle/neo-blockchaintoolkit-library/workflows/.NET%20Core/badge.svg?branch=master&event=push)
+[![.NET Core](https://github.com/ngdseattle/neo-blockchaintoolkit-library/workflows/.NET%20Core/badge.svg?branch=master&event=push)](https://github.com/ngdseattle/neo-blockchaintoolkit-library/actions)
+![](https://neobctk.blob.core.windows.net/packages/badges/vpre/Neo.BlockchainToolkit3.svg)
 
+https://neobctk.blob.core.windows.net/packages/index.json
 This repo projects for code shared between managed projects in the Neo Blockchain Toolkit.
 In particular, these libraries are used in [Neo-Express](https://github.com/neo-project/neo-express)
 and the [Neo Smart Contract Debugger for VS Code](https://github.com/neo-project/neo-debugger).
