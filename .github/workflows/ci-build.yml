@@ -2,7 +2,7 @@ name: .NET Core
 
 on:
   push:
-    branches: 
+    branches:
     - master
     - release/*
   pull_request:
@@ -24,7 +24,7 @@ jobs:
       run: dotnet restore --verbosity normal
     - name: Build
       run: dotnet build --configuration Release --no-restore --verbosity normal
-    - name: Pack 
+    - name: Pack
       run: dotnet pack --output ./out --configuration Release --no-build --verbosity normal
     - name: Upload neo-bctklib-3 artifact
       uses: actions/upload-artifact@v2
@@ -39,7 +39,7 @@ jobs:
       uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Publish persistence package
+    - name: Publish package
       if: ${{ github.event_name == 'push' }}
       run: |
         dotnet nuget push ./out/Neo.BlockchainToolkit3.*.nupkg --api-key ${GITHUB_TOKEN} --source https://nuget.pkg.github.com/ngdseattle/index.json --skip-duplicate
