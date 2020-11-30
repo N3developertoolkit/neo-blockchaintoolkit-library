@@ -1,18 +1,13 @@
 # Neo Blockchain Toolkit Persistence Library
 
-[![.NET Core](https://github.com/ngdseattle/neo-blockchaintoolkit-library/workflows/.NET%20Core/badge.svg?branch=master&event=push)](https://github.com/ngdseattle/neo-blockchaintoolkit-library/actions)
-[![](https://img.shields.io/endpoint?logo=nuget&url=https%3A%2F%2Fneobctk.blob.core.windows.net%2Fpackages%2Fbadges%2Fvpre%2Fneo.blockchaintoolkit3.json)](https://neobctk.blob.core.windows.net/packages/index.json)
+[![Build Status](https://dev.azure.com/ngdenterprise/Build/_apis/build/status/ngdseattle.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/ngdenterprise/Build/_build/latest?definitionId=5&branchName=master)
 
 This repo projects for code shared between managed projects in the Neo Blockchain Toolkit.
 In particular, these libraries are used in [Neo-Express](https://github.com/neo-project/neo-express)
 and the [Neo Smart Contract Debugger for VS Code](https://github.com/neo-project/neo-debugger).
 
-CI packages are available via [GitHub Packages](https://github.com/ngdseattle/neo-blockchaintoolkit-library/packages/)
-and a publicly hosted [NuGet feed](https://neobctk.blob.core.windows.net/packages/index.json)
-for anonymous usage.
-
-> Note, downstream Neo Blockchain Toolkit projects use the hosted NuGet feed as GitHub Packages
-  [requires authentication for installation](https://docs.github.com/en/free-pro-team@latest/packages/publishing-and-managing-packages/installing-a-package#installing-a-package).
+Continutious Integration build packages are available via
+[Azure Artifacts](https://dev.azure.com/ngdenterprise/Build/_packaging?_a=feed&feed=public).
 
 ## Contract Parameter Parsing
 
