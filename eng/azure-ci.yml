@@ -1,0 +1,97 @@
+variables:
+  isMasterBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  isReleaseBranch: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
+  azureArtifactsBranch: $[or(eq(variables.isMasterBranch, true), eq(variables.isReleaseBranch, true))]
+  nugetOrgBranch: $[eq(variables.isReleaseBranch, true)]
+
+trigger:
+  batch: false
+  branches:
+    include:
+    - master
+    - release/*
+  paths:
+    include:
+    - '*'
+    exclude:
+    - 'readme.md'
+    - 'changelog.md'
+    - 'docs/*'
+
+stages:
+- stage: build
+  variables:
+    buildConfiguration: Release
+  jobs:
+  - job:
+    pool:
+      vmImage: 'windows-2019'
+    workspace:
+      clean: all
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        versioningScheme: 'off'
+        arguments: -c $(buildConfiguration)
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet test'
+      inputs:
+        command: 'test'
+        arguments: -c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --settings ./test/runsettings.xml
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      inputs:
+          codeCoverageTool: cobertura
+          summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet pack'
+      inputs:
+        command: 'pack'
+        packagesToPack: 'src/**/*.csproj'
+        includesymbols: true
+        versioningScheme: 'off'
+        arguments: --no-build
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'publish build artifact'
+      artifact: NugetPackage
+    - task: NuGetCommand@2
+      displayName: 'publish package to azure artifacts'
+      condition: and(succeeded(), eq(variables.azureArtifactsBranch, true))
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+        nuGetFeedType: 'internal'
+        publishVstsFeed: 'c96908c2-e4b5-4c77-b955-4b690f24380b/9e84eb49-63f0-4b48-a8c4-039901073643'
+
+# - stage: publishNugetOrg
+#   displayName: 'publish artifacts to nuget.org'
+#   dependsOn: build
+#   condition: and(succeeded(), eq(variables.nugetOrgBranch, true))
+#   jobs:
+#     - deployment: 
+#       pool:
+#         vmImage: 'ubuntu-latest'
+#       environment: 'nuget-org'
+#       strategy:
+#         runOnce:
+#           deploy:
+#             steps:
+#               - task: NuGetCommand@2
+#                 inputs:
+#                   command: 'push'
+#                   packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
+#                   nuGetFeedType: 'external'
+#                   publishFeedCredentials: 'nuget-org'
+#               - task: NuGetCommand@2
+#                 inputs:
+#                   command: 'push'
+#                   packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.snupkg'
+#                   nuGetFeedType: 'external'
+#                   publishFeedCredentials: 'nuget-org'
