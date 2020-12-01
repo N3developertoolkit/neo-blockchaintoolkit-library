@@ -48,7 +48,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return store.TryGet(table, key);
         }
 
-        bool IReadOnlyStore.Contains(byte table, byte[] key) 
+        bool IReadOnlyStore.Contains(byte table, byte[] key)
         {
             var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
             return Contains(trackingMap, table, key);

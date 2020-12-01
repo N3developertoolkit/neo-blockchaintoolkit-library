@@ -82,7 +82,7 @@ namespace test.bctklib3
             param.Type.ShouldBe(ContractParameterType.String);
             param.Value.ShouldBe(expected);
         }
-        
+
         [Fact]
         public void TestParseStringParameter_hash_uint160()
         {

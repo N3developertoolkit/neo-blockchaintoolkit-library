@@ -227,7 +227,7 @@ namespace Neo.BlockchainToolkit
                 if (fileSystem.Path.IsPathFullyQualified(text) || fileSystem.Path.IsPathFullyQualified(basePath))
                 {
                     var resolvedPath = fileSystem.Path.IsPathFullyQualified(text)
-                        ? text 
+                        ? text
                         : fileSystem.Path.GetFullPath(text, basePath);
                     if (fileSystem.File.Exists(resolvedPath))
                     {

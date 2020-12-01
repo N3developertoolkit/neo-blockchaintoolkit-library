@@ -62,10 +62,10 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                         return new NeoInteger(integer);
                     }
                 case StackItemType.InteropInterface:
-                {
-                    var typeName = resolver.GetFormatterWithVerify<string>().Deserialize(ref reader, options);
-                    return new TraceInteropInterface(typeName);
-                }
+                    {
+                        var typeName = resolver.GetFormatterWithVerify<string>().Deserialize(ref reader, options);
+                        return new TraceInteropInterface(typeName);
+                    }
                 case StackItemType.Pointer:
                     reader.ReadNil();
                     return new NeoPointer(null, 0);
@@ -122,11 +122,11 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     resolver.GetFormatterWithVerify<BigInteger>().Serialize(ref writer, integer.GetInteger(), options);
                     break;
                 case NeoInteropInterface interopInterface:
-                {
-                    stackItemTypeResolver.Serialize(ref writer, StackItemType.InteropInterface, options);
-                    var typeName = interopInterface.GetInterface<object>().GetType().FullName;
-                    resolver.GetFormatterWithVerify<string>().Serialize(ref writer, typeName, options);
-                }
+                    {
+                        stackItemTypeResolver.Serialize(ref writer, StackItemType.InteropInterface, options);
+                        var typeName = interopInterface.GetInterface<object>().GetType().FullName;
+                        resolver.GetFormatterWithVerify<string>().Serialize(ref writer, typeName, options);
+                    }
                     break;
                 case NeoMap map:
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.Map, options);

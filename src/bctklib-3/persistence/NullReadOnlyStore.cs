@@ -13,8 +13,8 @@ namespace Neo.BlockchainToolkit.Persistence
 
         private NullReadOnlyStore()
         {
-        } 
-        
+        }
+
         IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[] key, SeekDirection direction)
             => Enumerable.Empty<(byte[] Key, byte[] Value)>();
 

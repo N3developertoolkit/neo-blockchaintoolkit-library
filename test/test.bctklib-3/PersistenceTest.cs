@@ -182,7 +182,8 @@ namespace test.bctklib3
             }
             while (Directory.Exists(tempPath));
 
-            var disposable = AnonymousDisposable.Create(() => {
+            var disposable = AnonymousDisposable.Create(() =>
+            {
                 if (Directory.Exists(tempPath))
                 {
                     Directory.Delete(tempPath, true);
