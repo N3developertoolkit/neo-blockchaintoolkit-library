@@ -25,13 +25,15 @@
   <ItemGroup Condition="'$(Configuration)'!='Debug'">
     <SourceRoot Include="$(MSBuildThisFileDirectory)/" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="test.bctklib-3" /> 
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>test.bctklib-3</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>
