@@ -21,53 +21,42 @@ namespace Neo.BlockchainToolkit
 {
     public class ContractParameterParser
     {
-        public delegate bool TryGetAccount(string value, [MaybeNullWhen(false)] out UInt160 account);
+        public delegate bool TryGetUInt160(string value, [MaybeNullWhen(false)] out UInt160 account);
 
-        private readonly IFileSystem fileSystem;
-        private readonly TryGetAccount? tryGetAccount;
+        private readonly TryGetUInt160? tryGetAccount;
+        private readonly TryGetUInt160? tryGetContract;
 
-        public ContractParameterParser()
-            : this(new FileSystem())
+        public ContractParameterParser(TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null)
         {
-        }
-
-        public ContractParameterParser(TryGetAccount tryGetAccount)
-            : this(new FileSystem(), tryGetAccount)
-        {
-        }
-
-        public ContractParameterParser(IFileSystem fileSystem, TryGetAccount? tryGetAccount = null)
-        {
-            this.fileSystem = fileSystem;
             this.tryGetAccount = tryGetAccount;
+            this.tryGetContract = tryGetContract;
         }
 
-        public async Task<Script> LoadInvocationScriptAsync(string path)
+        public async Task<Script> LoadInvocationScriptAsync(string path, IFileSystem? fileSystem = null)
         {
+            fileSystem ??= new FileSystem();
             var invokeFile = fileSystem.Path.GetFullPath(path);
             if (!fileSystem.File.Exists(invokeFile)) throw new ArgumentException($"{path} doens't exist", nameof(path));
-
-            var basePath = fileSystem.Path.GetDirectoryName(invokeFile);
 
             using var streamReader = fileSystem.File.OpenText(invokeFile);
             using var jsonReader = new JsonTextReader(streamReader);
             var document = await JContainer.LoadAsync(jsonReader).ConfigureAwait(false);
-            return LoadInvocationScript(document, basePath);
+            return LoadInvocationScript(document);
         }
 
-        private Script LoadInvocationScript(JToken document, string basePath)
+        private Script LoadInvocationScript(JToken document)
         {
             var scriptBuilder = new ScriptBuilder();
             switch (document.Type)
             {
                 case JTokenType.Object:
-                    EmitAppCall((JObject)document, basePath);
+                    EmitAppCall((JObject)document);
                     break;
                 case JTokenType.Array:
                     {
                         foreach (var item in document)
                         {
-                            EmitAppCall((JObject)item, basePath);
+                            EmitAppCall((JObject)item);
                         }
                     }
                     break;
@@ -76,13 +65,13 @@ namespace Neo.BlockchainToolkit
             }
             return scriptBuilder.ToArray();
 
-            void EmitAppCall(JObject json, string basePath)
+            void EmitAppCall(JObject json)
             {
                 var contract = json.Value<string>("contract");
                 contract = contract.Length > 0 && contract[0] == '#'
                     ? contract[1..] : contract;
 
-                var scriptHash = TryLoadScriptHash(contract, basePath, out var value)
+                var scriptHash = TryLoadScriptHash(contract, out var value)
                     ? value
                     : UInt160.TryParse(contract, out var uint160)
                         ? uint160
@@ -90,21 +79,21 @@ namespace Neo.BlockchainToolkit
 
                 var operation = json.Value<string>("operation");
                 var args = json.TryGetValue("args", out var jsonArgs)
-                    ? ParseParameters(jsonArgs, basePath).ToArray()
+                    ? ParseParameters(jsonArgs).ToArray()
                     : Array.Empty<ContractParameter>();
 
                 scriptBuilder.EmitAppCall(scriptHash, operation, args);
             }
         }
 
-        public IEnumerable<ContractParameter> ParseParameters(JToken json, string basePath = "")
+        public IEnumerable<ContractParameter> ParseParameters(JToken json)
             => json.Type switch
             {
-                JTokenType.Array => json.Select(e => ParseParameter(e, basePath)),
-                _ => new[] { ParseParameter(json, basePath) }
+                JTokenType.Array => json.Select(e => ParseParameter(e)),
+                _ => new[] { ParseParameter(json) }
             };
 
-        public ContractParameter ParseParameter(JToken? json, string basePath = "")
+        public ContractParameter ParseParameter(JToken? json)
         {
             if (json == null)
             {
@@ -128,16 +117,16 @@ namespace Neo.BlockchainToolkit
                 {
                     Type = ContractParameterType.Array,
                     Value = ((JArray)json)
-                        .Select(e => ParseParameter(e, basePath))
+                        .Select(e => ParseParameter(e))
                         .ToList()
                 },
-                JTokenType.String => ParseStringParameter(json.Value<string>(), basePath),
-                JTokenType.Object => ParseObjectParameter((JObject)json, basePath),
+                JTokenType.String => ParseStringParameter(json.Value<string>()),
+                JTokenType.Object => ParseObjectParameter((JObject)json),
                 _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
             };
         }
 
-        internal ContractParameter ParseStringParameter(string value, string basePath)
+        internal ContractParameter ParseStringParameter(string value)
         {
             if (value.Length >= 1 && value[0] == '@')
             {
@@ -168,7 +157,7 @@ namespace Neo.BlockchainToolkit
                     return new ContractParameter(ContractParameterType.Hash256) { Value = uint256 };
                 }
 
-                if (TryLoadScriptHash(substring, basePath, out var scriptHash))
+                if (TryLoadScriptHash(substring, out var scriptHash))
                 {
                     return new ContractParameter(ContractParameterType.Hash160) { Value = scriptHash };
                 }
@@ -217,26 +206,10 @@ namespace Neo.BlockchainToolkit
 
         public bool TryLoadScriptHash(string text, [MaybeNullWhen(false)] out UInt160 value)
         {
-            return TryLoadScriptHash(text, string.Empty, out value);
-        }
-
-        public bool TryLoadScriptHash(string text, string basePath, [MaybeNullWhen(false)] out UInt160 value)
-        {
-            if (text.EndsWith(".nef"))
+            if (tryGetContract != null && tryGetContract(text, out var scriptHash))
             {
-                if (fileSystem.Path.IsPathFullyQualified(text) || fileSystem.Path.IsPathFullyQualified(basePath))
-                {
-                    var resolvedPath = fileSystem.Path.IsPathFullyQualified(text)
-                        ? text
-                        : fileSystem.Path.GetFullPath(text, basePath);
-                    if (fileSystem.File.Exists(resolvedPath))
-                    {
-                        using var stream = fileSystem.File.OpenRead(resolvedPath);
-                        using var reader = new BinaryReader(stream, Encoding.UTF8, false);
-                        value = reader.ReadSerializable<NefFile>().ScriptHash;
-                        return true;
-                    }
-                }
+                value = scriptHash;
+                return true;
             }
 
             var nativeContract = NativeContract.Contracts.SingleOrDefault(c => c.Name.Equals(text, StringComparison.OrdinalIgnoreCase));
@@ -250,7 +223,7 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        internal ContractParameter ParseObjectParameter(JObject json, string basePath)
+        internal ContractParameter ParseObjectParameter(JObject json)
         {
             var type = Enum.Parse<ContractParameterType>(json.Value<string>("type"));
             var valueProp = json["value"] ?? throw new JsonException();
@@ -266,7 +239,7 @@ namespace Neo.BlockchainToolkit
                 ContractParameterType.PublicKey => ECPoint.Parse(valueProp.Value<string>(), ECCurve.Secp256r1),
                 ContractParameterType.String => valueProp.Value<string>() ?? throw new JsonException(),
                 ContractParameterType.Array => valueProp
-                    .Select(e => ParseParameter(e, basePath))
+                    .Select(e => ParseParameter(e))
                     .ToList(),
                 ContractParameterType.Map => valueProp.Select(ParseMapElement).ToList(),
                 _ => throw new ArgumentException($"invalid type {type}", nameof(json)),
@@ -276,8 +249,8 @@ namespace Neo.BlockchainToolkit
 
             KeyValuePair<ContractParameter, ContractParameter> ParseMapElement(JToken json)
                 => KeyValuePair.Create(
-                    ParseParameter(json["key"] ?? throw new JsonException(), basePath),
-                    ParseParameter(json["value"] ?? throw new JsonException(), basePath));
+                    ParseParameter(json["key"] ?? throw new JsonException()),
+                    ParseParameter(json["value"] ?? throw new JsonException()));
         }
     }
 }

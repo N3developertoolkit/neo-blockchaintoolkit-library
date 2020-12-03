@@ -137,78 +137,78 @@ namespace test.bctklib3
                 ? @"x:\fakepath" : "/fakepath";
         }
 
-        [Fact]
-        public void TestParseStringParameter_hash_script_absolute()
-        {
-            var nef = new NefFile
-            {
-                Compiler = "".PadLeft(32, ' '),
-                Version = new Version(1, 2, 3, 4),
-                Script = new byte[] { 0x01, 0x02, 0x03 }
-            };
-            nef.ScriptHash = nef.Script.ToScriptHash();
-            nef.CheckSum = NefFile.ComputeChecksum(nef);
+        // [Fact]
+        // public void TestParseStringParameter_hash_script_absolute()
+        // {
+        //     var nef = new NefFile
+        //     {
+        //         Compiler = "".PadLeft(32, ' '),
+        //         Version = new Version(1, 2, 3, 4),
+        //         Script = new byte[] { 0x01, 0x02, 0x03 }
+        //     };
+        //     nef.ScriptHash = nef.Script.ToScriptHash();
+        //     nef.CheckSum = NefFile.ComputeChecksum(nef);
 
-            var fileSystem = new MockFileSystem();
-            var nefPath = fileSystem.Path.Combine(FakeRootPath(), "contract.nef");
-            fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
+        //     var fileSystem = new MockFileSystem();
+        //     var nefPath = fileSystem.Path.Combine(FakeRootPath(), "contract.nef");
+        //     fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
 
-            var accounts = new Dictionary<string, UInt160>();
-            var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
-            var param = parser.ParseStringParameter($"#{nefPath}", string.Empty);
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(nef.ScriptHash);
-        }
+        //     var accounts = new Dictionary<string, UInt160>();
+        //     var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
+        //     var param = parser.ParseStringParameter($"#{nefPath}", string.Empty);
+        //     param.Type.ShouldBe(ContractParameterType.Hash160);
+        //     param.Value.ShouldBe(nef.ScriptHash);
+        // }
 
-        [Fact]
-        public void TestParseStringParameter_hash_script_relative()
-        {
-            var nef = new NefFile
-            {
-                Compiler = "".PadLeft(32, ' '),
-                Version = new Version(1, 2, 3, 4),
-                Script = new byte[] { 0x01, 0x02, 0x03 }
-            };
-            nef.ScriptHash = nef.Script.ToScriptHash();
-            nef.CheckSum = NefFile.ComputeChecksum(nef);
+        // [Fact]
+        // public void TestParseStringParameter_hash_script_relative()
+        // {
+        //     var nef = new NefFile
+        //     {
+        //         Compiler = "".PadLeft(32, ' '),
+        //         Version = new Version(1, 2, 3, 4),
+        //         Script = new byte[] { 0x01, 0x02, 0x03 }
+        //     };
+        //     nef.ScriptHash = nef.Script.ToScriptHash();
+        //     nef.CheckSum = NefFile.ComputeChecksum(nef);
 
-            var fileSystem = new MockFileSystem();
-            var rootPath = FakeRootPath();
-            var nefPath = fileSystem.Path.Combine(rootPath, "contract.nef");
-            fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
+        //     var fileSystem = new MockFileSystem();
+        //     var rootPath = FakeRootPath();
+        //     var nefPath = fileSystem.Path.Combine(rootPath, "contract.nef");
+        //     fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
 
-            var relativePath = fileSystem.Path.GetRelativePath(rootPath, nefPath);
+        //     var relativePath = fileSystem.Path.GetRelativePath(rootPath, nefPath);
 
-            var accounts = new Dictionary<string, UInt160>();
-            var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
-            var param = parser.ParseStringParameter($"#{relativePath}", rootPath);
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(nef.ScriptHash);
-        }
+        //     var accounts = new Dictionary<string, UInt160>();
+        //     var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
+        //     var param = parser.ParseStringParameter($"#{relativePath}", rootPath);
+        //     param.Type.ShouldBe(ContractParameterType.Hash160);
+        //     param.Value.ShouldBe(nef.ScriptHash);
+        // }
 
-        [Fact]
-        public void TestParseStringParameter_hash_script_relative_invalid()
-        {
-            const string nefPath = @"x:\fakepath\contract.nef";
-            var nef = new NefFile
-            {
-                Compiler = "".PadLeft(32, ' '),
-                Version = new Version(1, 2, 3, 4),
-                Script = new byte[] { 0x01, 0x02, 0x03 }
-            };
-            nef.ScriptHash = nef.Script.ToScriptHash();
-            nef.CheckSum = NefFile.ComputeChecksum(nef);
+        // [Fact]
+        // public void TestParseStringParameter_hash_script_relative_invalid()
+        // {
+        //     const string nefPath = @"x:\fakepath\contract.nef";
+        //     var nef = new NefFile
+        //     {
+        //         Compiler = "".PadLeft(32, ' '),
+        //         Version = new Version(1, 2, 3, 4),
+        //         Script = new byte[] { 0x01, 0x02, 0x03 }
+        //     };
+        //     nef.ScriptHash = nef.Script.ToScriptHash();
+        //     nef.CheckSum = NefFile.ComputeChecksum(nef);
 
-            var fileSystem = new MockFileSystem();
-            fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
+        //     var fileSystem = new MockFileSystem();
+        //     fileSystem.AddFile(nefPath, new MockFileData(nef.ToArray()));
 
-            var accounts = new Dictionary<string, UInt160>();
-            var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
+        //     var accounts = new Dictionary<string, UInt160>();
+        //     var parser = new ContractParameterParser(fileSystem, accounts.TryGetValue);
 
-            var param = parser.ParseStringParameter("#contract.nef", string.Empty);
-            param.Type.ShouldBe(ContractParameterType.String);
-            param.Value.ShouldBe("#contract.nef");
-        }
+        //     var param = parser.ParseStringParameter("#contract.nef", string.Empty);
+        //     param.Type.ShouldBe(ContractParameterType.String);
+        //     param.Value.ShouldBe("#contract.nef");
+        // }
 
         [Fact]
         public void TestParseStringParameter_hash_script_native()
