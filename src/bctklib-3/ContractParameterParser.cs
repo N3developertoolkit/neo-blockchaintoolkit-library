@@ -212,7 +212,14 @@ namespace Neo.BlockchainToolkit
                 return true;
             }
 
-            var nativeContract = NativeContract.Contracts.SingleOrDefault(c => c.Name.Equals(text, StringComparison.OrdinalIgnoreCase));
+            var nativeContract = NativeContract.Contracts.SingleOrDefault(c => string.Equals(text, c.Name));
+            if (nativeContract != null)
+            {
+                value = nativeContract.Hash;
+                return true;
+            }
+
+            nativeContract = NativeContract.Contracts.SingleOrDefault(c => string.Equals(text, c.Name, StringComparison.OrdinalIgnoreCase));
             if (nativeContract != null)
             {
                 value = nativeContract.Hash;
