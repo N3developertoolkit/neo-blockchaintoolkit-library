@@ -23,6 +23,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
 
         public static void Write(IBufferWriter<byte> writer,
                                  MessagePackSerializerOptions options,
+                                 IDictionary<UInt160, UInt160> scriptIdMap,
                                  VMState vmState,
                                  IReadOnlyCollection<ExecutionContext> contexts)
         {
@@ -35,7 +36,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
             mpWriter.WriteArrayHeader(contexts.Count);
             foreach (var context in contexts)
             {
-                StackFrame.Write(ref mpWriter, options, context);
+                StackFrame.Write(ref mpWriter, options, scriptIdMap, context);
             }
             mpWriter.Flush();
         }
