@@ -17,18 +17,32 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly static TrackingMap EMPTY_TRACKING_MAP = TrackingMap.Empty.WithComparers(ByteArrayComparer.Default);
 
         readonly IReadOnlyStore store;
+        readonly bool disposeStore;
         readonly IDisposable? checkpointCleanup;
         ImmutableDictionary<byte, TrackingMap> trackingMaps = ImmutableDictionary<byte, TrackingMap>.Empty;
 
-        public CheckpointStore(IReadOnlyStore store, IDisposable? checkpointCleanup = null)
+        public CheckpointStore(IReadOnlyStore store) : this(store, true, null)
+        {
+        }
+
+        public CheckpointStore(IReadOnlyStore store, bool disposeStore) : this(store, disposeStore, null)
+        {
+        }
+
+        public CheckpointStore(IReadOnlyStore store, IDisposable? checkpointCleanup) : this(store, true, checkpointCleanup)
+        {
+        }
+
+        public CheckpointStore(IReadOnlyStore store, bool disposeStore, IDisposable? checkpointCleanup)
         {
             this.store = store;
+            this.disposeStore = disposeStore;
             this.checkpointCleanup = checkpointCleanup;
         }
 
         public void Dispose()
         {
-            if (store is IDisposable disposable) disposable.Dispose();
+            if (disposeStore && store is IDisposable disposable) disposable.Dispose();
             checkpointCleanup?.Dispose();
         }
 
