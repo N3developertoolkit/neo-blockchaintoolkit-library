@@ -39,7 +39,7 @@
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.2.60" />
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
-    <PackageReference Include="Neo" Version="3.0.0-mono-master-00363" />
+    <PackageReference Include="Neo" Version="3.0.0-mono-master-00364" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="OneOf" Version="2.1.155" />
     <PackageReference Include="rocksdb" Version="6.12.7.13237" />
