@@ -138,10 +138,19 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_hash_script_native()
+        public void TestParseStringParameter_hash_script_native_case_match()
         {
             var parser = new ContractParameterParser(null, null);
-            var param = parser.ParseStringParameter("#oracle");
+            var param = parser.ParseStringParameter("#OracleContract");
+            param.Type.ShouldBe(ContractParameterType.Hash160);
+            param.Value.ShouldBe(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_hash_script_native_case_mismatch()
+        {
+            var parser = new ContractParameterParser(null, null);
+            var param = parser.ParseStringParameter("#oraclecontract");
             param.Type.ShouldBe(ContractParameterType.Hash160);
             param.Value.ShouldBe(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
         }
