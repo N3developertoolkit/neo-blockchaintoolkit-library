@@ -1,6 +1,6 @@
 # Neo Blockchain Toolkit Persistence Library
 
-[![Build Status](https://dev.azure.com/ngdenterprise/Build/_apis/build/status/ngdseattle.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/ngdenterprise/Build/_build/latest?definitionId=5&branchName=master)
+[![Build Status](https://dev.azure.com/ngdenterprise/Build/_apis/build/status/ngdenterprise.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/ngdenterprise/Build/_build/latest?definitionId=6&branchName=master)
 
 This repo projects for code shared between managed projects in the Neo Blockchain Toolkit.
 In particular, these libraries are used in [Neo-Express](https://github.com/neo-project/neo-express)
