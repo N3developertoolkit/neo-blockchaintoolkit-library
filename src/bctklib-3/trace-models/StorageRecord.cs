@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MessagePack;
 using Neo.Ledger;
+using Neo.SmartContract;
 using Neo.VM;
 using StackItem = Neo.VM.Types.StackItem;
 

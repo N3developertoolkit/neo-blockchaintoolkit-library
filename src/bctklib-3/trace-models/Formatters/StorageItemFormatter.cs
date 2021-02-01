@@ -1,5 +1,6 @@
 using System.Buffers;
 using Neo.Ledger;
+using Neo.SmartContract;
 
 namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 {

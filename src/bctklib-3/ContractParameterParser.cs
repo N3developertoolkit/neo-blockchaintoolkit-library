@@ -82,7 +82,7 @@ namespace Neo.BlockchainToolkit
                     ? ParseParameters(jsonArgs).ToArray()
                     : Array.Empty<ContractParameter>();
 
-                scriptBuilder.EmitAppCall(scriptHash, operation, args);
+                scriptBuilder.EmitDynamicCall(scriptHash, operation, args);
             }
         }
 

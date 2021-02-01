@@ -124,7 +124,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                 case NeoInteropInterface interopInterface:
                     {
                         stackItemTypeResolver.Serialize(ref writer, StackItemType.InteropInterface, options);
-                        var typeName = interopInterface.GetInterface<object>().GetType().FullName;
+                        var typeName = interopInterface.GetInterface<object>().GetType().FullName ?? "<unknown InteropInterface>";
                         resolver.GetFormatterWithVerify<string>().Serialize(ref writer, typeName, options);
                     }
                     break;
