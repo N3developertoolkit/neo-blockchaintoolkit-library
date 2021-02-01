@@ -3,7 +3,7 @@
     <IsPackable>false</IsPackable>
     <LangVersion>8</LangVersion>
     <Nullable>enable</Nullable>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.msbuild" Version="3.0.2">

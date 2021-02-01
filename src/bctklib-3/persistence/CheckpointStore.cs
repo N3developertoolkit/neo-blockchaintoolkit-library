@@ -2,6 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using Neo.IO.Caching;
 using Neo.Persistence;
@@ -9,6 +11,7 @@ using OneOf;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
+    using RocksDbStore = Neo.Plugins.Storage.RocksDbStore;
     using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
     public partial class CheckpointStore : IStore
@@ -19,7 +22,7 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly IReadOnlyStore store;
         readonly bool disposeStore;
         readonly IDisposable? checkpointCleanup;
-        ImmutableDictionary<byte, TrackingMap> trackingMaps = ImmutableDictionary<byte, TrackingMap>.Empty;
+        TrackingMap trackingMap = EMPTY_TRACKING_MAP;
 
         public CheckpointStore(IReadOnlyStore store) : this(store, true, null)
         {
@@ -40,84 +43,162 @@ namespace Neo.BlockchainToolkit.Persistence
             this.checkpointCleanup = checkpointCleanup;
         }
 
+        private const string ADDRESS_FILENAME = "ADDRESS.neo-express";
+
+        private static string GetAddressFilePath(string directory) => Path.Combine(directory, ADDRESS_FILENAME);
+
+        private static string GetTempPath()
+        {
+            string tempPath;
+            do
+            {
+                tempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            }
+            while (Directory.Exists(tempPath));
+            return tempPath;
+        }
+
+        public static void CreateCheckpoint(RocksDbStore store, string checkPointFileName, long magic, string scriptHash)
+        {
+            if (File.Exists(checkPointFileName))
+            {
+                throw new ArgumentException("checkpoint file already exists", nameof(checkPointFileName));
+            }
+
+            var tempPath = GetTempPath();
+            try
+            {
+                {
+                    using var checkpoint = store.Checkpoint();
+                    checkpoint.Save(tempPath);
+                }
+
+                {
+                    using var stream = File.OpenWrite(GetAddressFilePath(tempPath));
+                    using var writer = new StreamWriter(stream);
+                    writer.WriteLine(magic);
+                    writer.WriteLine(scriptHash);
+                }
+
+                ZipFile.CreateFromDirectory(tempPath, checkPointFileName);
+            }
+            finally
+            {
+                Directory.Delete(tempPath, true);
+            }
+        }
+
+        public static long RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
+        {
+            var (cpMagic, cpScriptHash) = GetCheckpointMetadata(checkPointArchive);
+            if (magic != cpMagic || scriptHash != cpScriptHash)
+            {
+                throw new Exception("Invalid Checkpoint");
+            }
+
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return cpMagic;
+        }
+
+        public static long RestoreCheckpoint(string checkPointArchive, string restorePath)
+        {
+            var (cpMagic, _) = GetCheckpointMetadata(checkPointArchive);
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return cpMagic;
+        }
+
+        private static (long magic, string scriptHash) GetCheckpointMetadata(string checkPointArchive)
+        {
+            using var archive = ZipFile.OpenRead(checkPointArchive);
+            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new Exception($"Checkpoint archive missing {ADDRESS_FILENAME}");
+            using var addressStream = addressEntry.Open();
+            using var addressReader = new StreamReader(addressStream);
+            var magic = long.Parse(addressReader.ReadLine() ?? string.Empty);
+            var scriptHash = addressReader.ReadLine() ?? string.Empty;
+
+            return (magic, scriptHash);
+        }
+
+        private static void ExtractCheckpoint(string checkPointArchive, string restorePath)
+        {
+            ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
+            var addressFile = GetAddressFilePath(restorePath);
+            if (File.Exists(addressFile))
+            {
+                File.Delete(addressFile);
+            }
+        }
+
         public void Dispose()
         {
             if (disposeStore && store is IDisposable disposable) disposable.Dispose();
             checkpointCleanup?.Dispose();
         }
 
-        byte[]? IReadOnlyStore.TryGet(byte table, byte[]? key)
+        byte[]? IReadOnlyStore.TryGet(byte[]? key)
         {
-            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
-            return TryGet(trackingMap, table, key);
+            return TryGet(trackingMap, key);
         }
 
-        byte[]? TryGet(TrackingMap trackingMap, byte table, byte[]? key)
+        byte[]? TryGet(TrackingMap trackingMap, byte[]? key)
         {
             if (trackingMap.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
             {
                 return mapValue.Match<byte[]?>(v => v, n => null);
             }
 
-            return store.TryGet(table, key);
+            return store.TryGet(key);
         }
 
-        bool IReadOnlyStore.Contains(byte table, byte[] key)
+        bool IReadOnlyStore.Contains(byte[]? key)
         {
-            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
-            return Contains(trackingMap, table, key);
+            return Contains(trackingMap, key);
         }
 
-        bool Contains(TrackingMap trackingMap, byte table, byte[] key)
+        bool Contains(TrackingMap trackingMap, byte[]? key)
         {
             if (trackingMap.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
             {
                 return mapValue.Match(v => true, n => false);
             }
 
-            return store.Contains(table, key);
+            return store.Contains(key);
         }
 
-
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte table, byte[]? prefix, SeekDirection direction)
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[]? keyOrPrefix, SeekDirection direction)
         {
-            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
-            return Seek(trackingMap, table, prefix, direction);
+            return Seek(trackingMap, keyOrPrefix, direction);
         }
 
-        IEnumerable<(byte[] Key, byte[] Value)> Seek(TrackingMap trackingMap, byte table, byte[]? prefix, SeekDirection direction)
+        IEnumerable<(byte[] Key, byte[] Value)> Seek(TrackingMap trackingMap, byte[]? keyOrPrefix, SeekDirection direction)
         {
-            prefix ??= Array.Empty<byte>();
+            keyOrPrefix ??= Array.Empty<byte>();
             var comparer = direction == SeekDirection.Forward ? ByteArrayComparer.Default : ByteArrayComparer.Reverse;
 
             var memoryItems = trackingMap
                 .Where(kvp => kvp.Value.IsT0)
-                .Where(kvp => prefix.Length == 0 || comparer.Compare(kvp.Key, prefix) >= 0)
+                .Where(kvp => keyOrPrefix.Length == 0 || comparer.Compare(kvp.Key, keyOrPrefix) >= 0)
                 .Select(kvp => (kvp.Key, Value: kvp.Value.AsT0));
 
-            var storeItems = store.Seek(table, prefix, direction)
+            var storeItems = store.Seek(keyOrPrefix, direction)
                 .Where(kvp => !trackingMap.ContainsKey(kvp.Key));
 
             return memoryItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
         }
 
-        ISnapshot IStore.GetSnapshot() => new Snapshot(this);
-
-        void Put(byte table, byte[]? key, OneOf<byte[], OneOf.Types.None> value)
+        void IStore.Put(byte[]? key, byte[] value)
         {
-            var trackingMap = trackingMaps.TryGetValue(table, out var map) ? map : EMPTY_TRACKING_MAP;
             trackingMap = trackingMap.SetItem(key ?? Array.Empty<byte>(), value);
-            trackingMaps = trackingMaps.SetItem(table, trackingMap);
         }
 
-        void IStore.Put(byte table, byte[]? key, byte[] value)
+        void IStore.Delete(byte[]? key)
         {
-            Put(table, key, value);
+            trackingMap = trackingMap.SetItem(key ?? Array.Empty<byte>(), NONE_INSTANCE);
         }
 
-        void IStore.Delete(byte table, byte[]? key)
+        ISnapshot IStore.GetSnapshot()
         {
-            Put(table, key, NONE_INSTANCE);
+            throw new NotImplementedException();
         }
     }
 }
