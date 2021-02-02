@@ -6,20 +6,17 @@ using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public class NullReadOnlyStore : IReadOnlyStore
+    public class NullReadOnlyStore : IExpressReadOnlyStore
     {
-        private static readonly Lazy<NullReadOnlyStore> _instance = new Lazy<NullReadOnlyStore>(() => new NullReadOnlyStore());
-        public static NullReadOnlyStore Instance => _instance.Value;
+        public static NullReadOnlyStore Instance { get; } = new NullReadOnlyStore();
 
-        private NullReadOnlyStore()
-        {
-        }
+        private NullReadOnlyStore() { }
 
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[]? key, SeekDirection direction)
+        byte[]? IExpressReadOnlyStore.TryGet(byte table, byte[]? key) => null;
+
+        bool IExpressReadOnlyStore.Contains(byte table, byte[]? key) => false;
+
+        IEnumerable<(byte[] Key, byte[] Value)> IExpressReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
             => Enumerable.Empty<(byte[] Key, byte[] Value)>();
-
-        bool IReadOnlyStore.Contains(byte[]? key) => false;
-
-        byte[]? IReadOnlyStore.TryGet(byte[]? key) => null;
     }
 }

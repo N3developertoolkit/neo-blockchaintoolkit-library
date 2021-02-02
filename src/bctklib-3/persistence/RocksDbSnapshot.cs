@@ -1,73 +1,57 @@
-﻿using Neo.Persistence;
-using RocksDbSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using Neo.IO.Caching;
+using Neo.Persistence;
+using RocksDbSharp;
 
-namespace Neo.Plugins.Storage
+namespace Neo.BlockchainToolkit.Persistence
 {
-    internal class RocksDbSnapshot : ISnapshot
+    public partial class RocksDbStore
     {
-        private readonly RocksDbStore store;
-        private readonly RocksDb db;
-        private readonly RocksDbSharp.Snapshot snapshot;
-        private readonly WriteBatch batch;
-        private readonly ReadOptions options;
-
-        public RocksDbSnapshot(RocksDbStore store, RocksDb db)
+        class Snapshot : ISnapshot, IExpressSnapshot
         {
-            this.store = store;
-            this.db = db;
-            this.snapshot = db.CreateSnapshot();
-            this.batch = new WriteBatch();
+            private readonly RocksDbStore store;
+            private readonly RocksDbSharp.Snapshot snapshot;
+            private readonly ReadOptions readOptions;
+            private readonly WriteBatch writeBatch;
 
-            options = new ReadOptions();
-            options.SetFillCache(false);
-            options.SetSnapshot(snapshot);
-        }
+            public Snapshot(RocksDbStore store)
+            {
+                this.store = store;
+                snapshot = store.db.CreateSnapshot();
+                readOptions = new ReadOptions()
+                    .SetSnapshot(snapshot)
+                    .SetFillCache(false);
+                writeBatch = new WriteBatch();
+            }
 
-        public void Commit()
-        {
-            db.Write(batch, Options.WriteDefault);
-        }
+            public void Dispose()
+            {
+                snapshot.Dispose();
+                writeBatch.Dispose();
+            }
 
-        public void Delete(byte[] key)
-        {
-            batch.Delete(key);
-        }
+            public byte[]? TryGet(byte table, byte[]? key)
+                => store.db.Get(key ?? Array.Empty<byte>(), store.GetColumnFamily(table), readOptions);
 
-        public void Put(byte[] key, byte[] value)
-        {
-            batch.Put(key, value);
-        }
+            public bool Contains(byte table, byte[]? key) => TryGet(table, key) != null;
 
-        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] keyOrPrefix, SeekDirection direction)
-        {
-            if (keyOrPrefix == null) keyOrPrefix = Array.Empty<byte>();
+            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
+                => RocksDbStore.Seek(store.db, key, store.GetColumnFamily(table), direction, readOptions);
 
-            using var it = db.NewIterator(readOptions: options);
+            public void Put(byte table, byte[]? key, byte[] value)
+                => writeBatch.Put(key ?? Array.Empty<byte>(), value, store.GetColumnFamily(table));
 
-            if (direction == SeekDirection.Forward)
-                for (it.Seek(keyOrPrefix); it.Valid(); it.Next())
-                    yield return (it.Key(), it.Value());
-            else
-                for (it.SeekForPrev(keyOrPrefix); it.Valid(); it.Prev())
-                    yield return (it.Key(), it.Value());
-        }
+            public void Delete(byte table, byte[]? key)
+                => writeBatch.Delete(key ?? Array.Empty<byte>(), store.GetColumnFamily(table));
 
-        public bool Contains(byte[] key)
-        {
-            return db.Get(key, readOptions: options) != null;
-        }
+            public void Commit() => store.db.Write(writeBatch);
 
-        public byte[] TryGet(byte[] key)
-        {
-            return db.Get(key, readOptions: options);
-        }
-
-        public void Dispose()
-        {
-            snapshot.Dispose();
-            batch.Dispose();
+            byte[]? IReadOnlyStore.TryGet(byte[]? key) => TryGet(default, key);
+            bool IReadOnlyStore.Contains(byte[] key) => Contains(default, key);
+            IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[]? key, SeekDirection direction) => Seek(default, key, direction);
+            void ISnapshot.Put(byte[]? key, byte[] value) => Put(default, key, value);
+            void ISnapshot.Delete(byte[]? key) => Delete(default, key);
         }
     }
 }

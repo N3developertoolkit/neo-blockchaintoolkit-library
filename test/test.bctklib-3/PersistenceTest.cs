@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
-using System.Linq;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.IO.Caching;
 using Neo.Persistence;
 using Nito.Disposables;
+using OneOf;
 using Xunit;
 using Xunit.Extensions;
 
 namespace test.bctklib3
 {
-    using RocksDbStore = Neo.Plugins.Storage.RocksDbStore;
+    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
 
     public class PersistenceTest
     {
@@ -47,12 +48,12 @@ namespace test.bctklib3
         }
 
         [Theory, MemberData(nameof(SeekStores1))]
-        public void TestSeek1Forward(IStore store, IDisposable disposable)
+        public void TestSeek1Forward(IExpressStore store, IDisposable disposable)
         {
             using (disposable)
             using (store)
             {
-                var enumerator = store.Seek(new byte[] { 0x00, 0x00, 0x02 }, SeekDirection.Forward).GetEnumerator();
+                var enumerator = store.Seek(default, new byte[] { 0x00, 0x00, 0x02 }, SeekDirection.Forward).GetEnumerator();
                 Assert.True(enumerator.MoveNext());
                 Assert.Equal(new byte[] { 0x00, 0x00, 0x02 }, enumerator.Current.Key);
                 Assert.Equal(new byte[] { 0x02 }, enumerator.Current.Value);
@@ -63,12 +64,12 @@ namespace test.bctklib3
         }
 
         [Theory, MemberData(nameof(SeekStores1))]
-        public void TestSeek1Backwards(IStore store, IDisposable disposable)
+        public void TestSeek1Backwards(IExpressStore store, IDisposable disposable)
         {
             using (disposable)
             using (store)
             {
-                var enumerator = store.Seek(new byte[] { 0x00, 0x00, 0x02 }, SeekDirection.Backward).GetEnumerator();
+                var enumerator = store.Seek(default, new byte[] { 0x00, 0x00, 0x02 }, SeekDirection.Backward).GetEnumerator();
                 Assert.True(enumerator.MoveNext());
                 Assert.Equal(new byte[] { 0x00, 0x00, 0x02 }, enumerator.Current.Key);
                 Assert.Equal(new byte[] { 0x02 }, enumerator.Current.Value);
@@ -82,47 +83,47 @@ namespace test.bctklib3
         {
             get
             {
-                var memStore = new MemoryStore();
-                ConfigureStore(memStore);
+                var memStore = new TestMemoryStore();
+                ConfigureStore(memStore.Put);
                 yield return new object[] { memStore, NoopDisposable.Instance };
                 yield return new object[] { new CheckpointStore(memStore), NoopDisposable.Instance };
 
-                IStore cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
-                ConfigureStore(cpStore);
+                var cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
+                ConfigureStore(cpStore.Put);
                 yield return new object[] { cpStore, NoopDisposable.Instance };
 
-                memStore = new MemoryStore();
-                ConfigureStore(memStore);
-                memStore.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0xFF });
-                memStore.Put(new byte[] { 0x00, 0x00, 0x03 }, new byte[] { 0xFF });
+                memStore = new TestMemoryStore();
+                ConfigureStore(memStore.Put);
+                memStore.Put(default, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0xFF });
+                memStore.Put(default, new byte[] { 0x00, 0x00, 0x03 }, new byte[] { 0xFF });
                 cpStore = new CheckpointStore(memStore);
-                cpStore.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
-                cpStore.Put(new byte[] { 0x00, 0x00, 0x03 }, new byte[] { 0x03 });
+                cpStore.Put(default, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
+                cpStore.Put(default, new byte[] { 0x00, 0x00, 0x03 }, new byte[] { 0x03 });
                 yield return new object[] { cpStore, NoopDisposable.Instance };
 
                 var (tempPath, disposable) = GetTempPath();
-                IStore rocksStore = RocksDbStore.Open(tempPath);
-                ConfigureStore(rocksStore);
+                var rocksStore = RocksDbStore.Open(tempPath);
+                ConfigureStore(rocksStore.Put);
                 yield return new object[] { rocksStore, disposable };
 
-                static void ConfigureStore(IStore store)
+                static void ConfigureStore(Action<byte, byte[]?, byte[]> put)
                 {
-                    store.Put(new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
-                    store.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
-                    store.Put(new byte[] { 0x00, 0x00, 0x02 }, new byte[] { 0x02 });
-                    store.Put(new byte[] { 0x00, 0x00, 0x03 }, new byte[] { 0x03 });
-                    store.Put(new byte[] { 0x00, 0x00, 0x04 }, new byte[] { 0x04 });
+                    put(default, new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
+                    put(default, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
+                    put(default, new byte[] { 0x00, 0x00, 0x02 }, new byte[] { 0x02 });
+                    put(default, new byte[] { 0x00, 0x00, 0x03 }, new byte[] { 0x03 });
+                    put(default, new byte[] { 0x00, 0x00, 0x04 }, new byte[] { 0x04 });
                 }
             }
         }
 
         [Theory, MemberData(nameof(SeekStores2))]
-        public void TestSeek2Backwards(IStore store, IDisposable disposable)
+        public void TestSeek2Backwards(IExpressStore store, IDisposable disposable)
         {
             using (disposable)
             using (store)
             {
-                var enumerator = store.Seek(new byte[] { 0x00, 0x00, 0x03 }, SeekDirection.Backward).GetEnumerator();
+                var enumerator = store.Seek(default, new byte[] { 0x00, 0x00, 0x03 }, SeekDirection.Backward).GetEnumerator();
                 Assert.True(enumerator.MoveNext());
                 Assert.Equal(new byte[] { 0x00, 0x00, 0x01 }, enumerator.Current.Key);
                 Assert.Equal(new byte[] { 0x01 }, enumerator.Current.Value);
@@ -136,35 +137,34 @@ namespace test.bctklib3
         {
             get
             {
-                var memStore = new MemoryStore();
-                ConfigureStore(memStore);
+                var memStore = new TestMemoryStore();
+                ConfigureStore(memStore.Put);
 
                 yield return new object[] { memStore, NoopDisposable.Instance };
                 yield return new object[] { new CheckpointStore(memStore), NoopDisposable.Instance };
 
-                IStore cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
-                ConfigureStore(cpStore);
+                var cpStore = new CheckpointStore(NullReadOnlyStore.Instance);
+                ConfigureStore(cpStore.Put);
                 yield return new object[] { cpStore, NoopDisposable.Instance };
 
-                memStore = new MemoryStore();
-                ConfigureStore(memStore);
-                memStore.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0xFF });
+                memStore = new TestMemoryStore();
+                ConfigureStore(memStore.Put);
+                memStore.Put(default, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0xFF });
                 cpStore = new CheckpointStore(memStore);
-                cpStore.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
+                cpStore.Put(default, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
                 yield return new object[] { cpStore, NoopDisposable.Instance };
 
                 var (tempPath, disposable) = GetTempPath();
-                IStore rocksStore = RocksDbStore.Open(tempPath);
-                ConfigureStore(rocksStore);
+                var rocksStore = RocksDbStore.Open(tempPath);
+                ConfigureStore(rocksStore.Put);
                 yield return new object[] { rocksStore, disposable };
 
-                static void ConfigureStore(IStore store)
+                static void ConfigureStore(Action<byte, byte[]?, byte[]> put)
                 {
-                    store.Put(new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
-                    store.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
-                    store.Put(new byte[] { 0x00, 0x01, 0x02 }, new byte[] { 0x02 });
+                    put(default, new byte[] { 0x00, 0x00, 0x00 }, new byte[] { 0x00 });
+                    put(default, new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });
+                    put(default, new byte[] { 0x00, 0x01, 0x02 }, new byte[] { 0x02 });
                 }
-
             }
         }
 

@@ -6,10 +6,8 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     internal class ByteArrayComparer : IEqualityComparer<byte[]>, IComparer<byte[]>
     {
-        private static readonly Lazy<ByteArrayComparer> @default = new Lazy<ByteArrayComparer>(() => new ByteArrayComparer(false));
-        private static readonly Lazy<ByteArrayComparer> defaultReverse = new Lazy<ByteArrayComparer>(() => new ByteArrayComparer(true));
-        public static ByteArrayComparer Default => @default.Value;
-        public static ByteArrayComparer Reverse => defaultReverse.Value;
+        public static ByteArrayComparer Default { get; } = new ByteArrayComparer(false);
+        public static ByteArrayComparer Reverse { get; } = new ByteArrayComparer(true);
 
         private readonly bool reverse;
 

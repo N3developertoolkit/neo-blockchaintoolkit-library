@@ -1,33 +1,58 @@
-﻿using Neo.Persistence;
-using RocksDbSharp;
-using System;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Threading;
+using Neo.IO.Caching;
+using Neo.Persistence;
+using RocksDbSharp;
 
-namespace Neo.Plugins.Storage
+namespace Neo.BlockchainToolkit.Persistence
 {
-    // TODO: remove this copy of RocksDbStore once https://github.com/neo-project/neo-modules/issues/497 is fixed
-    public class RocksDbStore : IStore
+    public partial class RocksDbStore : IStore, IExpressStore
     {
-        private readonly RocksDb db;
         private readonly bool readOnly;
-
-        private RocksDbStore(RocksDb db, bool readOnly = false)
-        {
-            this.db = db;
-            this.readOnly = readOnly;
-        }
+        private readonly RocksDb db;
+        private readonly ConcurrentDictionary<byte, ColumnFamilyHandle> columnFamilyCache;
+        private readonly ReadOptions readOptions = new ReadOptions();
+        private readonly WriteOptions writeOptions = new WriteOptions();
+        private readonly WriteOptions writeSyncOptions = new WriteOptions().SetSync(true);
+        private static readonly ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
 
         public static RocksDbStore Open(string path)
         {
-            var db = RocksDb.Open(Options.Default, Path.GetFullPath(path));
-            return new RocksDbStore(db);
+            var columnFamilies = GetColumnFamilies(path);
+            var db = RocksDb.Open(new DbOptions().SetCreateIfMissing(true), path, columnFamilies);
+            return new RocksDbStore(db, columnFamilies);
         }
 
         public static RocksDbStore OpenReadOnly(string path)
         {
-            var db = RocksDb.OpenReadOnly(Options.Default, Path.GetFullPath(path), false);
-            return new RocksDbStore(db, true);
+            var columnFamilies = GetColumnFamilies(path);
+            var db = RocksDb.OpenReadOnly(new DbOptions(), path, columnFamilies, false);
+            return new RocksDbStore(db, columnFamilies, true);
+        }
+
+        private RocksDbStore(RocksDb db, ColumnFamilies columnFamilies, bool readOnly = false)
+        {
+            this.readOnly = readOnly;
+            this.db = db;
+            this.columnFamilyCache = new ConcurrentDictionary<byte, ColumnFamilyHandle>(EnumerateColumnFamlies(db, columnFamilies));
+
+            static IEnumerable<KeyValuePair<byte, ColumnFamilyHandle>> EnumerateColumnFamlies(RocksDb db, ColumnFamilies columnFamilies)
+            {
+                foreach (var descriptor in columnFamilies)
+                {
+                    var name = descriptor.Name;
+                    if (byte.TryParse(descriptor.Name, out var key))
+                    {
+                        var value = db.GetColumnFamily(name);
+                        yield return KeyValuePair.Create(key, value);
+                    }
+                }
+            }
         }
 
         public void Dispose()
@@ -35,52 +60,185 @@ namespace Neo.Plugins.Storage
             db.Dispose();
         }
 
-        public Checkpoint Checkpoint() => db.Checkpoint();
-
-        public ISnapshot GetSnapshot()
+        public void CreateCheckpoint(string checkPointFileName, long magic, string scriptHash)
         {
-            return new RocksDbSnapshot(this, db);
+            if (File.Exists(checkPointFileName))
+            {
+                throw new ArgumentException("checkpoint file already exists", nameof(checkPointFileName));
+            }
+
+            var tempPath = GetTempPath();
+            try
+            {
+                {
+                    using var checkpoint = db.Checkpoint();
+                    checkpoint.Save(tempPath);
+                }
+
+                {
+                    using var stream = File.OpenWrite(GetAddressFilePath(tempPath));
+                    using var writer = new StreamWriter(stream);
+                    writer.WriteLine(magic);
+                    writer.WriteLine(scriptHash);
+                }
+
+                ZipFile.CreateFromDirectory(tempPath, checkPointFileName);
+            }
+            finally
+            {
+                Directory.Delete(tempPath, true);
+            }
+
+            static string GetTempPath()
+            {
+                string tempPath;
+                do
+                {
+                    tempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+                }
+                while (Directory.Exists(tempPath));
+                return tempPath;
+            }
         }
 
-        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] keyOrPrefix, SeekDirection direction = SeekDirection.Forward)
+        public static long RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
         {
-            if (keyOrPrefix == null) keyOrPrefix = Array.Empty<byte>();
+            var (cpMagic, cpScriptHash) = GetCheckpointMetadata(checkPointArchive);
+            if (magic != cpMagic || scriptHash != cpScriptHash)
+            {
+                throw new Exception("Invalid Checkpoint");
+            }
 
-            using var it = db.NewIterator();
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return cpMagic;
+        }
+
+        public static long RestoreCheckpoint(string checkPointArchive, string restorePath)
+        {
+            var (cpMagic, _) = GetCheckpointMetadata(checkPointArchive);
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return cpMagic;
+        }
+
+        private const string ADDRESS_FILENAME = "ADDRESS.neo-express";
+
+        private static string GetAddressFilePath(string directory) =>
+            Path.Combine(directory, ADDRESS_FILENAME);
+
+        private static (long magic, string scriptHash) GetCheckpointMetadata(string checkPointArchive)
+        {
+            using var archive = ZipFile.OpenRead(checkPointArchive);
+            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new Exception();
+            using var addressStream = addressEntry.Open();
+            using var addressReader = new StreamReader(addressStream);
+            var magic = long.Parse(addressReader.ReadLine() ?? string.Empty);
+            var scriptHash = addressReader.ReadLine() ?? string.Empty;
+
+            return (magic, scriptHash);
+        }
+
+        private static void ExtractCheckpoint(string checkPointArchive, string restorePath)
+        {
+            ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
+            var addressFile = GetAddressFilePath(restorePath);
+            if (File.Exists(addressFile))
+            {
+                File.Delete(addressFile);
+            }
+        }
+
+        public byte[]? TryGet(byte table, byte[]? key)
+            => db.Get(key ?? Array.Empty<byte>(), GetColumnFamily(table), readOptions);
+
+        public bool Contains(byte table, byte[]? key) => TryGet(table, key) != null;
+
+        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte table, byte[]? key, SeekDirection direction)
+            => Seek(db, key, GetColumnFamily(table), direction, readOptions);
+
+        public void Put(byte table, byte[]? key, byte[] value)
+        {
+            if (readOnly) throw new InvalidOperationException();
+            db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeOptions);
+        }
+
+        public void PutSync(byte table, byte[]? key, byte[] value)
+        {
+            if (readOnly) throw new InvalidOperationException();
+            db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeSyncOptions);
+        }
+
+        public void Delete(byte table, byte[]? key)
+        {
+            if (readOnly) throw new InvalidOperationException();
+            db.Remove(key ?? Array.Empty<byte>(), GetColumnFamily(table), writeOptions);
+        }
+
+        byte[]? IReadOnlyStore.TryGet(byte[]? key) => TryGet(default, key);
+        bool IReadOnlyStore.Contains(byte[] key) => Contains(default, key);
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[]? key, SeekDirection direction) => Seek(default, key, direction);
+        void IStore.Put(byte[]? key, byte[] value) => Put(default, key, value);
+        void IStore.PutSync(byte[]? key, byte[] value) => PutSync(default, key, value);
+        void IStore.Delete(byte[]? key) => Delete(default, key);
+        ISnapshot IStore.GetSnapshot() => readOnly ? throw new InvalidOperationException() : new Snapshot(this);
+
+        private static ColumnFamilies GetColumnFamilies(string path)
+        {
+            try
+            {
+                var names = RocksDb.ListColumnFamilies(new DbOptions(), path);
+                var families = new ColumnFamilies();
+                foreach (var name in names)
+                {
+                    families.Add(name, defaultColumnFamilyOptions);
+                }
+                return families;
+            }
+            catch (RocksDbException)
+            {
+                return new ColumnFamilies();
+            }
+        }
+
+        private ColumnFamilyHandle GetColumnFamily(byte table)
+        {
+            return columnFamilyCache.GetOrAdd(table, t => GetColumnFamilyFromDatabase(db, t));
+
+            static ColumnFamilyHandle GetColumnFamilyFromDatabase(RocksDb db, byte table)
+            {
+                var familyName = table.ToString();
+                try
+                {
+                    return db.GetColumnFamily(familyName);
+                }
+                catch (KeyNotFoundException)
+                {
+                    return db.CreateColumnFamily(defaultColumnFamilyOptions, familyName);
+                }
+            }
+        }
+
+        private static IEnumerable<(byte[] key, byte[] value)> Seek(RocksDb db, byte[]? prefix, ColumnFamilyHandle columnFamily, SeekDirection direction, ReadOptions? readOptions)
+        {
+            prefix ??= Array.Empty<byte>();
+            using var iterator = db.NewIterator(columnFamily, readOptions);
+
+            Func<Iterator> iteratorNext;
             if (direction == SeekDirection.Forward)
-                for (it.Seek(keyOrPrefix); it.Valid(); it.Next())
-                    yield return (it.Key(), it.Value());
+            {
+                iterator.Seek(prefix);
+                iteratorNext = iterator.Next;
+            }
             else
-                for (it.SeekForPrev(keyOrPrefix); it.Valid(); it.Prev())
-                    yield return (it.Key(), it.Value());
-        }
+            {
+                iterator.SeekForPrev(prefix);
+                iteratorNext = iterator.Prev;
+            }
 
-        public bool Contains(byte[] key)
-        {
-            return db.Get(key) != null;
-        }
-
-        public byte[] TryGet(byte[] key)
-        {
-            return db.Get(key);
-        }
-
-        public void Delete(byte[] key)
-        {
-            if (readOnly) throw new InvalidOperationException();
-            db.Remove(key);
-        }
-
-        public void Put(byte[] key, byte[] value)
-        {
-            if (readOnly) throw new InvalidOperationException();
-            db.Put(key, value);
-        }
-
-        public void PutSync(byte[] key, byte[] value)
-        {
-            if (readOnly) throw new InvalidOperationException();
-            db.Put(key, value, writeOptions: Options.WriteDefaultSync);
+            while (iterator.Valid())
+            {
+                yield return (iterator.Key(), iterator.Value());
+                iteratorNext();
+            }
         }
     }
 }
