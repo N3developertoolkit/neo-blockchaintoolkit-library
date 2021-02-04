@@ -18,5 +18,13 @@ namespace Neo.BlockchainToolkit.Persistence
 
         IEnumerable<(byte[] Key, byte[] Value)> IExpressReadOnlyStore.Seek(byte table, byte[]? key, SeekDirection direction)
             => Enumerable.Empty<(byte[] Key, byte[] Value)>();
+
+        byte[]? IReadOnlyStore.TryGet(byte[] key) => null;
+
+        bool IReadOnlyStore.Contains(byte[] key) => false;
+
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[] key, SeekDirection direction)
+            => Enumerable.Empty<(byte[] Key, byte[] Value)>();
+
     }
 }

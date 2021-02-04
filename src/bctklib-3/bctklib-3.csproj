@@ -31,12 +31,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-      <_Parameter1>test.bctklib-3</_Parameter1>
-    </AssemblyAttribute>
+    <InternalsVisibleTo Include="test.bctklib-3" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="InternalsVisibleTo.MSBuild" Version="1.0.4">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="MessagePack" Version="2.2.85" />
     <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
     <PackageReference Include="Neo" Version="3.0.0-preview5" />

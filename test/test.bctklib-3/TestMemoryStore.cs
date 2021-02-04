@@ -62,5 +62,20 @@ namespace test.bctklib3
         public void Dispose()
         {
         }
+
+        void IStore.Delete(byte[] key) => Delete(default, key);
+
+        ISnapshot IStore.GetSnapshot()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IStore.Put(byte[] key, byte[] value) => Put(default, key, value);
+
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[] key, SeekDirection direction) => Seek(default, key, direction);
+
+        byte[] IReadOnlyStore.TryGet(byte[] key) => TryGet(default, key)!;
+
+        bool IReadOnlyStore.Contains(byte[] key) => Contains(default, key);
     }
 }

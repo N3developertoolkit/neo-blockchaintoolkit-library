@@ -3,7 +3,7 @@ using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public interface IExpressReadOnlyStore
+    public interface IExpressReadOnlyStore : IReadOnlyStore
     {
         byte[]? TryGet(byte table, byte[]? key);
         bool Contains(byte table, byte[]? key);

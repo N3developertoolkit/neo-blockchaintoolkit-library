@@ -3,17 +3,13 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using Neo.BlockchainToolkit.Persistence;
-using Neo.IO.Caching;
 using Neo.Persistence;
 using Nito.Disposables;
 using OneOf;
 using Xunit;
-using Xunit.Extensions;
 
 namespace test.bctklib3
 {
-    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[], OneOf.Types.None>>;
-
     public class PersistenceTest
     {
         [Theory, MemberData(nameof(EmptyStores))]

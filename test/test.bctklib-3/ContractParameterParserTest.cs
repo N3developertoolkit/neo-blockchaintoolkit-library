@@ -1,14 +1,17 @@
+using System;
+using System.Collections.Generic;
+using System.IO.Abstractions.TestingHelpers;
+using System.Runtime.InteropServices;
+using FluentAssertions;
+using FluentAssertions.Execution;
+using FluentAssertions.Primitives;
+using Neo;
+using Neo.BlockchainToolkit;
+using Neo.IO;
+using Neo.SmartContract;
 using Xunit;
 using Xunit.Extensions;
-using System.IO.Abstractions.TestingHelpers;
-using Neo.BlockchainToolkit;
-using Shouldly;
-using Neo.SmartContract;
-using System.Collections.Generic;
-using Neo;
-using System;
-using Neo.IO;
-using System.Runtime.InteropServices;
+
 
 namespace test.bctklib3
 {
@@ -20,8 +23,8 @@ namespace test.bctklib3
             const string expected = "string-value";
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter(expected);
-            param.Type.ShouldBe(ContractParameterType.String);
-            param.Value.ShouldBe(expected);
+            param.Type.Should().Be(ContractParameterType.String);
+            param.Value.Should().Be(expected);
         }
 
         [Fact]
@@ -35,8 +38,8 @@ namespace test.bctklib3
             };
             var parser = new ContractParameterParser(tryGetAccount: accounts.TryGetValue);
             var param = parser.ParseStringParameter($"@{account}");
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(expectedValue);
+            param.Type.Should().Be(ContractParameterType.Hash160);
+            param.Value.Should().Be(expectedValue);
         }
 
         [Fact]
@@ -45,8 +48,8 @@ namespace test.bctklib3
             const string account = "test-account";
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter($"@{account}");
-            param.Type.ShouldBe(ContractParameterType.String);
-            param.Value.ShouldBe($"@{account}");
+            param.Type.Should().Be(ContractParameterType.String);
+            param.Value.Should().Be($"@{account}");
         }
 
         [Fact]
@@ -56,8 +59,8 @@ namespace test.bctklib3
             var address = Neo.Wallets.Helper.ToAddress(expectedValue);
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter($"@{address}");
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(expectedValue);
+            param.Type.Should().Be(ContractParameterType.Hash160);
+            param.Value.Should().Be(expectedValue);
         }
 
 
@@ -70,8 +73,8 @@ namespace test.bctklib3
 
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter(expected);
-            param.Type.ShouldBe(ContractParameterType.String);
-            param.Value.ShouldBe(expected);
+            param.Type.Should().Be(ContractParameterType.String);
+            param.Value.Should().Be(expected);
         }
 
         [Fact]
@@ -80,8 +83,8 @@ namespace test.bctklib3
             const string hashString = "30f41a14ca6019038b055b585d002b287b5fdd47";
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter($"#{hashString}");
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(UInt160.Parse(hashString));
+            param.Type.Should().Be(ContractParameterType.Hash160);
+            param.Value.Should().Be(UInt160.Parse(hashString));
         }
 
         [Fact]
@@ -90,8 +93,8 @@ namespace test.bctklib3
             const string hashString = "#30f41a14ca6019038b055b585d002b287b5fdd4";
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter(hashString);
-            param.Type.ShouldBe(ContractParameterType.String);
-            param.Value.ShouldBe(hashString);
+            param.Type.Should().Be(ContractParameterType.String);
+            param.Value.Should().Be(hashString);
         }
 
         [Fact]
@@ -100,8 +103,8 @@ namespace test.bctklib3
             const string hashString = "0a372ac8f778eeebb1ccdbb250fe596b83d1d1b9f366d71dfd4c53956bed5cce";
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter($"#{hashString}");
-            param.Type.ShouldBe(ContractParameterType.Hash256);
-            param.Value.ShouldBe(UInt256.Parse(hashString));
+            param.Type.Should().Be(ContractParameterType.Hash256);
+            param.Value.Should().Be(UInt256.Parse(hashString));
         }
 
         [Fact]
@@ -110,8 +113,8 @@ namespace test.bctklib3
             const string hashString = "#a372ac8f778eeebb1ccdbb250fe596b83d1d1b9f366d71dfd4c53956bed5cce";
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter(hashString);
-            param.Type.ShouldBe(ContractParameterType.String);
-            param.Value.ShouldBe(hashString);
+            param.Type.Should().Be(ContractParameterType.String);
+            param.Value.Should().Be(hashString);
         }
 
         static string FakeRootPath()
@@ -133,8 +136,8 @@ namespace test.bctklib3
 
             var parser = new ContractParameterParser(tryGetContract: contracts.TryGetValue);
             var param = parser.ParseStringParameter($"#{contractName}");
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(expectedValue);
+            param.Type.Should().Be(ContractParameterType.Hash160);
+            param.Value.Should().Be(expectedValue);
         }
 
         [Fact]
@@ -142,8 +145,8 @@ namespace test.bctklib3
         {
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter("#OracleContract");
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
+            param.Type.Should().Be(ContractParameterType.Hash160);
+            param.Value.Should().Be(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
         }
 
         [Fact]
@@ -151,8 +154,8 @@ namespace test.bctklib3
         {
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter("#oraclecontract");
-            param.Type.ShouldBe(ContractParameterType.Hash160);
-            param.Value.ShouldBe(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
+            param.Type.Should().Be(ContractParameterType.Hash160);
+            param.Value.Should().Be(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
         }
 
         [Fact]
@@ -170,8 +173,8 @@ namespace test.bctklib3
 
             var parser = new ContractParameterParser(null, null);
             var param = parser.ParseStringParameter($"0x{expectedValue.ToHexString()}");
-            param.Type.ShouldBe(ContractParameterType.ByteArray);
-            param.Value.ShouldBe(expectedValue);
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(expectedValue);
         }
     }
 }

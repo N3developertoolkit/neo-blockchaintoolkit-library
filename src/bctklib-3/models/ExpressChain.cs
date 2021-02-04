@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using Newtonsoft.Json;
 
 namespace Neo.BlockchainToolkit.Models
