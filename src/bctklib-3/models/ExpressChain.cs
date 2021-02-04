@@ -36,5 +36,8 @@ namespace Neo.BlockchainToolkit.Models
 
         [JsonProperty("wallets")]
         public List<ExpressWallet> Wallets { get; set; } = new List<ExpressWallet>();
+
+        [JsonProperty("contracts")]
+        public List<ExpressContract> Contracts { get; set; } = new List<ExpressContract>();
     }
 }
