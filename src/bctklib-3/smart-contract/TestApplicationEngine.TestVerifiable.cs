@@ -7,7 +7,7 @@ namespace Neo.BlockchainToolkit.SmartContract
 {
     public partial class TestApplicationEngine
     {
-        public class TestVerifiable : IVerifiable
+        class TestVerifiable : IVerifiable
         {
             readonly UInt160[] signers;
 
@@ -23,7 +23,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                 get => throw new NotImplementedException(); 
                 set => throw new NotImplementedException(); 
             }
-            
+
             public int Size => throw new NotImplementedException();
             public void Deserialize(BinaryReader reader) => throw new NotImplementedException();
             public void DeserializeUnsigned(BinaryReader reader) => throw new NotImplementedException();
