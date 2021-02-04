@@ -13,10 +13,10 @@
     <PackageIcon>ngdsea.png</PackageIcon>
     <PackageId>Neo.BlockchainToolkit3</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/ngdseattle/neo-blockchaintoolkit-library</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</PackageProjectUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/ngdseattle/neo-blockchaintoolkit-library.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</RepositoryUrl>
     <RootNamespace>Neo.BlockchainToolkit</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <TargetFramework>net5.0</TargetFramework>
