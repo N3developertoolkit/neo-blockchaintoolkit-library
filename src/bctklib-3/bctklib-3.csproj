@@ -6,6 +6,7 @@
     <Company>The Neo Project</Company>
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <Copyright>2015-2020 The Neo Project</Copyright>
+    <DebugType>embedded</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>9</LangVersion>
@@ -22,9 +23,9 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(Configuration)'!='Debug'">
-    <SourceRoot Include="$(MSBuildThisFileDirectory)/" />
-  </ItemGroup>
+  <PropertyGroup Condition="'$(TF_BUILD)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
 
   <ItemGroup>
     <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
@@ -40,8 +41,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="MessagePack" Version="2.2.85" />
-    <PackageReference Condition="'$(Configuration)'!='Debug'" Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
-    <PackageReference Include="Neo" Version="3.0.0-preview5" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>    <PackageReference Include="Neo" Version="3.0.0-preview5" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="OneOf" Version="3.0.163" />
     <PackageReference Include="rocksdb" Version="6.15.4.15287" />
