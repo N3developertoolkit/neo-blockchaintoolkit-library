@@ -1,8 +1,6 @@
 using System.Buffers;
-using System.Collections.Generic;
 using MessagePack;
 using Neo.VM;
-using StackItem = Neo.VM.Types.StackItem;
 
 namespace Neo.BlockchainToolkit.TraceDebug
 {
@@ -25,7 +23,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
 
         public static void Write(IBufferWriter<byte> writer, MessagePackSerializerOptions options, byte[] script)
         {
-            var scriptHash = SmartContract.Helper.ToScriptHash(script);
+            var scriptHash = Neo.SmartContract.Helper.ToScriptHash(script);
 
             var mpWriter = new MessagePackWriter(writer);
             mpWriter.WriteArrayHeader(2);
