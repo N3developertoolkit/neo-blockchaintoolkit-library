@@ -28,7 +28,7 @@ namespace Neo.BlockchainToolkit.Models
         }
 
         [JsonProperty("magic")]
-        public long Magic { get; set; }
+        public uint Magic { get; set; }
 
         [JsonProperty("consensus-nodes")]
         public List<ExpressConsensusNode> ConsensusNodes { get; set; } = new List<ExpressConsensusNode>();
