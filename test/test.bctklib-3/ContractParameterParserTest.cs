@@ -11,7 +11,7 @@ namespace test.bctklib3
 {
     public class ContractParameterParserTest
     {
-        const byte DEFAULT_ADDRESS_VERSION = 0x35;
+        readonly byte DEFAULT_ADDRESS_VERSION = Neo.ProtocolSettings.Default.AddressVersion;
 
         [Fact]
         public void TestParseStringParameter_string()
