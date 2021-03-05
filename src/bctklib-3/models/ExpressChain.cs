@@ -30,6 +30,9 @@ namespace Neo.BlockchainToolkit.Models
         [JsonProperty("magic")]
         public uint Magic { get; set; }
 
+        [JsonProperty("address-version")]
+        public byte AddressVersion { get; set; } = ProtocolSettings.Default.AddressVersion;
+
         [JsonProperty("consensus-nodes")]
         public List<ExpressConsensusNode> ConsensusNodes { get; set; } = new List<ExpressConsensusNode>();
 
