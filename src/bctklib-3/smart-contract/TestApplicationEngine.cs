@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
+using System.Reflection;
 using Neo.Cryptography;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
@@ -10,37 +10,41 @@ using Neo.SmartContract;
 namespace Neo.BlockchainToolkit.SmartContract
 {
     using WitnessChecker = Func<byte[], bool>;
-    using ServiceMethod = Func<TestApplicationEngine, IReadOnlyList<InteropParameterDescriptor>, Neo.VM.Types.StackItem?>;
-    using StackItem = Neo.VM.Types.StackItem;
 
     public partial class TestApplicationEngine : ApplicationEngine
     {
-        private readonly static IReadOnlyDictionary<uint, ServiceMethod> overriddenServices;
+        private readonly static IReadOnlyDictionary<uint, MethodInfo> overriddenServices;
 
         static TestApplicationEngine()
         {
-            var builder = ImmutableDictionary.CreateBuilder<uint, ServiceMethod>();
-            builder.Add(HashMethodName("System.Runtime.CheckWitness"), CheckWitnessOverride);
+            var builder = ImmutableDictionary.CreateBuilder<uint, MethodInfo>();
+            builder.Add(HashMethodName("System.Runtime.CheckWitness"), GetMethodInfo(nameof(CheckWitnessOverride)));
             overriddenServices = builder.ToImmutable();
+
+            static MethodInfo GetMethodInfo(string handler)
+            {
+                return typeof(TestApplicationEngine).GetMethod(handler, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException();
+            }
 
             static uint HashMethodName(string name)
             {
-                return BitConverter.ToUInt32(System.Text.Encoding.ASCII.GetBytes(name).Sha256(), 0);
+                return System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(System.Text.Encoding.ASCII.GetBytes(name).Sha256());
             }
         }
 
         private readonly WitnessChecker witnessChecker;
 
-        public TestApplicationEngine(DataCache snapshot) : this(TriggerType.Application, null, snapshot, null, ApplicationEngine.TestModeGas, null)
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings) : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
-        public TestApplicationEngine(DataCache snapshot, UInt160 signer) : this(TriggerType.Application, new TestVerifiable(signer), snapshot, null, ApplicationEngine.TestModeGas, null)
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer) : this(TriggerType.Application, new TestVerifiable(signer), snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
-        public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, long gas, WitnessChecker? witnessChecker)
-            : base(trigger, container ?? new TestVerifiable(), snapshot, persistingBlock, gas)
+        public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas, WitnessChecker? witnessChecker)
+            : base(trigger, container ?? new TestVerifiable(), snapshot, persistingBlock, settings, gas)
         {
             this.witnessChecker = witnessChecker ?? CheckWitness;
             ApplicationEngine.Log += OnLog;
@@ -73,15 +77,31 @@ namespace Neo.BlockchainToolkit.SmartContract
             }
         }
 
-        private static StackItem CheckWitnessOverride(
-            TestApplicationEngine engine,
-            IReadOnlyList<InteropParameterDescriptor> paramDescriptors)
+        protected internal bool CheckWitnessOverride(byte[] hashOrPubkey) => witnessChecker.Invoke(hashOrPubkey);
+
+        // remove when https://github.com/neo-project/neo/pull/2378 is merged
+        protected void OnSysCall(InteropDescriptor descriptor, Func<object, object[], object> handler)
         {
+            var exec_fee_factor_prop = this.GetType().GetProperty("exec_fee_factor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                 ?? throw new InvalidOperationException();
+            var exec_fee_factor = (uint)(exec_fee_factor_prop.GetValue(this) ?? throw new InvalidOperationException());
+            ValidateCallFlags(descriptor.RequiredCallFlags);
+            AddGas(descriptor.FixedPrice * exec_fee_factor);
 
-            Debug.Assert(paramDescriptors.Count == 1);
-            var hashOrPubkey = (byte[])engine.Convert(engine.Pop(), paramDescriptors[0]);
+            object[] parameters = descriptor.Parameters.Count > 0
+                 ? new object[descriptor.Parameters.Count] 
+                 : Array.Empty<object>();
 
-            return engine.witnessChecker.Invoke(hashOrPubkey);
+            for (int i = 0; i < descriptor.Parameters.Count; i++)
+            {
+                parameters[i] = Convert(Pop(), descriptor.Parameters[i]);
+            }
+
+            object returnValue = handler(this, parameters);
+            if (descriptor.Handler.ReturnType != typeof(void))
+            {
+                Push(Convert(returnValue));
+            }
         }
 
         protected override void OnSysCall(uint methodHash)
@@ -89,19 +109,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             if (overriddenServices.TryGetValue(methodHash, out var method))
             {
                 InteropDescriptor descriptor = Services[methodHash];
-                ValidateCallFlags(descriptor);
-                AddGas(descriptor.FixedPrice);
-
-                var result = method(this, descriptor.Parameters);
-                if (descriptor.Handler.ReturnType != typeof(void))
-                {
-                    if (result == null) throw new InvalidOperationException($"expected return value from {descriptor.Handler.Name}");
-                    Push(result);
-                }
-                else
-                {
-                    if (result != null) throw new InvalidOperationException($"expected null return value from {descriptor.Handler.Name}");
-                }
+                OnSysCall(descriptor, method.Invoke!);
             }
             else
             {

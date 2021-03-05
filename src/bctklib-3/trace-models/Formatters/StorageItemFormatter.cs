@@ -1,5 +1,4 @@
 using System.Buffers;
-using Neo.Ledger;
 using Neo.SmartContract;
 
 namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
@@ -10,21 +9,19 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 
         public StorageItem Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
         {
-            if (reader.ReadArrayHeader() != 2)
+            if (reader.ReadArrayHeader() != 1)
             {
                 throw new MessagePackSerializationException();
             }
 
             var value = reader.ReadBytes()?.ToArray() ?? throw new MessagePackSerializationException();
-            var isConstant = reader.ReadBoolean();
-            return new StorageItem(value, isConstant);
+            return new StorageItem(value);
         }
 
         public void Serialize(ref MessagePackWriter writer, StorageItem value, MessagePackSerializerOptions options)
         {
-            writer.WriteArrayHeader(2);
+            writer.WriteArrayHeader(1);
             writer.Write(value.Value);
-            writer.Write(value.IsConstant);
         }
     }
 }
