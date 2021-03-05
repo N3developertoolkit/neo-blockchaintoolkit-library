@@ -2,11 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading.Tasks;
 using Neo.Cryptography.ECC;
 using Neo.IO;
@@ -23,11 +21,18 @@ namespace Neo.BlockchainToolkit
     {
         public delegate bool TryGetUInt160(string value, [MaybeNullWhen(false)] out UInt160 account);
 
+        private readonly byte addressVersion;
         private readonly TryGetUInt160? tryGetAccount;
         private readonly TryGetUInt160? tryGetContract;
 
-        public ContractParameterParser(TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null)
+        public ContractParameterParser(ProtocolSettings protocolSettings, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null)
+            : this(protocolSettings.AddressVersion, tryGetAccount, tryGetContract)
         {
+        }
+
+        public ContractParameterParser(byte addressVersion, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null)
+        {
+            this.addressVersion = addressVersion;
             this.tryGetAccount = tryGetAccount;
             this.tryGetContract = tryGetContract;
         }
@@ -137,7 +142,7 @@ namespace Neo.BlockchainToolkit
                     return new ContractParameter(ContractParameterType.Hash160) { Value = account };
                 }
 
-                if (TryParseAddress(substring, out var address))
+                if (TryParseAddress(substring, addressVersion, out var address))
                 {
                     return new ContractParameter(ContractParameterType.Hash160) { Value = address };
                 }
@@ -170,12 +175,11 @@ namespace Neo.BlockchainToolkit
 
             return new ContractParameter(ContractParameterType.String) { Value = value };
 
-            static bool TryParseAddress(string address, out UInt160 scriptHash)
+            static bool TryParseAddress(string address, byte version, [MaybeNullWhen(false)] out UInt160 scriptHash)
             {
                 try
                 {
-                    // NOTE: Neo.Wallets.Helper.ToScriptHash uses up ProtocolSettings.Default.AddressVersion
-                    scriptHash = address.ToScriptHash();
+                    scriptHash = address.ToScriptHash(version);
                     return true;
                 }
                 catch (FormatException)
@@ -185,7 +189,7 @@ namespace Neo.BlockchainToolkit
                 }
             }
 
-            static bool TryParseHexString(string hexString, out byte[] array)
+            static bool TryParseHexString(string hexString, [MaybeNullWhen(false)] out byte[] array)
             {
                 try
                 {
