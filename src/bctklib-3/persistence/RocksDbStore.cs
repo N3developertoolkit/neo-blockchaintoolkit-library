@@ -57,6 +57,9 @@ namespace Neo.BlockchainToolkit.Persistence
             db.Dispose();
         }
 
+        public void CreateCheckpoint(string checkPointFileName, ProtocolSettings settings, string scriptHash)
+            => CreateCheckpoint(checkPointFileName, settings.Magic, settings.AddressVersion, scriptHash);
+
         public void CreateCheckpoint(string checkPointFileName, uint magic, byte addressVersion, string scriptHash)
         {
             if (File.Exists(checkPointFileName))
@@ -98,6 +101,9 @@ namespace Neo.BlockchainToolkit.Persistence
                 return tempPath;
             }
         }
+
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, ProtocolSettings settings, string scriptHash)
+            => RestoreCheckpoint(checkPointArchive, restorePath, settings.Magic, settings.AddressVersion, scriptHash);
 
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, string scriptHash)
         {
