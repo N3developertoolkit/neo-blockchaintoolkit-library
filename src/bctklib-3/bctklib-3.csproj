@@ -4,7 +4,7 @@
     <AssemblyName>neo-bctklib-3</AssemblyName>
     <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
-    <Copyright>2015-2020 The Neo Project</Copyright>
+    <Copyright>2015-2021 The Neo Project</Copyright>
     <DebugType>embedded</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>

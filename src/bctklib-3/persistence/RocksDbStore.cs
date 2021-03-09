@@ -3,9 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Threading;
-using Neo.IO.Caching;
 using Neo.Persistence;
 using RocksDbSharp;
 
@@ -60,7 +57,7 @@ namespace Neo.BlockchainToolkit.Persistence
             db.Dispose();
         }
 
-        public void CreateCheckpoint(string checkPointFileName, long magic, string scriptHash)
+        public void CreateCheckpoint(string checkPointFileName, uint magic, byte addressVersion, string scriptHash)
         {
             if (File.Exists(checkPointFileName))
             {
@@ -80,6 +77,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     using var writer = new StreamWriter(stream);
                     writer.WriteLine(magic);
                     writer.WriteLine(scriptHash);
+                    writer.WriteLine(addressVersion);
                 }
 
                 ZipFile.CreateFromDirectory(tempPath, checkPointFileName);
@@ -101,23 +99,25 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static long RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, string scriptHash)
         {
-            var (cpMagic, cpScriptHash) = GetCheckpointMetadata(checkPointArchive);
-            if (magic != cpMagic || scriptHash != cpScriptHash)
+            var metadata = GetCheckpointMetadata(checkPointArchive);
+            if (magic != metadata.magic 
+                || addressVersion != metadata.addressVersion
+                || scriptHash != metadata.scriptHash)
             {
                 throw new Exception("Invalid Checkpoint");
             }
 
             ExtractCheckpoint(checkPointArchive, restorePath);
-            return cpMagic;
+            return (metadata.magic, metadata.addressVersion);
         }
 
-        public static long RestoreCheckpoint(string checkPointArchive, string restorePath)
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath)
         {
-            var (cpMagic, _) = GetCheckpointMetadata(checkPointArchive);
+            var metadata = GetCheckpointMetadata(checkPointArchive);
             ExtractCheckpoint(checkPointArchive, restorePath);
-            return cpMagic;
+            return (metadata.magic, metadata.addressVersion);
         }
 
         private const string ADDRESS_FILENAME = "ADDRESS.neo-express";
@@ -125,16 +125,20 @@ namespace Neo.BlockchainToolkit.Persistence
         private static string GetAddressFilePath(string directory) =>
             Path.Combine(directory, ADDRESS_FILENAME);
 
-        private static (long magic, string scriptHash) GetCheckpointMetadata(string checkPointArchive)
+        private static (uint magic, byte addressVersion, string scriptHash) GetCheckpointMetadata(string checkPointArchive)
         {
             using var archive = ZipFile.OpenRead(checkPointArchive);
             var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new Exception();
             using var addressStream = addressEntry.Open();
             using var addressReader = new StreamReader(addressStream);
-            var magic = long.Parse(addressReader.ReadLine() ?? string.Empty);
+            var magic = uint.Parse(addressReader.ReadLine() ?? string.Empty);
             var scriptHash = addressReader.ReadLine() ?? string.Empty;
+            var addressVersionLine = addressReader.ReadLine();
+            var addressVersion = addressVersionLine == null
+                ? ProtocolSettings.Default.AddressVersion 
+                : byte.Parse(addressVersionLine);
 
-            return (magic, scriptHash);
+            return (magic, addressVersion, scriptHash);
         }
 
         private static void ExtractCheckpoint(string checkPointArchive, string restorePath)
