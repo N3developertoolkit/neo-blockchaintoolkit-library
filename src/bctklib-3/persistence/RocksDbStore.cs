@@ -135,7 +135,7 @@ namespace Neo.BlockchainToolkit.Persistence
         private static (uint magic, byte addressVersion, UInt160 scriptHash) GetCheckpointMetadata(string checkPointArchive)
         {
             using var archive = ZipFile.OpenRead(checkPointArchive);
-            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new Exception();
+            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new InvalidOperationException("Checkpoint missing " + ADDRESS_FILENAME + " file");
             using var addressStream = addressEntry.Open();
             using var addressReader = new StreamReader(addressStream);
             var magic = uint.Parse(addressReader.ReadLine() ?? string.Empty);
@@ -165,19 +165,19 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Put(byte table, byte[]? key, byte[] value)
         {
-            if (readOnly) throw new InvalidOperationException();
+            if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeOptions);
         }
 
         public void PutSync(byte table, byte[]? key, byte[] value)
         {
-            if (readOnly) throw new InvalidOperationException();
+            if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeSyncOptions);
         }
 
         public void Delete(byte table, byte[]? key)
         {
-            if (readOnly) throw new InvalidOperationException();
+            if (readOnly) throw new InvalidOperationException("read only");
             db.Remove(key ?? Array.Empty<byte>(), GetColumnFamily(table), writeOptions);
         }
 
@@ -187,7 +187,7 @@ namespace Neo.BlockchainToolkit.Persistence
         void IStore.Put(byte[]? key, byte[] value) => Put(default, key, value);
         void IStore.PutSync(byte[]? key, byte[] value) => PutSync(default, key, value);
         void IStore.Delete(byte[]? key) => Delete(default, key);
-        ISnapshot IStore.GetSnapshot() => readOnly ? throw new InvalidOperationException() : new Snapshot(this);
+        ISnapshot IStore.GetSnapshot() => readOnly ? throw new InvalidOperationException("read only") : new Snapshot(this);
 
         private static ColumnFamilies GetColumnFamilies(string path)
         {

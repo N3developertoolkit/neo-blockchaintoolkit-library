@@ -29,7 +29,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             {
                 var sysCallHash = BinaryPrimitives.ReadUInt32LittleEndian(Encoding.ASCII.GetBytes(sysCallName).Sha256());
                 var handler = typeof(TestApplicationEngine).GetMethod(overloadedMethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? throw new InvalidOperationException();
+                    ?? throw new InvalidOperationException($"AddOverload failed to locate {overloadedMethodName} method");
                 var descriptor = ApplicationEngine.Services[sysCallHash] with { Handler = handler };
 
                 builder.Add(sysCallHash, descriptor);
