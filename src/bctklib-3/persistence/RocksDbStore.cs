@@ -3,10 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Threading;
-using Neo.IO.Caching;
 using Neo.Persistence;
+using Neo.Wallets;
 using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
@@ -60,7 +58,10 @@ namespace Neo.BlockchainToolkit.Persistence
             db.Dispose();
         }
 
-        public void CreateCheckpoint(string checkPointFileName, long magic, string scriptHash)
+        public void CreateCheckpoint(string checkPointFileName, ProtocolSettings settings, UInt160 scriptHash)
+            => CreateCheckpoint(checkPointFileName, settings.Magic, settings.AddressVersion, scriptHash);
+
+        public void CreateCheckpoint(string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
         {
             if (File.Exists(checkPointFileName))
             {
@@ -79,7 +80,8 @@ namespace Neo.BlockchainToolkit.Persistence
                     using var stream = File.OpenWrite(GetAddressFilePath(tempPath));
                     using var writer = new StreamWriter(stream);
                     writer.WriteLine(magic);
-                    writer.WriteLine(scriptHash);
+                    writer.WriteLine(addressVersion);
+                    writer.WriteLine(scriptHash.ToAddress(addressVersion));
                 }
 
                 ZipFile.CreateFromDirectory(tempPath, checkPointFileName);
@@ -101,23 +103,28 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static long RestoreCheckpoint(string checkPointArchive, string restorePath, long magic, string scriptHash)
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, ProtocolSettings settings, UInt160 scriptHash)
+            => RestoreCheckpoint(checkPointArchive, restorePath, settings.Magic, settings.AddressVersion, scriptHash);
+
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
         {
-            var (cpMagic, cpScriptHash) = GetCheckpointMetadata(checkPointArchive);
-            if (magic != cpMagic || scriptHash != cpScriptHash)
+            var metadata = GetCheckpointMetadata(checkPointArchive);
+            if (magic != metadata.magic 
+                || addressVersion != metadata.addressVersion
+                || scriptHash != metadata.scriptHash)
             {
                 throw new Exception("Invalid Checkpoint");
             }
 
             ExtractCheckpoint(checkPointArchive, restorePath);
-            return cpMagic;
+            return (metadata.magic, metadata.addressVersion);
         }
 
-        public static long RestoreCheckpoint(string checkPointArchive, string restorePath)
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath)
         {
-            var (cpMagic, _) = GetCheckpointMetadata(checkPointArchive);
+            var metadata = GetCheckpointMetadata(checkPointArchive);
             ExtractCheckpoint(checkPointArchive, restorePath);
-            return cpMagic;
+            return (metadata.magic, metadata.addressVersion);
         }
 
         private const string ADDRESS_FILENAME = "ADDRESS.neo-express";
@@ -125,16 +132,17 @@ namespace Neo.BlockchainToolkit.Persistence
         private static string GetAddressFilePath(string directory) =>
             Path.Combine(directory, ADDRESS_FILENAME);
 
-        private static (long magic, string scriptHash) GetCheckpointMetadata(string checkPointArchive)
+        private static (uint magic, byte addressVersion, UInt160 scriptHash) GetCheckpointMetadata(string checkPointArchive)
         {
             using var archive = ZipFile.OpenRead(checkPointArchive);
-            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new Exception();
+            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new InvalidOperationException("Checkpoint missing " + ADDRESS_FILENAME + " file");
             using var addressStream = addressEntry.Open();
             using var addressReader = new StreamReader(addressStream);
-            var magic = long.Parse(addressReader.ReadLine() ?? string.Empty);
-            var scriptHash = addressReader.ReadLine() ?? string.Empty;
+            var magic = uint.Parse(addressReader.ReadLine() ?? string.Empty);
+            var addressVersion = byte.Parse(addressReader.ReadLine() ?? string.Empty);
+            var scriptHash = (addressReader.ReadLine() ?? string.Empty).ToScriptHash(addressVersion);
 
-            return (magic, scriptHash);
+            return (magic, addressVersion, scriptHash);
         }
 
         private static void ExtractCheckpoint(string checkPointArchive, string restorePath)
@@ -157,19 +165,19 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Put(byte table, byte[]? key, byte[] value)
         {
-            if (readOnly) throw new InvalidOperationException();
+            if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeOptions);
         }
 
         public void PutSync(byte table, byte[]? key, byte[] value)
         {
-            if (readOnly) throw new InvalidOperationException();
+            if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, GetColumnFamily(table), writeSyncOptions);
         }
 
         public void Delete(byte table, byte[]? key)
         {
-            if (readOnly) throw new InvalidOperationException();
+            if (readOnly) throw new InvalidOperationException("read only");
             db.Remove(key ?? Array.Empty<byte>(), GetColumnFamily(table), writeOptions);
         }
 
@@ -179,13 +187,12 @@ namespace Neo.BlockchainToolkit.Persistence
         void IStore.Put(byte[]? key, byte[] value) => Put(default, key, value);
         void IStore.PutSync(byte[]? key, byte[] value) => PutSync(default, key, value);
         void IStore.Delete(byte[]? key) => Delete(default, key);
-        ISnapshot IStore.GetSnapshot() => readOnly ? throw new InvalidOperationException() : new Snapshot(this);
+        ISnapshot IStore.GetSnapshot() => readOnly ? throw new InvalidOperationException("read only") : new Snapshot(this);
 
         private static ColumnFamilies GetColumnFamilies(string path)
         {
-            try
+            if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
             {
-                var names = RocksDb.ListColumnFamilies(new DbOptions(), path);
                 var families = new ColumnFamilies();
                 foreach (var name in names)
                 {
@@ -193,10 +200,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 return families;
             }
-            catch (RocksDbException)
-            {
-                return new ColumnFamilies();
-            }
+
+            return new ColumnFamilies();
         }
 
         private ColumnFamilyHandle GetColumnFamily(byte table)
@@ -206,14 +211,12 @@ namespace Neo.BlockchainToolkit.Persistence
             static ColumnFamilyHandle GetColumnFamilyFromDatabase(RocksDb db, byte table)
             {
                 var familyName = table.ToString();
-                try
+                if (db.TryGetColumnFamily(familyName, out var columnFamily))
                 {
-                    return db.GetColumnFamily(familyName);
+                    return columnFamily;
                 }
-                catch (KeyNotFoundException)
-                {
-                    return db.CreateColumnFamily(defaultColumnFamilyOptions, familyName);
-                }
+
+                return db.CreateColumnFamily(defaultColumnFamilyOptions, familyName);
             }
         }
 

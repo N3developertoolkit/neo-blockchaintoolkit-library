@@ -4,7 +4,7 @@
     <AssemblyName>neo-bctklib-3</AssemblyName>
     <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
-    <Copyright>2015-2020 The Neo Project</Copyright>
+    <Copyright>2015-2021 The Neo Project</Copyright>
     <DebugType>embedded</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
@@ -41,7 +41,7 @@
     </PackageReference>
     <PackageReference Include="MessagePack" Version="2.2.85" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
-    <PackageReference Include="Neo" Version="3.0.0-mono-master-00676" />
+    <PackageReference Include="Neo" Version="3.0.0-mono-master-00686" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="OneOf" Version="3.0.178" />
     <PackageReference Include="rocksdb" Version="6.15.5.15759" />

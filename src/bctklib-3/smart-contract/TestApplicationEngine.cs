@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
+using System.Text;
 using Neo.Cryptography;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
@@ -13,23 +15,24 @@ namespace Neo.BlockchainToolkit.SmartContract
 
     public partial class TestApplicationEngine : ApplicationEngine
     {
-        private readonly static IReadOnlyDictionary<uint, MethodInfo> overriddenServices;
+        private readonly static IReadOnlyDictionary<uint, InteropDescriptor> overriddenServices;
 
         static TestApplicationEngine()
         {
-            var builder = ImmutableDictionary.CreateBuilder<uint, MethodInfo>();
-            builder.Add(HashMethodName("System.Runtime.CheckWitness"), GetMethodInfo(nameof(CheckWitnessOverride)));
+            var builder = ImmutableDictionary.CreateBuilder<uint, InteropDescriptor>();
+
+            AddOverload(builder, "System.Runtime.CheckWitness", nameof(CheckWitnessOverride));
+ 
             overriddenServices = builder.ToImmutable();
 
-            static MethodInfo GetMethodInfo(string handler)
+            static void AddOverload(ImmutableDictionary<uint, InteropDescriptor>.Builder builder, string sysCallName, string overloadedMethodName)
             {
-                return typeof(TestApplicationEngine).GetMethod(handler, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? throw new InvalidOperationException();
-            }
+                var sysCallHash = BinaryPrimitives.ReadUInt32LittleEndian(Encoding.ASCII.GetBytes(sysCallName).Sha256());
+                var handler = typeof(TestApplicationEngine).GetMethod(overloadedMethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException($"AddOverload failed to locate {overloadedMethodName} method");
+                var descriptor = ApplicationEngine.Services[sysCallHash] with { Handler = handler };
 
-            static uint HashMethodName(string name)
-            {
-                return System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(System.Text.Encoding.ASCII.GetBytes(name).Sha256());
+                builder.Add(sysCallHash, descriptor);
             }
         }
 
@@ -79,37 +82,11 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         protected internal bool CheckWitnessOverride(byte[] hashOrPubkey) => witnessChecker.Invoke(hashOrPubkey);
 
-        // remove when https://github.com/neo-project/neo/pull/2378 is merged
-        protected void OnSysCall(InteropDescriptor descriptor, Func<object, object[], object> handler)
-        {
-            var exec_fee_factor_prop = this.GetType().GetProperty("exec_fee_factor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                 ?? throw new InvalidOperationException();
-            var exec_fee_factor = (uint)(exec_fee_factor_prop.GetValue(this) ?? throw new InvalidOperationException());
-            ValidateCallFlags(descriptor.RequiredCallFlags);
-            AddGas(descriptor.FixedPrice * exec_fee_factor);
-
-            object[] parameters = descriptor.Parameters.Count > 0
-                 ? new object[descriptor.Parameters.Count] 
-                 : Array.Empty<object>();
-
-            for (int i = 0; i < descriptor.Parameters.Count; i++)
-            {
-                parameters[i] = Convert(Pop(), descriptor.Parameters[i]);
-            }
-
-            object returnValue = handler(this, parameters);
-            if (descriptor.Handler.ReturnType != typeof(void))
-            {
-                Push(Convert(returnValue));
-            }
-        }
-
         protected override void OnSysCall(uint methodHash)
         {
-            if (overriddenServices.TryGetValue(methodHash, out var method))
+            if (overriddenServices.TryGetValue(methodHash, out var descriptor))
             {
-                InteropDescriptor descriptor = Services[methodHash];
-                OnSysCall(descriptor, method.Invoke!);
+                base.OnSysCall(descriptor);
             }
             else
             {
