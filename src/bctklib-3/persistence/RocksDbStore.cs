@@ -193,9 +193,8 @@ namespace Neo.BlockchainToolkit.Persistence
 
         private static ColumnFamilies GetColumnFamilies(string path)
         {
-            try
+            if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
             {
-                var names = RocksDb.ListColumnFamilies(new DbOptions(), path);
                 var families = new ColumnFamilies();
                 foreach (var name in names)
                 {
@@ -203,10 +202,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 return families;
             }
-            catch (RocksDbException)
-            {
-                return new ColumnFamilies();
-            }
+
+            return new ColumnFamilies();
         }
 
         private ColumnFamilyHandle GetColumnFamily(byte table)
@@ -216,14 +213,12 @@ namespace Neo.BlockchainToolkit.Persistence
             static ColumnFamilyHandle GetColumnFamilyFromDatabase(RocksDb db, byte table)
             {
                 var familyName = table.ToString();
-                try
+                if (db.TryGetColumnFamily(familyName, out var columnFamily))
                 {
-                    return db.GetColumnFamily(familyName);
+                    return columnFamily;
                 }
-                catch (KeyNotFoundException)
-                {
-                    return db.CreateColumnFamily(defaultColumnFamilyOptions, familyName);
-                }
+
+                return db.CreateColumnFamily(defaultColumnFamilyOptions, familyName);
             }
         }
 
