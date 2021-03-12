@@ -18,10 +18,10 @@ namespace Neo.BlockchainToolkit.SmartContract
 
             public UInt160[] GetScriptHashesForVerifying(DataCache snapshot) => signers;
 
-            public Witness[] Witnesses 
-            { 
-                get => throw new NotImplementedException(); 
-                set => throw new NotImplementedException(); 
+            public Witness[] Witnesses
+            {
+                get => throw new NotImplementedException();
+                set => throw new NotImplementedException();
             }
 
             public int Size => throw new NotImplementedException();

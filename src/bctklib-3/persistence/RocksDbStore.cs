@@ -109,7 +109,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
         {
             var metadata = GetCheckpointMetadata(checkPointArchive);
-            if (magic != metadata.magic 
+            if (magic != metadata.magic
                 || addressVersion != metadata.addressVersion
                 || scriptHash != metadata.scriptHash)
             {

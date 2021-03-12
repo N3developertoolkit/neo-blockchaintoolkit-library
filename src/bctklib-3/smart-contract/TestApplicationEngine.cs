@@ -22,7 +22,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             var builder = ImmutableDictionary.CreateBuilder<uint, InteropDescriptor>();
 
             AddOverload(builder, "System.Runtime.CheckWitness", nameof(CheckWitnessOverride));
- 
+
             overriddenServices = builder.ToImmutable();
 
             static void AddOverload(ImmutableDictionary<uint, InteropDescriptor>.Builder builder, string sysCallName, string overloadedMethodName)

@@ -14,9 +14,10 @@ namespace Neo.BlockchainToolkit
     {
         public static ProtocolSettings GetProtocolSettings(this ExpressChain? chain, uint secondsPerBlock = 0)
         {
-            return chain == null 
-                ? ProtocolSettings.Default 
-                : ProtocolSettings.Default with {
+            return chain == null
+                ? ProtocolSettings.Default
+                : ProtocolSettings.Default with
+                {
                     Magic = chain.Magic,
                     AddressVersion = chain.AddressVersion,
                     MillisecondsPerBlock = secondsPerBlock == 0 ? 15000 : secondsPerBlock * 1000,
