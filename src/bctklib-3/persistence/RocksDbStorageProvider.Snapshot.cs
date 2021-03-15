@@ -47,6 +47,6 @@ namespace Neo.BlockchainToolkit.Persistence
                 => writeBatch.Delete(key ?? Array.Empty<byte>(), columnFamily);
 
             public void Commit() => db.Write(writeBatch);
-       }
+        }
     }
 }

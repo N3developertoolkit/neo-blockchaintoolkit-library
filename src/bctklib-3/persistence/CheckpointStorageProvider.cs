@@ -29,8 +29,8 @@ namespace Neo.BlockchainToolkit.Persistence
         internal TrackingMap GetTrackingMap(string path) => trackingMaps.TryGetValue(path, out var map) ? map : EMPTY_TRACKING_MAP;
 
         internal IReadOnlyStore GetReadOnlyStore(string path)
-            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(path, out var _store)) 
-                ? _store 
+            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(path, out var _store))
+                ? _store
                 : NullStore.Instance;
 
         public IStore GetStore(string path)
@@ -49,7 +49,7 @@ namespace Neo.BlockchainToolkit.Persistence
             var map = GetTrackingMap(path);
             return TryGet(path, map, key);
         }
-        
+
         internal byte[]? TryGet(string path, TrackingMap map, byte[]? key)
         {
             if (map.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
@@ -111,7 +111,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             public static NullStore Instance = new NullStore();
 
-            private NullStore() {}
+            private NullStore() { }
 
             public bool Contains(byte[]? key) => false;
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction) => Enumerable.Empty<(byte[], byte[])>();
