@@ -32,11 +32,11 @@ namespace Neo.BlockchainToolkit.Persistence
             checkpointCleanup?.Dispose();
         }
 
-        internal TrackingMap GetTrackingMap(string? storeName) 
+        internal TrackingMap GetTrackingMap(string? storeName)
             => storeName == null
-                ? defaultTrackingMap 
-                : trackingMaps.TryGetValue(storeName, out var trackingMap) 
-                    ? trackingMap 
+                ? defaultTrackingMap
+                : trackingMaps.TryGetValue(storeName, out var trackingMap)
+                    ? trackingMap
                     : EMPTY_TRACKING_MAP;
 
         IReadOnlyStore GetReadOnlyStore(string? storeName)
