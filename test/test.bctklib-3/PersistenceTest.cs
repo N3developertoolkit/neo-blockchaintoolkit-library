@@ -72,7 +72,7 @@ namespace test.bctklib3
                 var memProvider = new MemoryStorageProvider();
                 yield return ConfigureStore(memProvider, null);
 
-                var cpProvider = new CheckpointStorageProvider(null, null);
+                var cpProvider = new CheckpointStorageProvider(null);
                 yield return ConfigureStore(cpProvider, null);
 
                 var (tempPath1, disposable1) = GetTempPath();
@@ -88,7 +88,7 @@ namespace test.bctklib3
                     db1.PutSync(new byte[] { 0x00, 0x00, 0x04 }, new byte[] { 0x04 });
                 }
 
-                var cpProvider2 = new CheckpointStorageProvider(rocksProvider2, disposable2);
+                var cpProvider2 = new CheckpointStorageProvider(rocksProvider2, checkpointCleanup: disposable2);
                 using (var db2 = cpProvider2.GetStore(nameof(SeekStores1)))
                 {
                     db2.Put(new byte[] { 0x00, 0x00, 0x01 }, new byte[] { 0x01 });

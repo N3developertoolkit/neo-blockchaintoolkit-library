@@ -15,20 +15,23 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         public readonly static TrackingMap EMPTY_TRACKING_MAP = TrackingMap.Empty.WithComparers(ByteArrayComparer.Default);
 
-        readonly RocksDbStorageProvider? rocksDbStorageProvider;
+        readonly RocksDbStorageProvider? rocksDbProvider;
+        readonly bool disposeRocksDbProvider;
         readonly IDisposable? checkpointCleanup;
+
         ImmutableDictionary<string, TrackingMap> trackingMaps = ImmutableDictionary<string, TrackingMap>.Empty;
         TrackingMap defaultTrackingMap = EMPTY_TRACKING_MAP;
 
-        public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, IDisposable? checkpointCleanup = null)
+        public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, bool disposeRocksDbProvider = true, IDisposable? checkpointCleanup = null)
         {
-            this.rocksDbStorageProvider = rocksDbStorageProvider;
+            this.rocksDbProvider = rocksDbStorageProvider;
+            this.disposeRocksDbProvider = disposeRocksDbProvider;
             this.checkpointCleanup = checkpointCleanup;
         }
 
         public void Dispose()
         {
-            rocksDbStorageProvider?.Dispose();
+            if (disposeRocksDbProvider) rocksDbProvider?.Dispose();
             checkpointCleanup?.Dispose();
         }
 
@@ -40,7 +43,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     : EMPTY_TRACKING_MAP;
 
         IReadOnlyStore GetReadOnlyStore(string? storeName)
-            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(storeName, out var store))
+            => (rocksDbProvider != null && rocksDbProvider.TryGetStore(storeName, out var store))
                 ? store
                 : NullStore.Instance;
 
