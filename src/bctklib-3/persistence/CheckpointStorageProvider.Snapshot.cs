@@ -15,10 +15,10 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             readonly CheckpointStorageProvider provider;
             readonly TrackingMap trackingMap;
-            readonly string storeName;
+            readonly string? storeName;
             TrackingMap writeBatchMap = CheckpointStorageProvider.EMPTY_TRACKING_MAP;
 
-            public Snapshot(CheckpointStorageProvider provider, TrackingMap trackingMap, string storeName)
+            public Snapshot(CheckpointStorageProvider provider, TrackingMap trackingMap, string? storeName)
             {
                 this.provider = provider;
                 this.trackingMap = trackingMap;

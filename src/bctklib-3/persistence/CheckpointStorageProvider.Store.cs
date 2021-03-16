@@ -8,9 +8,9 @@ namespace Neo.BlockchainToolkit.Persistence
         public class Store : IStore
         {
             readonly CheckpointStorageProvider provider;
-            readonly string storeName;
+            readonly string? storeName;
 
-            public Store(CheckpointStorageProvider storageProvider, string storagePath)
+            public Store(CheckpointStorageProvider storageProvider, string? storagePath)
             {
                 this.provider = storageProvider;
                 this.storeName = storagePath;

@@ -151,13 +151,19 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public IStore GetStore(string path)
+        public IStore GetStore(string? path)
         {
             return TryGetStore(path, out var store) ? store : throw new InvalidOperationException("TryGetStore returned false");
         }
 
-        public bool TryGetStore(string path, [NotNullWhen(true)] out IStore? store)
+        public bool TryGetStore(string? path, [NotNullWhen(true)] out IStore? store)
         {
+            if (path == null)
+            {
+                store = new Store(db, db.GetDefaultColumnFamily(), readOnly);
+                return true;
+            }
+
             if (db.TryGetColumnFamily(path, out var columnFamily))
             {
                 store = new Store(db, columnFamily, readOnly);

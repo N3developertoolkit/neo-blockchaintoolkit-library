@@ -5,10 +5,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Neo.Persistence;
 using OneOf;
+using None = OneOf.Types.None;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[]?, OneOf.Types.None>>;
+    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[]?, None>>;
 
     public partial class CheckpointStorageProvider : IDisposableStorageProvider
     {
@@ -17,6 +18,7 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly RocksDbStorageProvider? rocksDbStorageProvider;
         readonly IDisposable? checkpointCleanup;
         ImmutableDictionary<string, TrackingMap> trackingMaps = ImmutableDictionary<string, TrackingMap>.Empty;
+        TrackingMap defaultTrackingMap = EMPTY_TRACKING_MAP;
 
         public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, IDisposable? checkpointCleanup = null)
         {
@@ -30,27 +32,32 @@ namespace Neo.BlockchainToolkit.Persistence
             checkpointCleanup?.Dispose();
         }
 
-        internal TrackingMap GetTrackingMap(string storeName) => trackingMaps.TryGetValue(storeName, out var map) ? map : EMPTY_TRACKING_MAP;
+        internal TrackingMap GetTrackingMap(string? storeName) 
+            => storeName == null
+                ? defaultTrackingMap 
+                : trackingMaps.TryGetValue(storeName, out var trackingMap) 
+                    ? trackingMap 
+                    : EMPTY_TRACKING_MAP;
 
-        IReadOnlyStore GetReadOnlyStore(string storeName)
-            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(storeName, out var _store))
-                ? _store
+        IReadOnlyStore GetReadOnlyStore(string? storeName)
+            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(storeName, out var store))
+                ? store
                 : NullStore.Instance;
 
-        public IStore GetStore(string storeName)
+        public IStore GetStore(string? storeName)
         {
             return new Store(this, storeName);
         }
 
-        internal ISnapshot GetSnapshot(string storeName)
+        internal ISnapshot GetSnapshot(string? storeName)
         {
             var map = GetTrackingMap(storeName);
             return new CheckpointStorageProvider.Snapshot(this, map, storeName);
         }
 
-        internal byte[]? TryGet(string storeName, byte[]? key) => TryGet(storeName, GetTrackingMap(storeName), key);
+        internal byte[]? TryGet(string? storeName, byte[]? key) => TryGet(storeName, GetTrackingMap(storeName), key);
 
-        internal byte[]? TryGet(string storeName, TrackingMap map, byte[]? key)
+        internal byte[]? TryGet(string? storeName, TrackingMap map, byte[]? key)
         {
             if (map.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
             {
@@ -60,10 +67,10 @@ namespace Neo.BlockchainToolkit.Persistence
             return GetReadOnlyStore(storeName).TryGet(key);
         }
 
-        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string storeName, byte[]? key, SeekDirection direction)
+        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string? storeName, byte[]? key, SeekDirection direction)
             => Seek(storeName, GetTrackingMap(storeName), key, direction);
 
-        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string storeName, TrackingMap map, byte[]? key, SeekDirection direction)
+        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string? storeName, TrackingMap map, byte[]? key, SeekDirection direction)
         {
             key ??= Array.Empty<byte>();
             var comparer = direction == SeekDirection.Forward ? ByteArrayComparer.Default : ByteArrayComparer.Reverse;
@@ -80,21 +87,33 @@ namespace Neo.BlockchainToolkit.Persistence
             return memoryItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
         }
 
-        internal void Update(string storeName, byte[]? key, OneOf<byte[]?, OneOf.Types.None> value)
+        internal void Update(string? storeName, byte[]? key, OneOf<byte[]?, None> value)
         {
-            var trackingMap = trackingMaps.TryGetValue(storeName, out var map) ? map : EMPTY_TRACKING_MAP;
+            var trackingMap = GetTrackingMap(storeName);
             trackingMap = trackingMap.SetItem(key ?? Array.Empty<byte>(), value);
-            trackingMaps = trackingMaps.SetItem(storeName, trackingMap);
+            UpdateTrackingMap(storeName, trackingMap);
         }
 
-        internal void Update(string storeName, TrackingMap changes)
+        internal void Update(string? storeName, TrackingMap changes)
         {
-            var trackingMap = trackingMaps.TryGetValue(storeName, out var map) ? map : EMPTY_TRACKING_MAP;
+            var trackingMap = GetTrackingMap(storeName);
             foreach (var change in changes)
             {
                 trackingMap.SetItem(change.Key, change.Value);
             }
-            trackingMaps = trackingMaps.SetItem(storeName, trackingMap);
+            UpdateTrackingMap(storeName, trackingMap);
+        }
+
+        void UpdateTrackingMap(string? storeName, TrackingMap changes)
+        {
+            if (storeName == null)
+            {
+                defaultTrackingMap = changes;
+            }
+            else
+            {
+                trackingMaps = trackingMaps.SetItem(storeName, changes);
+            }
         }
     }
 }
