@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using Neo.Persistence;
 using OneOf;
+using None = OneOf.Types.None;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -41,7 +42,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Delete(byte[] key)
             {
-                writeBatchMap = writeBatchMap.SetItem(key ?? Array.Empty<byte>(), new OneOf.Types.None());
+                writeBatchMap = writeBatchMap.SetItem(key ?? Array.Empty<byte>(), new None());
             }
 
             public void Commit()

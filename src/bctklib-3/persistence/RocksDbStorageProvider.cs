@@ -5,7 +5,6 @@ using System.IO;
 using System.IO.Compression;
 using Neo.BlockchainToolkit.Models;
 using Neo.Persistence;
-using Neo.Plugins;
 using Neo.Wallets;
 using RocksDbSharp;
 
@@ -18,7 +17,7 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly RocksDb db;
         readonly bool readOnly;
 
-        public RocksDbStorageProvider(RocksDb db, ColumnFamilies columnFamilies, bool readOnly)
+        RocksDbStorageProvider(RocksDb db, ColumnFamilies columnFamilies, bool readOnly)
         {
             this.db = db;
             this.readOnly = readOnly;

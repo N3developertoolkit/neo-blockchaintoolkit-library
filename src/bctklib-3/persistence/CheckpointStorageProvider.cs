@@ -12,8 +12,6 @@ namespace Neo.BlockchainToolkit.Persistence
 
     public partial class CheckpointStorageProvider : IDisposableStorageProvider
     {
-        public delegate bool TryGetStore(string path, [NotNullWhen(true)] out IStore? store);
-
         public readonly static TrackingMap EMPTY_TRACKING_MAP = TrackingMap.Empty.WithComparers(ByteArrayComparer.Default);
 
         readonly RocksDbStorageProvider? rocksDbStorageProvider;
@@ -26,47 +24,46 @@ namespace Neo.BlockchainToolkit.Persistence
             this.checkpointCleanup = checkpointCleanup;
         }
 
-        internal TrackingMap GetTrackingMap(string path) => trackingMaps.TryGetValue(path, out var map) ? map : EMPTY_TRACKING_MAP;
+        public void Dispose()
+        {
+            rocksDbStorageProvider?.Dispose();
+            checkpointCleanup?.Dispose();
+        }
 
-        internal IReadOnlyStore GetReadOnlyStore(string path)
-            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(path, out var _store))
+        internal TrackingMap GetTrackingMap(string storeName) => trackingMaps.TryGetValue(storeName, out var map) ? map : EMPTY_TRACKING_MAP;
+
+        IReadOnlyStore GetReadOnlyStore(string storeName)
+            => (rocksDbStorageProvider != null && rocksDbStorageProvider.TryGetStore(storeName, out var _store))
                 ? _store
                 : NullStore.Instance;
 
-        public IStore GetStore(string path)
+        public IStore GetStore(string storeName)
         {
-            return new Store(this, path);
+            return new Store(this, storeName);
         }
 
-        internal ISnapshot GetSnapshot(string path)
+        internal ISnapshot GetSnapshot(string storeName)
         {
-            var map = GetTrackingMap(path);
-            return new CheckpointStorageProvider.Snapshot(this, map, path);
+            var map = GetTrackingMap(storeName);
+            return new CheckpointStorageProvider.Snapshot(this, map, storeName);
         }
 
-        internal byte[]? TryGet(string path, byte[]? key)
-        {
-            var map = GetTrackingMap(path);
-            return TryGet(path, map, key);
-        }
+        internal byte[]? TryGet(string storeName, byte[]? key) => TryGet(storeName, GetTrackingMap(storeName), key);
 
-        internal byte[]? TryGet(string path, TrackingMap map, byte[]? key)
+        internal byte[]? TryGet(string storeName, TrackingMap map, byte[]? key)
         {
             if (map.TryGetValue(key ?? Array.Empty<byte>(), out var mapValue))
             {
                 return mapValue.Match<byte[]?>(v => v, n => null);
             }
 
-            return GetReadOnlyStore(path).TryGet(key);
+            return GetReadOnlyStore(storeName).TryGet(key);
         }
 
-        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string path, byte[]? key, SeekDirection direction)
-        {
-            var map = GetTrackingMap(path);
-            return Seek(path, map, key, direction);
-        }
+        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string storeName, byte[]? key, SeekDirection direction)
+            => Seek(storeName, GetTrackingMap(storeName), key, direction);
 
-        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string path, TrackingMap map, byte[]? key, SeekDirection direction)
+        internal IEnumerable<(byte[] Key, byte[]? Value)> Seek(string storeName, TrackingMap map, byte[]? key, SeekDirection direction)
         {
             key ??= Array.Empty<byte>();
             var comparer = direction == SeekDirection.Forward ? ByteArrayComparer.Default : ByteArrayComparer.Reverse;
@@ -76,7 +73,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 .Where(kvp => key.Length == 0 || comparer.Compare(kvp.Key, key) >= 0)
                 .Select(kvp => (kvp.Key, Value: kvp.Value.AsT0));
 
-            var storeItems = GetReadOnlyStore(path)
+            var storeItems = GetReadOnlyStore(storeName)
                 .Seek(key, direction)
                 .Where<(byte[] Key, byte[]? Value)>(kvp => !map.ContainsKey(kvp.Key));
 
@@ -98,24 +95,6 @@ namespace Neo.BlockchainToolkit.Persistence
                 trackingMap.SetItem(change.Key, change.Value);
             }
             trackingMaps = trackingMaps.SetItem(storeName, trackingMap);
-        }
-
-
-        public void Dispose()
-        {
-            rocksDbStorageProvider?.Dispose();
-            checkpointCleanup?.Dispose();
-        }
-
-        class NullStore : IReadOnlyStore
-        {
-            public static NullStore Instance = new NullStore();
-
-            private NullStore() { }
-
-            public bool Contains(byte[]? key) => false;
-            public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction) => Enumerable.Empty<(byte[], byte[])>();
-            public byte[]? TryGet(byte[]? key) => null;
         }
     }
 }

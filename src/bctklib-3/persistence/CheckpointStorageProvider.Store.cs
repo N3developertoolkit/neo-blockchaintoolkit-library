@@ -1,14 +1,8 @@
-using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
 using Neo.Persistence;
-using OneOf;
-
+using None = OneOf.Types.None;
 namespace Neo.BlockchainToolkit.Persistence
 {
-    using TrackingMap = ImmutableSortedDictionary<byte[], OneOf<byte[]?, OneOf.Types.None>>;
-
     public partial class CheckpointStorageProvider
     {
         public class Store : IStore
@@ -32,7 +26,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Put(byte[]? key, byte[]? value) => provider.Update(storeName, key, value);
 
-            public void Delete(byte[]? key) => provider.Update(storeName, key, new OneOf.Types.None());
+            public void Delete(byte[]? key) => provider.Update(storeName, key, new None());
 
             public ISnapshot GetSnapshot() => provider.GetSnapshot(storeName);
         }

@@ -62,7 +62,6 @@ namespace Neo.BlockchainToolkit.Persistence
             public void Delete(byte[] key)
             {
                 if (readOnly) throw new InvalidOperationException("read only");
-
                 db.Remove(key ?? Array.Empty<byte>(), columnFamily, writeOptions);
             }
 
