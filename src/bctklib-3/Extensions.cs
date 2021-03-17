@@ -4,9 +4,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
 using Neo.BlockchainToolkit.Models;
+using Neo.BlockchainToolkit.SmartContract;
 using Neo.Cryptography.ECC;
+using Neo.Network.P2P.Payloads;
+using Neo.Persistence;
 using Neo.Wallets;
 using Newtonsoft.Json;
+using TriggerType = Neo.SmartContract.TriggerType;
 
 namespace Neo.BlockchainToolkit
 {
@@ -76,11 +80,19 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, DataCache snapshot)
+            => new TestApplicationEngine(snapshot, chain.GetProtocolSettings());
+
+        public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, DataCache snapshot, UInt160 signer)
+            => new TestApplicationEngine(snapshot, chain.GetProtocolSettings(), signer);
+
+        public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, long gas, Func<byte[], bool>? witnessChecker)
+            => new TestApplicationEngine(trigger, container, snapshot, persistingBlock, chain.GetProtocolSettings(), gas, witnessChecker);
+
         public static ExpressWallet GetWallet(this ExpressChain chain, string name)
-        {
-            if (TryGetWallet(chain, name, out var wallet)) return wallet;
-            throw new Exception($"wallet {name} not found");
-        }
+            => TryGetWallet(chain, name, out var wallet)
+                ? wallet 
+                : throw new Exception($"wallet {name} not found");
 
         public static bool TryGetWallet(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWallet? wallet)
         {
@@ -98,10 +110,14 @@ namespace Neo.BlockchainToolkit
         }
 
         public static ExpressWalletAccount GetDefaultAccount(this ExpressChain chain, string name)
-        {
-            if (TryGetDefaultAccount(chain, name, out var account)) return account;
-            throw new Exception($"default account for {name} wallet not found");
-        }
+            => TryGetDefaultAccount(chain, name, out var account) 
+                ? account 
+                : throw new Exception($"default account for {name} wallet not found");
+
+        public static UInt160 GetDefaultAccountScriptHash(this ExpressChain chain, string name)
+            => TryGetDefaultAccount(chain, name, out var account)
+                ? account.ToScriptHash(chain.AddressVersion)
+                : throw new Exception($"default account for {name} wallet not found");
 
         public static bool TryGetDefaultAccount(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWalletAccount? account)
         {
