@@ -26,5 +26,6 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: ${{ contains(env.NUGET_PACKAGE_VERSION, '-preview') }}
         title: Release ${{ env.NUGET_PACKAGE_VERSION }}
+        automatic_release_tag: ${{ env.NUGET_PACKAGE_VERSION }}
         files: |
           ./out/*
