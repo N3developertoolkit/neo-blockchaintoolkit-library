@@ -91,7 +91,7 @@ namespace Neo.BlockchainToolkit
 
         public static ExpressWallet GetWallet(this ExpressChain chain, string name)
             => TryGetWallet(chain, name, out var wallet)
-                ? wallet 
+                ? wallet
                 : throw new Exception($"wallet {name} not found");
 
         public static bool TryGetWallet(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWallet? wallet)
@@ -110,8 +110,8 @@ namespace Neo.BlockchainToolkit
         }
 
         public static ExpressWalletAccount GetDefaultAccount(this ExpressChain chain, string name)
-            => TryGetDefaultAccount(chain, name, out var account) 
-                ? account 
+            => TryGetDefaultAccount(chain, name, out var account)
+                ? account
                 : throw new Exception($"default account for {name} wallet not found");
 
         public static UInt160 GetDefaultAccountScriptHash(this ExpressChain chain, string name)
