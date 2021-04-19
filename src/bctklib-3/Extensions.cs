@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
@@ -8,6 +9,7 @@ using Neo.BlockchainToolkit.SmartContract;
 using Neo.Cryptography.ECC;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
+using Neo.VM;
 using Neo.Wallets;
 using Newtonsoft.Json;
 using TriggerType = Neo.SmartContract.TriggerType;
@@ -79,6 +81,25 @@ namespace Neo.BlockchainToolkit
             chain = null;
             return false;
         }
+
+        public static IEnumerable<(int address, Instruction instruction)> EnumerateInstructions(this Script script)
+        {
+            var address = 0;
+            var opcode = OpCode.PUSH0;
+            while (address < script.Length)
+            {
+                var instruction = script.GetInstruction(address);
+                opcode = instruction.OpCode;
+                yield return (address, instruction);
+                address += instruction.Size;
+            }
+
+            if (opcode != OpCode.RET)
+            {
+                yield return (address, Instruction.RET);
+            }
+        }
+
 
         public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, DataCache snapshot)
             => new TestApplicationEngine(snapshot, chain.GetProtocolSettings());
