@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -9,6 +7,10 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using OneOf;
+using NotFound = OneOf.Types.NotFound;
 
 namespace Neo.BlockchainToolkit.Models
 {
@@ -161,7 +163,7 @@ namespace Neo.BlockchainToolkit.Models
             return Parse(root, documentResolver);
         }
 
-        public static async Task<DebugInfo> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null)
+        public static async Task<OneOf<DebugInfo, NotFound>> TryLoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null)
         {
             sourceFileMap ??= ImmutableDictionary<string, string>.Empty;
             var debugJsonFileName = Path.ChangeExtension(nefFileName, ".nefdbgnfo");
@@ -179,7 +181,7 @@ namespace Neo.BlockchainToolkit.Models
                 return await LoadAsync(debugJsonStream, sourceFileMap).ConfigureAwait(false);
             }
 
-            throw new ArgumentException($"{nameof(nefFileName)} debug info file doesn't exist");
+            return new NotFound();
         }
     }
 }
