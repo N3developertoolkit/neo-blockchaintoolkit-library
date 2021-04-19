@@ -6,14 +6,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
 using Neo.BlockchainToolkit.Models;
-using Neo.BlockchainToolkit.SmartContract;
 using Neo.Cryptography.ECC;
-using Neo.Network.P2P.Payloads;
-using Neo.Persistence;
 using Neo.VM;
 using Neo.Wallets;
 using Newtonsoft.Json;
-using TriggerType = Neo.SmartContract.TriggerType;
 
 namespace Neo.BlockchainToolkit
 {
@@ -137,10 +133,11 @@ namespace Neo.BlockchainToolkit
             static char GetHexValue(int i) => (i < 10) ? (char)(i + '0') : (char)(i - 10 + 'A');
         }
 
-        public static string GetComment(this Instruction instruction, int ip, IReadOnlyDictionary<uint, string>? sysCallNames = null)
-        {
-            sysCallNames ??= ImmutableDictionary<uint, string>.Empty;
+        static readonly Lazy<IReadOnlyDictionary<uint, string>> sysCallNames = new Lazy<IReadOnlyDictionary<uint, string>>(
+            () => Neo.SmartContract.ApplicationEngine.Services.ToImmutableDictionary(kvp => kvp.Value.Hash, kvp => kvp.Value.Name));
 
+        public static string GetComment(this Instruction instruction, int ip)
+        {
             switch (instruction.OpCode)
             {
                 case OpCode.PUSHINT8:
@@ -165,7 +162,7 @@ namespace Neo.BlockchainToolkit
                         return $"as text: \"{text}\"";
                     }
                 case OpCode.SYSCALL:
-                    return sysCallNames.TryGetValue(instruction.TokenU32, out var name)
+                    return sysCallNames.Value.TryGetValue(instruction.TokenU32, out var name)
                         ? name
                         : $"Unknown SysCall {instruction.TokenU32}";
                 case OpCode.INITSLOT:
@@ -198,15 +195,6 @@ namespace Neo.BlockchainToolkit
 
             string OffsetComment(int offset) => $"pos: {ip + offset}, offset: {offset}";
         }
-
-        public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, DataCache snapshot)
-            => new TestApplicationEngine(snapshot, chain.GetProtocolSettings());
-
-        public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, DataCache snapshot, UInt160 signer)
-            => new TestApplicationEngine(snapshot, chain.GetProtocolSettings(), signer);
-
-        public static TestApplicationEngine GetTestApplicationEngine(this ExpressChain chain, TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, long gas, Func<byte[], bool>? witnessChecker)
-            => new TestApplicationEngine(trigger, container, snapshot, persistingBlock, chain.GetProtocolSettings(), gas, witnessChecker);
 
         public static ExpressWallet GetWallet(this ExpressChain chain, string name)
             => TryGetWallet(chain, name, out var wallet)
