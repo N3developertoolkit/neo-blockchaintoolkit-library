@@ -83,6 +83,20 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        public static string GetInstructionAddressPadding(this Script script)
+        {
+            var digitCount = EnumerateInstructions(script).Last().address switch
+            {
+                var x when x < 10 => 1,
+                var x when x < 100 => 2,
+                var x when x < 1000 => 3,
+                var x when x < 10000 => 4,
+                var x when x < 100000 => 5,
+                _ => throw new Exception("Max script length is 65536 bytes"),
+            };
+            return new string('0', digitCount);
+        }
+
         public static IEnumerable<(int address, Instruction instruction)> EnumerateInstructions(this Script script)
         {
             var address = 0;
