@@ -24,7 +24,7 @@ namespace Neo.BlockchainToolkit
                 ? ProtocolSettings.Default
                 : ProtocolSettings.Default with
                 {
-                    Magic = chain.Magic,
+                    Network = chain.Network,
                     AddressVersion = chain.AddressVersion,
                     MillisecondsPerBlock = secondsPerBlock == 0 ? 15000 : secondsPerBlock * 1000,
                     ValidatorsCount = chain.ConsensusNodes.Count,

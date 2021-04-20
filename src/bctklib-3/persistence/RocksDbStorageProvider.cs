@@ -58,10 +58,10 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
         public void CreateCheckpoint(string checkPointFileName, ProtocolSettings settings, UInt160 scriptHash)
-            => CreateCheckpoint(checkPointFileName, settings.Magic, settings.AddressVersion, scriptHash);
+            => CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
 
         public void CreateCheckpoint(string checkPointFileName, ExpressChain chain, UInt160 scriptHash)
-            => CreateCheckpoint(checkPointFileName, chain.Magic, chain.AddressVersion, scriptHash);
+            => CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
 
         public void CreateCheckpoint(string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
         {
@@ -101,7 +101,7 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, ProtocolSettings settings, UInt160 scriptHash)
-            => RestoreCheckpoint(checkPointArchive, restorePath, settings.Magic, settings.AddressVersion, scriptHash);
+            => RestoreCheckpoint(checkPointArchive, restorePath, settings.Network, settings.AddressVersion, scriptHash);
 
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
         {

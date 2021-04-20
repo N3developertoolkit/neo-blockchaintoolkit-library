@@ -7,28 +7,31 @@ namespace Neo.BlockchainToolkit.Models
 {
     public class ExpressChain
     {
-        private readonly static ImmutableArray<uint> KNOWN_MAGIC_NUMBERS = ImmutableArray.Create<uint>(
+        private readonly static ImmutableHashSet<uint> KNOWN_NETWORK_NUMBERS = ImmutableHashSet.Create<uint>(
             /* Neo 2 MainNet */ 7630401,
             /* Neo 2 TestNet */ 1953787457,
             /* Neo 3 MainNet */ 5195086,
-            /* Neo 3 TestNet */ 1951352142);
+            /* Neo 3 TestNet */ 1951352142,
+            /* Neo 3 RC1 TestNet */ 827601742);
 
-        public static uint GenerateMagicValue()
+        public static uint GenerateNetworkValue()
         {
             var random = new Random();
+            Span<byte> buffer = stackalloc byte[sizeof(uint)];
             while (true)
             {
-                uint magic = (uint)random.Next(int.MaxValue);
+                random.NextBytes(buffer);
+                uint network = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(buffer);
 
-                if (!KNOWN_MAGIC_NUMBERS.Contains(magic))
+                if (network > 0 && !KNOWN_NETWORK_NUMBERS.Contains(network))
                 {
-                    return magic;
+                    return network;
                 }
             }
         }
 
         [JsonProperty("magic")]
-        public uint Magic { get; set; }
+        public uint Network { get; set; }
 
         [JsonProperty("address-version")]
         public byte AddressVersion { get; set; } = ProtocolSettings.Default.AddressVersion;

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using MessagePack;
@@ -74,9 +75,18 @@ namespace Neo.BlockchainToolkit.TraceDebug
                 writer.Write(context.InstructionPointer);
                 writer.Write(context.TryStack?.Any(c => c.HasCatch) == true);
                 stackItemCollectionResolver.Serialize(ref writer, context.EvaluationStack, options);
-                stackItemCollectionResolver.Serialize(ref writer, context.LocalVariables, options);
-                stackItemCollectionResolver.Serialize(ref writer, context.StaticFields, options);
-                stackItemCollectionResolver.Serialize(ref writer, context.Arguments, options);
+                stackItemCollectionResolver.Serialize(
+                    ref writer, 
+                    (IReadOnlyList<StackItem>?)context.LocalVariables ?? Array.Empty<StackItem>(), 
+                    options);
+                stackItemCollectionResolver.Serialize(
+                    ref writer, 
+                    (IReadOnlyList<StackItem>?)context.StaticFields ?? Array.Empty<StackItem>(), 
+                    options);
+                stackItemCollectionResolver.Serialize(
+                    ref writer, 
+                    (IReadOnlyList<StackItem>?)context.Arguments ?? Array.Empty<StackItem>(), 
+                    options);
             }
         }
     }

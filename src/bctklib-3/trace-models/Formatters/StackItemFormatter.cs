@@ -68,7 +68,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     }
                 case StackItemType.Pointer:
                     reader.ReadNil();
-                    return new NeoPointer(null, 0);
+                    return new NeoPointer(Array.Empty<byte>(), 0);
                 case StackItemType.Map:
                     {
                         var map = new NeoMap();
