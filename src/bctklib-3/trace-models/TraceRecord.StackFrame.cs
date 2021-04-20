@@ -75,18 +75,11 @@ namespace Neo.BlockchainToolkit.TraceDebug
                 writer.Write(context.InstructionPointer);
                 writer.Write(context.TryStack?.Any(c => c.HasCatch) == true);
                 stackItemCollectionResolver.Serialize(ref writer, context.EvaluationStack, options);
-                stackItemCollectionResolver.Serialize(
-                    ref writer, 
-                    (IReadOnlyList<StackItem>?)context.LocalVariables ?? Array.Empty<StackItem>(), 
-                    options);
-                stackItemCollectionResolver.Serialize(
-                    ref writer, 
-                    (IReadOnlyList<StackItem>?)context.StaticFields ?? Array.Empty<StackItem>(), 
-                    options);
-                stackItemCollectionResolver.Serialize(
-                    ref writer, 
-                    (IReadOnlyList<StackItem>?)context.Arguments ?? Array.Empty<StackItem>(), 
-                    options);
+                stackItemCollectionResolver.Serialize(ref writer, Coalese(context.LocalVariables), options);
+                stackItemCollectionResolver.Serialize(ref writer, Coalese(context.StaticFields), options);
+                stackItemCollectionResolver.Serialize(ref writer, Coalese(context.Arguments), options);
+
+                static IReadOnlyList<StackItem> Coalese(Neo.VM.Slot? slot) => (slot == null) ? Array.Empty<StackItem>() : slot;
             }
         }
     }
