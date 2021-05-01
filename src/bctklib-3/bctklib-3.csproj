@@ -39,6 +39,6 @@
     <PackageReference Include="Neo" Version="3.0.0-rc2" />
     <PackageReference Include="OneOf" Version="3.0.178" />
     <PackageReference Include="rocksdb" Version="6.17.3.16253" />
-    <PackageReference Include="System.IO.Abstractions" Version="13.2.28" />
+    <PackageReference Include="System.IO.Abstractions" Version="13.2.29" />
   </ItemGroup>
 </Project>
