@@ -72,7 +72,8 @@ namespace Neo.BlockchainToolkit
 
             void EmitAppCall(JObject json)
             {
-                var contract = json.Value<string>("contract");
+                var contract = json.Value<string>("contract")
+                    ?? throw new JsonException("missing contract field");
                 contract = contract.Length > 0 && contract[0] == '#'
                     ? contract[1..] : contract;
 
@@ -125,7 +126,7 @@ namespace Neo.BlockchainToolkit
                         .Select(e => ParseParameter(e))
                         .ToList()
                 },
-                JTokenType.String => ParseStringParameter(json.Value<string>()),
+                JTokenType.String => ParseStringParameter(json.Value<string>() ?? ""),
                 JTokenType.Object => ParseObjectParameter((JObject)json),
                 _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
             };
@@ -236,15 +237,16 @@ namespace Neo.BlockchainToolkit
 
         internal ContractParameter ParseObjectParameter(JObject json)
         {
-            var type = Enum.Parse<ContractParameterType>(json.Value<string>("type"));
-            var valueProp = json["value"] ?? throw new JsonException();
+            var type = Enum.Parse<ContractParameterType>(
+                json.Value<string>("type") ?? throw new JsonException("missing type field"));
+            var valueProp = json["value"] ?? throw new JsonException("missing value vield");
 
             object value = type switch
             {
                 ContractParameterType.Signature => valueProp.Value<string>().HexToBytes(),
                 ContractParameterType.ByteArray => valueProp.Value<string>().HexToBytes(),
                 ContractParameterType.Boolean => valueProp.Value<bool>(),
-                ContractParameterType.Integer => BigInteger.Parse(valueProp.Value<string>()),
+                ContractParameterType.Integer => BigInteger.Parse(valueProp.Value<string>() ?? ""),
                 ContractParameterType.Hash160 => UInt160.Parse(valueProp.Value<string>()),
                 ContractParameterType.Hash256 => UInt256.Parse(valueProp.Value<string>()),
                 ContractParameterType.PublicKey => ECPoint.Parse(valueProp.Value<string>(), ECCurve.Secp256r1),

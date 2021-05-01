@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -94,7 +93,7 @@ namespace Neo.BlockchainToolkit.Models
 
             public string ResolveDocument(JToken token)
             {
-                var document = token.Value<string>();
+                var document = token.Value<string>() ?? "";
                 if (File.Exists(document))
                     return document;
 
@@ -157,12 +156,12 @@ namespace Neo.BlockchainToolkit.Models
 
             static DebugInfo.Event ParseEvent(JToken token)
             {
-                var (ns, name) = SplitComma(token.Value<string>("name"));
+                var (ns, name) = SplitComma(token.Value<string>("name") ?? "");
                 var @params = (token["params"] ?? Enumerable.Empty<JToken>())
-                    .Select(t => SplitComma(t.Value<string>()));
+                    .Select(t => SplitComma(t.Value<string>() ?? ""));
                 return new DebugInfo.Event()
                 {
-                    Id = token.Value<string>("id"),
+                    Id = token.Value<string>("id") ?? "",
                     Name = name,
                     Namespace = ns,
                     Parameters = @params.ToList()
@@ -172,7 +171,7 @@ namespace Neo.BlockchainToolkit.Models
             static DebugInfo.SequencePoint ParseSequencePoint(string value, Regex spRegex)
             {
                 var matches = spRegex.Match(value);
-                Debug.Assert(matches.Groups.Count == 7);
+                if (matches.Groups.Count != 7) throw new ArgumentException(nameof(value));
 
                 int ParseGroup(int i)
                 {
@@ -190,23 +189,23 @@ namespace Neo.BlockchainToolkit.Models
 
             static DebugInfo.Method ParseMethod(JToken token, Regex spRegex)
             {
-                var (ns, name) = SplitComma(token.Value<string>("name"));
-                var @params = (token["params"] ?? Enumerable.Empty<JToken>()).Select(t => SplitComma(t.Value<string>()));
-                var variables = (token["variables"] ?? Enumerable.Empty<JToken>()).Select(t => SplitComma(t.Value<string>()));
+                var (ns, name) = SplitComma(token.Value<string>("name") ?? "");
+                var @params = (token["params"] ?? Enumerable.Empty<JToken>()).Select(t => SplitComma(t.Value<string>() ?? ""));
+                var variables = (token["variables"] ?? Enumerable.Empty<JToken>()).Select(t => SplitComma(t.Value<string>() ?? ""));
                 var sequencePoints = (token["sequence-points"] ?? Enumerable.Empty<JToken>())
-                    .Select(t => ParseSequencePoint(t.Value<string>(), spRegex))
+                    .Select(t => ParseSequencePoint(t.Value<string>() ?? "", spRegex))
                     .OrderBy(sp => sp.Address);
-                var range = token.Value<string>("range").Split('-');
-                Debug.Assert(range.Length == 2);
+                var range = (token.Value<string>("range") ?? "").Split('-');
+                if (range.Length == 2) throw new JsonException("invalid method range property");
 
                 return new DebugInfo.Method()
                 {
-                    Id = token.Value<string>("id"),
+                    Id = token.Value<string>("id") ?? "",
                     Name = name,
                     Namespace = ns,
                     Range = (int.Parse(range[0]), int.Parse(range[1])),
                     Parameters = @params.ToImmutableList(),
-                    ReturnType = token.Value<string>("return"),
+                    ReturnType = token.Value<string>("return") ?? "",
                     Variables = variables.ToImmutableList(),
                     SequencePoints = sequencePoints.ToImmutableList(),
                 };
@@ -215,7 +214,7 @@ namespace Neo.BlockchainToolkit.Models
             static (string, string) SplitComma(string value)
             {
                 var values = value.Split(',');
-                Debug.Assert(values.Length == 2);
+                if (values.Length != 2) throw new ArgumentException(nameof(value));
                 return (values[0], values[1]);
             }
         }
