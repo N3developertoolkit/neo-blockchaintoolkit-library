@@ -72,7 +72,7 @@ namespace Neo.BlockchainToolkit
 
             void EmitAppCall(JObject json)
             {
-                var contract = json.Value<string>("contract") 
+                var contract = json.Value<string>("contract")
                     ?? throw new JsonException("missing contract field");
                 contract = contract.Length > 0 && contract[0] == '#'
                     ? contract[1..] : contract;

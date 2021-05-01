@@ -195,12 +195,12 @@ namespace Neo.BlockchainToolkit.Models
                 var sequencePoints = (token["sequence-points"] ?? Enumerable.Empty<JToken>())
                     .Select(t => ParseSequencePoint(t.Value<string>() ?? "", spRegex))
                     .OrderBy(sp => sp.Address);
-                var range = (token.Value<string>("range")  ?? "").Split('-');
+                var range = (token.Value<string>("range") ?? "").Split('-');
                 if (range.Length == 2) throw new JsonException("invalid method range property");
 
                 return new DebugInfo.Method()
                 {
-                    Id = token.Value<string>("id")  ?? "",
+                    Id = token.Value<string>("id") ?? "",
                     Name = name,
                     Namespace = ns,
                     Range = (int.Parse(range[0]), int.Parse(range[1])),
