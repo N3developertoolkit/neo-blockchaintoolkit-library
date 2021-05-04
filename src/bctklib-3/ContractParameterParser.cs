@@ -134,38 +134,38 @@ namespace Neo.BlockchainToolkit
 
         internal ContractParameter ParseStringParameter(string value)
         {
-            if (value.Length >= 1 && value[0] == '@')
+            if (value.Length >= 1)
             {
                 var substring = value[1..];
 
-                if (tryGetAccount != null && tryGetAccount(substring, out var account))
+                if (value[0] == '@')
                 {
-                    return new ContractParameter(ContractParameterType.Hash160) { Value = account };
+                    if (tryGetAccount != null && tryGetAccount(substring, out var account))
+                    {
+                        return new ContractParameter(ContractParameterType.Hash160) { Value = account };
+                    }
+
+                    if (TryParseAddress(substring, addressVersion, out var address))
+                    {
+                        return new ContractParameter(ContractParameterType.Hash160) { Value = address };
+                    }
                 }
-
-                if (TryParseAddress(substring, addressVersion, out var address))
+                else if (value[0] == '#')
                 {
-                    return new ContractParameter(ContractParameterType.Hash160) { Value = address };
-                }
-            }
+                    if (UInt160.TryParse(substring, out var uint160))
+                    {
+                        return new ContractParameter(ContractParameterType.Hash160) { Value = uint160 };
+                    }
 
-            if (value[0] == '#')
-            {
-                var substring = value[1..];
+                    if (UInt256.TryParse(substring, out var uint256))
+                    {
+                        return new ContractParameter(ContractParameterType.Hash256) { Value = uint256 };
+                    }
 
-                if (UInt160.TryParse(substring, out var uint160))
-                {
-                    return new ContractParameter(ContractParameterType.Hash160) { Value = uint160 };
-                }
-
-                if (UInt256.TryParse(substring, out var uint256))
-                {
-                    return new ContractParameter(ContractParameterType.Hash256) { Value = uint256 };
-                }
-
-                if (TryLoadScriptHash(substring, out var scriptHash))
-                {
-                    return new ContractParameter(ContractParameterType.Hash160) { Value = scriptHash };
+                    if (TryLoadScriptHash(substring, out var scriptHash))
+                    {
+                        return new ContractParameter(ContractParameterType.Hash160) { Value = scriptHash };
+                    }
                 }
             }
 

@@ -24,6 +24,15 @@ namespace test.bctklib3
         }
 
         [Fact]
+        public void TestParseStringParameter_empty_string()
+        {
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
+            var param = parser.ParseStringParameter(string.Empty);
+            param.Type.Should().Be(ContractParameterType.String);
+            param.Value.Should().Be(string.Empty);
+        }
+
+        [Fact]
         public void TestParseStringParameter_at_account()
         {
             const string account = "test-account";
