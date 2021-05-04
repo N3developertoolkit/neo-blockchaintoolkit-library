@@ -24,22 +24,23 @@ namespace Neo.BlockchainToolkit
         private readonly byte addressVersion;
         private readonly TryGetUInt160? tryGetAccount;
         private readonly TryGetUInt160? tryGetContract;
+        private readonly IFileSystem fileSystem;
 
-        public ContractParameterParser(ProtocolSettings protocolSettings, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null)
-            : this(protocolSettings.AddressVersion, tryGetAccount, tryGetContract)
+        public ContractParameterParser(ProtocolSettings protocolSettings, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null, IFileSystem? fileSystem = null)
+            : this(protocolSettings.AddressVersion, tryGetAccount, tryGetContract, fileSystem)
         {
         }
 
-        public ContractParameterParser(byte addressVersion, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null)
+        public ContractParameterParser(byte addressVersion, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null, IFileSystem? fileSystem = null)
         {
             this.addressVersion = addressVersion;
             this.tryGetAccount = tryGetAccount;
             this.tryGetContract = tryGetContract;
+            this.fileSystem = fileSystem ?? new FileSystem();
         }
 
-        public async Task<Script> LoadInvocationScriptAsync(string path, IFileSystem? fileSystem = null)
+        public async Task<Script> LoadInvocationScriptAsync(string path)
         {
-            fileSystem ??= new FileSystem();
             var invokeFile = fileSystem.Path.GetFullPath(path);
             if (!fileSystem.File.Exists(invokeFile)) throw new ArgumentException($"{path} doens't exist", nameof(path));
 
@@ -136,10 +137,10 @@ namespace Neo.BlockchainToolkit
         {
             if (value.Length >= 1)
             {
-                var substring = value[1..];
-
                 if (value[0] == '@')
                 {
+                    var substring = value[1..];
+
                     if (tryGetAccount != null && tryGetAccount(substring, out var account))
                     {
                         return new ContractParameter(ContractParameterType.Hash160) { Value = account };
@@ -152,6 +153,8 @@ namespace Neo.BlockchainToolkit
                 }
                 else if (value[0] == '#')
                 {
+                    var substring = value[1..];
+
                     if (UInt160.TryParse(substring, out var uint160))
                     {
                         return new ContractParameter(ContractParameterType.Hash160) { Value = uint160 };
@@ -167,6 +170,20 @@ namespace Neo.BlockchainToolkit
                         return new ContractParameter(ContractParameterType.Hash160) { Value = scriptHash };
                     }
                 }
+            }
+
+            if (Uri.TryCreate(value, UriKind.Absolute, out var uri)
+                && uri.IsFile)
+            {
+                if (!fileSystem.File.Exists(uri.AbsolutePath))
+                {
+                    throw new System.IO.FileNotFoundException(null, uri.AbsolutePath);
+                }
+
+                return new ContractParameter(ContractParameterType.ByteArray)
+                {
+                    Value = fileSystem.File.ReadAllBytes(uri.AbsolutePath)
+                };
             }
 
             if (TryParseHexString(value, out var byteArray))
