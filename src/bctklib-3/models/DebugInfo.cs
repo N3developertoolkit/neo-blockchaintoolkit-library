@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -196,7 +196,7 @@ namespace Neo.BlockchainToolkit.Models
                     .Select(t => ParseSequencePoint(t.Value<string>() ?? "", spRegex))
                     .OrderBy(sp => sp.Address);
                 var range = (token.Value<string>("range") ?? "").Split('-');
-                if (range.Length == 2) throw new JsonException("invalid method range property");
+                if (range.Length != 2) throw new JsonException("invalid method range property");
 
                 return new DebugInfo.Method()
                 {
