@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
+using System.IO.Abstractions;
 using System.IO.Compression;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -20,30 +20,32 @@ namespace Neo.BlockchainToolkit.Models
         public IReadOnlyList<Method> Methods { get; set; } = ImmutableList<Method>.Empty;
         public IReadOnlyList<Event> Events { get; set; } = ImmutableList<Event>.Empty;
 
-        public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null)
+        public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
         {
+            fileSystem ??= new FileSystem();
             sourceFileMap ??= ImmutableDictionary<string, string>.Empty;
-            var debugJsonFileName = Path.ChangeExtension(nefFileName, ".nefdbgnfo");
-            if (File.Exists(debugJsonFileName))
+            var debugJsonFileName = fileSystem.Path.ChangeExtension(nefFileName, ".nefdbgnfo");
+            if (fileSystem.File.Exists(debugJsonFileName))
             {
-                using var avmDbgNfoFile = ZipFile.OpenRead(debugJsonFileName);
-                using var debugJsonStream = avmDbgNfoFile.Entries[0].Open();
-                return await LoadAsync(debugJsonStream, sourceFileMap).ConfigureAwait(false);
+                using var archiveStream = fileSystem.File.OpenRead(debugJsonFileName);
+                using var archive = new ZipArchive(archiveStream);
+                using var debugJsonStream = archive.Entries[0].Open();
+                return await LoadAsync(debugJsonStream, sourceFileMap, fileSystem).ConfigureAwait(false);
             }
 
-            debugJsonFileName = Path.ChangeExtension(nefFileName, ".debug.json");
-            if (File.Exists(debugJsonFileName))
+            debugJsonFileName = fileSystem.Path.ChangeExtension(nefFileName, ".debug.json");
+            if (fileSystem.File.Exists(debugJsonFileName))
             {
-                using var debugJsonStream = File.OpenRead(debugJsonFileName);
-                return await LoadAsync(debugJsonStream, sourceFileMap).ConfigureAwait(false);
+                using var debugJsonStream = fileSystem.File.OpenRead(debugJsonFileName);
+                return await LoadAsync(debugJsonStream, sourceFileMap, fileSystem).ConfigureAwait(false);
             }
 
             return new NotFound();
 
-            static async Task<DebugInfo> LoadAsync(Stream stream, IReadOnlyDictionary<string, string> sourceFileMap)
+            static async Task<DebugInfo> LoadAsync(System.IO.Stream stream, IReadOnlyDictionary<string, string> sourceFileMap, IFileSystem fileSystem)
             {
-                var documentResolver = new DocumentResolver(sourceFileMap);
-                using var streamReader = new StreamReader(stream);
+                var documentResolver = new DocumentResolver(sourceFileMap, fileSystem);
+                using var streamReader = new System.IO.StreamReader(stream);
                 using var jsonReader = new JsonTextReader(streamReader);
                 var root = await JObject.LoadAsync(jsonReader).ConfigureAwait(false);
                 return Parse(root, documentResolver);
@@ -84,36 +86,40 @@ namespace Neo.BlockchainToolkit.Models
 
         class DocumentResolver
         {
-            private readonly Dictionary<string, string> folderMap;
+            readonly Dictionary<string, string> folderMap;
+            readonly IFileSystem fileSystem;
 
-            public DocumentResolver(IReadOnlyDictionary<string, string> sourceFileMap)
+            public DocumentResolver(IReadOnlyDictionary<string, string> sourceFileMap, IFileSystem fileSystem)
             {
                 folderMap = sourceFileMap.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                this.fileSystem = fileSystem;
             }
 
             public string ResolveDocument(JToken token)
             {
-                var document = token.Value<string>() ?? "";
-                if (File.Exists(document))
-                    return document;
+                var _document = token.Value<string>() ?? "";
+                if (fileSystem.File.Exists(_document))
+                {
+                    return _document ;
+                }
 
                 foreach (var kvp in folderMap)
                 {
-                    if (document.StartsWith(kvp.Key))
+                    if (_document.StartsWith(kvp.Key))
                     {
-                        var mapDocument = Path.Join(kvp.Value, document.Substring(kvp.Key.Length));
-                        if (File.Exists(mapDocument))
+                        var mapDocument = fileSystem.Path.Join(kvp.Value, _document.Substring(kvp.Key.Length));
+                        if (fileSystem.File.Exists(mapDocument))
                         {
                             return mapDocument;
                         }
                     }
                 }
 
-                var cwd = Environment.CurrentDirectory;
-                var cwdDocument = Path.Join(cwd, Path.GetFileName(document));
-                if (File.Exists(cwdDocument))
+                var cwd = fileSystem.Directory.GetCurrentDirectory();
+                var cwdDocument = fileSystem.Path.Join(cwd, fileSystem.Path.GetFileName(_document));
+                if (fileSystem.File.Exists(cwdDocument))
                 {
-                    var directoryName = Path.GetDirectoryName(document);
+                    var directoryName = fileSystem.Path.GetDirectoryName(_document);
                     if (directoryName != null)
                     {
                         folderMap.Add(directoryName, cwd);
@@ -122,18 +128,20 @@ namespace Neo.BlockchainToolkit.Models
                     return cwdDocument;
                 }
 
-                var folderName = Path.GetFileName(cwd);
-                var folderIndex = document.IndexOf(folderName);
+                var folderName = fileSystem.Path.GetFileName(cwd);
+                var folderIndex = _document.IndexOf(folderName);
                 if (folderIndex >= 0)
                 {
-                    var relPath = document.Substring(folderIndex + folderName.Length);
-                    var newPath = Path.GetFullPath(Path.Join(cwd, relPath));
+                    var relPath = _document.Substring(folderIndex + folderName.Length);
+                    var newPath = fileSystem.Path.GetFullPath(fileSystem.Path.Join(cwd, relPath));
 
-                    if (File.Exists(newPath))
+                    if (fileSystem.File.Exists(newPath))
+                    {
                         return newPath;
+                    }
                 }
 
-                throw new FileNotFoundException($"could not load {document}");
+                return _document;
             }
         }
 
