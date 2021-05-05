@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Abstractions.TestingHelpers;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Neo;
@@ -51,7 +53,7 @@ namespace test.bctklib3
         public void TestParseStringParameter_at_account_missing()
         {
             const string account = "test-account";
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter($"@{account}");
             param.Type.Should().Be(ContractParameterType.String);
             param.Value.Should().Be($"@{account}");
@@ -62,7 +64,7 @@ namespace test.bctklib3
         {
             var expectedValue = UInt160.Parse("30f41a14ca6019038b055b585d002b287b5fdd47");
             var address = Neo.Wallets.Helper.ToAddress(expectedValue, DEFAULT_ADDRESS_VERSION);
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter($"@{address}");
             param.Type.Should().Be(ContractParameterType.Hash160);
             param.Value.Should().Be(expectedValue);
@@ -76,7 +78,7 @@ namespace test.bctklib3
             var address = Neo.Wallets.Helper.ToAddress(uint160, DEFAULT_ADDRESS_VERSION);
             var expected = "@" + address.Substring(0, address.Length - 1);
 
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter(expected);
             param.Type.Should().Be(ContractParameterType.String);
             param.Value.Should().Be(expected);
@@ -86,7 +88,7 @@ namespace test.bctklib3
         public void TestParseStringParameter_hash_uint160()
         {
             const string hashString = "30f41a14ca6019038b055b585d002b287b5fdd47";
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter($"#{hashString}");
             param.Type.Should().Be(ContractParameterType.Hash160);
             param.Value.Should().Be(UInt160.Parse(hashString));
@@ -96,7 +98,7 @@ namespace test.bctklib3
         public void TestParseStringParameter_hash_uint160_fail()
         {
             const string hashString = "#30f41a14ca6019038b055b585d002b287b5fdd4";
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter(hashString);
             param.Type.Should().Be(ContractParameterType.String);
             param.Value.Should().Be(hashString);
@@ -106,7 +108,7 @@ namespace test.bctklib3
         public void TestParseStringParameter_hash_uint256()
         {
             const string hashString = "0a372ac8f778eeebb1ccdbb250fe596b83d1d1b9f366d71dfd4c53956bed5cce";
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter($"#{hashString}");
             param.Type.Should().Be(ContractParameterType.Hash256);
             param.Value.Should().Be(UInt256.Parse(hashString));
@@ -116,7 +118,7 @@ namespace test.bctklib3
         public void TestParseStringParameter_hash_uint256_fail()
         {
             const string hashString = "#a372ac8f778eeebb1ccdbb250fe596b83d1d1b9f366d71dfd4c53956bed5cce";
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter(hashString);
             param.Type.Should().Be(ContractParameterType.String);
             param.Value.Should().Be(hashString);
@@ -148,7 +150,7 @@ namespace test.bctklib3
         [Fact]
         public void TestParseStringParameter_hash_script_native_case_match()
         {
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter("#OracleContract");
             param.Type.Should().Be(ContractParameterType.Hash160);
             param.Value.Should().Be(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
@@ -157,7 +159,7 @@ namespace test.bctklib3
         [Fact]
         public void TestParseStringParameter_hash_script_native_case_mismatch()
         {
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter("#oraclecontract");
             param.Type.Should().Be(ContractParameterType.Hash160);
             param.Value.Should().Be(Neo.SmartContract.Native.NativeContract.Oracle.Hash);
@@ -176,10 +178,40 @@ namespace test.bctklib3
                 0x19, 0x1a, 0x1b, 0x1c,
                 0x1d, 0x1e, 0x1f, 0x20 };
 
-            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, null, null);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter($"0x{expectedValue.ToHexString()}");
             param.Type.Should().Be(ContractParameterType.ByteArray);
             param.Value.Should().BeEquivalentTo(expectedValue);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri()
+        {
+            const string PATH = @"c:\some\fake\path\file.txt";
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
+                { PATH, mockFile },
+            });
+
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var param = parser.ParseStringParameter($"file://{PATH}");
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri_not_found()
+        {
+            const string PATH = @"c:\some\fake\path\file.txt";
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData> { });
+
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var exception = Assert.Throws<FileNotFoundException>(() => parser.ParseStringParameter($"file://{PATH}"));
+
+            // only check file name due to forward/back slash changes
+            Assert.Equal(Path.GetFileName(PATH), Path.GetFileName(exception.FileName));
         }
     }
 }
