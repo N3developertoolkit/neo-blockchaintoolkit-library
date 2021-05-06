@@ -82,7 +82,7 @@ namespace Neo.BlockchainToolkit
                     ? value
                     : UInt160.TryParse(contract, out var uint160)
                         ? uint160
-                        : throw new FormatException($"Invalid contract value \"{json.Value<string>("contract")}\"");
+                        : throw new InvalidOperationException($"contract \"{contract}\" not found");
 
                 var operation = json.Value<string>("operation");
                 var args = json.TryGetValue("args", out var jsonArgs)
