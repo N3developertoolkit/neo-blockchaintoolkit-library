@@ -16,6 +16,8 @@ namespace test.bctklib3
 {
     public class DebugInfoTest
     {
+        const string TEST_HASH = "0xf69e5188632deb3a9273519efc86cb68da8d42b8";
+
         [Fact]
         public async Task can_load_debug_json()
         {
@@ -57,15 +59,15 @@ namespace test.bctklib3
         [Fact]
         public void can_load_minimal_debug_info()
         {
-            var hash = "0xf69e5188632deb3a9273519efc86cb68da8d42b8";
-
-            var json = new JObject(
-                new JProperty("hash", hash));
+            var json = new JObject(new JProperty("hash", TEST_HASH));
 
             var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
-            Assert.Equal(UInt160.Parse(hash), debugInfo.ScriptHash);
+            Assert.Equal(UInt160.Parse(TEST_HASH), debugInfo.ScriptHash);
+            Assert.Empty(debugInfo.Documents);
+            Assert.Empty(debugInfo.Events);
+            Assert.Empty(debugInfo.Methods);
+            Assert.Empty(debugInfo.StaticVariables);
         }
-
 
         [Fact]
         public void cant_load_debug_info_without_hash()
@@ -136,6 +138,29 @@ namespace test.bctklib3
             var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
 
             Assert.Equal(@"c:\src\Apoc.cs", actual);
+        }
+
+        [Fact]
+        public void can_parse_static_variables()
+        {
+            var json = new JObject(
+                new JProperty("hash", TEST_HASH),
+                new JProperty("static-variables", 
+                    new JArray(
+                        "testStatic1,String", 
+                        "testStatic2,Hash160")));
+
+            var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
+
+            Assert.Collection(debugInfo.StaticVariables,
+                s => {
+                    Assert.Equal("testStatic1", s.Name);
+                    Assert.Equal("String", s.Type);
+                },
+                s => {
+                    Assert.Equal("testStatic2", s.Name);
+                    Assert.Equal("Hash160", s.Type);
+                });
         }
 
         static byte[] CreateCompressedDebugInfo(string contractName, string debugInfo)

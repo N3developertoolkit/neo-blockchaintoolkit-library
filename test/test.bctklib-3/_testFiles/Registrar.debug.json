@@ -3,6 +3,10 @@
     "documents": [
         "C:\\Users\\harry\\Source\\neo\\seattle\\samples\\registrar-sample\\src\\Registrar.cs"
     ],
+    "static-variables": [
+        "staticvar1,String",
+        "anotherStaticVar,Hash160"
+    ],
     "methods": [
         {
             "id": "DevHawk.Contracts.Registrar.Query(string)",
