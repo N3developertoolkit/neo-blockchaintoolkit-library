@@ -19,11 +19,13 @@ namespace Neo.BlockchainToolkit.Models
         public IReadOnlyList<string> Documents { get; set; } = ImmutableList<string>.Empty;
         public IReadOnlyList<Method> Methods { get; set; } = ImmutableList<Method>.Empty;
         public IReadOnlyList<Event> Events { get; set; } = ImmutableList<Event>.Empty;
+        public IReadOnlyList<(string Name, string Type)> StaticVariables { get; set; } = ImmutableList<(string, string)>.Empty;
 
         public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
         {
             fileSystem ??= new FileSystem();
             sourceFileMap ??= ImmutableDictionary<string, string>.Empty;
+
             var debugJsonFileName = fileSystem.Path.ChangeExtension(nefFileName, ".nefdbgnfo");
             if (fileSystem.File.Exists(debugJsonFileName))
             {
@@ -41,15 +43,15 @@ namespace Neo.BlockchainToolkit.Models
             }
 
             return new NotFound();
+        }
 
-            static async Task<DebugInfo> LoadAsync(System.IO.Stream stream, IReadOnlyDictionary<string, string> sourceFileMap, IFileSystem fileSystem)
-            {
-                var documentResolver = new DocumentResolver(sourceFileMap, fileSystem);
-                using var streamReader = new System.IO.StreamReader(stream);
-                using var jsonReader = new JsonTextReader(streamReader);
-                var root = await JObject.LoadAsync(jsonReader).ConfigureAwait(false);
-                return Parse(root, documentResolver);
-            }
+        internal static async Task<DebugInfo> LoadAsync(System.IO.Stream stream, IReadOnlyDictionary<string, string> sourceFileMap, IFileSystem fileSystem)
+        {
+            var documentResolver = new DocumentResolver(sourceFileMap, fileSystem);
+            using var streamReader = new System.IO.StreamReader(stream);
+            using var jsonReader = new JsonTextReader(streamReader);
+            var root = await JObject.LoadAsync(jsonReader).ConfigureAwait(false);
+            return Load(root, documentResolver.ResolveDocument);
         }
 
         public class Method
@@ -84,7 +86,7 @@ namespace Neo.BlockchainToolkit.Models
             public (int line, int column) End { get; set; }
         }
 
-        class DocumentResolver
+        internal class DocumentResolver
         {
             readonly Dictionary<string, string> folderMap;
             readonly IFileSystem fileSystem;
@@ -145,14 +147,20 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        private static DebugInfo Parse(JObject json, DocumentResolver documentResolver)
+        static Lazy<Regex> spRegex = new Lazy<Regex>(() => new Regex(@"^(\d+)\[(\d+)\](\d+)\:(\d+)\-(\d+)\:(\d+)$"));
+
+        internal static DebugInfo Load(JObject json, Func<JToken,string> funcResolveDocument)
         {
-            var hash = Neo.UInt160.Parse(json.Value<string>("hash"));
-            var documents = (json["documents"] ?? Enumerable.Empty<JToken>())
-                .Select(documentResolver.ResolveDocument).ToImmutableList();
-            var events = (json["events"] ?? Enumerable.Empty<JToken>()).Select(ParseEvent).ToImmutableList();
-            var spRegex = new Regex(@"^(\d+)\[(\d+)\](\d+)\:(\d+)\-(\d+)\:(\d+)$");
-            var methods = (json["methods"] ?? Enumerable.Empty<JToken>()).Select(t => ParseMethod(t, spRegex)).ToImmutableList();
+            var hash = json.TryGetValue("hash", out var hashToken)
+                ? UInt160.TryParse(hashToken.ToObject<string>(), out var _hash)
+                    ? _hash
+                    : throw new FormatException("Invalid hash value")
+                : throw new FormatException("Missing hash value");
+
+            var documents = EnumToken(json, "documents").Select(funcResolveDocument).ToImmutableList();
+            var events = EnumToken(json, "events").Select(ParseEvent).ToImmutableList();
+            var methods = EnumToken(json, "methods").Select(ParseMethod).ToImmutableList();
+            var staticVars = EnumToken(json, "static-variables").Select(ParseType).ToImmutableList();
 
             return new DebugInfo
             {
@@ -160,30 +168,45 @@ namespace Neo.BlockchainToolkit.Models
                 Documents = documents,
                 Methods = methods,
                 Events = events,
+                StaticVariables = staticVars,
             };
+
+            static (string, string) ParseType(JToken token)
+            {
+                var value = token.Value<string>() ?? throw new FormatException("invalid type token");
+                if (TrySplitComma(value, out var splitValues)) return splitValues;
+                throw new FormatException($"invalid type string \"{value}\"");
+            }
 
             static DebugInfo.Event ParseEvent(JToken token)
             {
-                var (ns, name) = SplitComma(token.Value<string>("name") ?? "");
-                var @params = (token["params"] ?? Enumerable.Empty<JToken>())
-                    .Select(t => SplitComma(t.Value<string>() ?? ""));
+                var id = token.Value<string>("id") ?? throw new FormatException("Invalid event id");
+                var nameValue = token.Value<string>("name") ?? throw new FormatException("Invalid event name");
+                var (ns, name) = TrySplitComma(nameValue, out var _name)
+                    ? _name
+                    : throw new FormatException("Invalid name string \"{value}\"");
+                var @params = EnumToken(token, "params").Select(ParseType).ToImmutableList();
+
                 return new DebugInfo.Event()
                 {
-                    Id = token.Value<string>("id") ?? "",
+                    Id = id,
                     Name = name,
                     Namespace = ns,
-                    Parameters = @params.ToList()
+                    Parameters = @params,
                 };
             }
 
-            static DebugInfo.SequencePoint ParseSequencePoint(string value, Regex spRegex)
+            static DebugInfo.SequencePoint ParseSequencePoint(JToken token)
             {
-                var matches = spRegex.Match(value);
-                if (matches.Groups.Count != 7) throw new ArgumentException(nameof(value));
+                var value = token.Value<string>() ?? throw new FormatException("invalid Sequence Point token");
+                var matches = spRegex.Value.Match(value);
+                if (matches.Groups.Count != 7) throw new FormatException($"Invalid Sequence Point \"{value}\"");
 
                 int ParseGroup(int i)
                 {
-                    return int.Parse(matches.Groups[i].Value);
+                    return int.TryParse(matches.Groups[i].Value, out var value)
+                        ? value
+                        : throw new FormatException($"Invalid Sequence Point \"{value}\"");
                 }
 
                 return new DebugInfo.SequencePoint
@@ -195,35 +218,58 @@ namespace Neo.BlockchainToolkit.Models
                 };
             }
 
-            static DebugInfo.Method ParseMethod(JToken token, Regex spRegex)
+            static DebugInfo.Method ParseMethod(JToken token)
             {
-                var (ns, name) = SplitComma(token.Value<string>("name") ?? "");
-                var @params = (token["params"] ?? Enumerable.Empty<JToken>()).Select(t => SplitComma(t.Value<string>() ?? ""));
-                var variables = (token["variables"] ?? Enumerable.Empty<JToken>()).Select(t => SplitComma(t.Value<string>() ?? ""));
-                var sequencePoints = (token["sequence-points"] ?? Enumerable.Empty<JToken>())
-                    .Select(t => ParseSequencePoint(t.Value<string>() ?? "", spRegex))
-                    .OrderBy(sp => sp.Address);
-                var range = (token.Value<string>("range") ?? "").Split('-');
-                if (range.Length != 2) throw new JsonException("invalid method range property");
+                var id = token.Value<string>("id") ?? throw new FormatException("Invalid method id");
+                var @return = token.Value<string>("return") ?? "Void";
+                var @params = EnumToken(token, "params").Select(ParseType).ToImmutableList();
+                var variables = EnumToken(token, "variables").Select(ParseType).ToImmutableList();
+                var sequencePoints = EnumToken(token, "sequence-points").Select(ParseSequencePoint).ToImmutableList();
+
+                var nameValue = token.Value<string>("name") ?? throw new FormatException("Invalid method name");
+                (string ns, string name) nameTuple = TrySplitComma(nameValue, out var _name)
+                    ? _name
+                    : throw new FormatException($"Invalid name string \"{nameValue}\"");
+
+                var rangeValue = token.Value<string>("range") ?? throw new FormatException("Invalid method range");
+                var rangeSplitValues = rangeValue.Split('-');
+                if (rangeSplitValues.Length != 2) throw new FormatException($"Invalid range string \"{rangeValue}\"");
+                var rangeStart = int.TryParse(rangeSplitValues[0], out var _start)
+                    ? _start
+                    : throw new FormatException($"Invalid range string \"{rangeValue}\"");
+                var rangeEnd = int.TryParse(rangeSplitValues[1], out var _end)
+                    ? _end
+                    : throw new FormatException($"Invalid range string \"{rangeValue}\"");
 
                 return new DebugInfo.Method()
                 {
-                    Id = token.Value<string>("id") ?? "",
-                    Name = name,
-                    Namespace = ns,
-                    Range = (int.Parse(range[0]), int.Parse(range[1])),
-                    Parameters = @params.ToImmutableList(),
-                    ReturnType = token.Value<string>("return") ?? "",
+                    Id = id,
+                    Name = nameTuple.name,
+                    Namespace = nameTuple.ns,
+                    Range = (rangeStart, rangeEnd),
+                    Parameters = @params,
+                    ReturnType = @return,
                     Variables = variables.ToImmutableList(),
                     SequencePoints = sequencePoints.ToImmutableList(),
                 };
             }
 
-            static (string, string) SplitComma(string value)
+            static IEnumerable<JToken> EnumToken(JToken token, string propertyName)
+            {
+                return token[propertyName] ?? Enumerable.Empty<JToken>();
+            }
+
+            static bool TrySplitComma(string value, out (string, string) splitValues)
             {
                 var values = value.Split(',');
-                if (values.Length != 2) throw new ArgumentException(nameof(value));
-                return (values[0], values[1]);
+                if (values.Length == 2)
+                {
+                    splitValues = (values[0], values[1]);
+                    return true;
+                }
+
+                splitValues = default;
+                return false;
             }
         }
     }
