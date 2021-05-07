@@ -1,9 +1,14 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.IO.Compression;
 using System.Threading.Tasks;
+using Neo;
 using Neo.BlockchainToolkit.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 
@@ -11,39 +16,28 @@ namespace test.bctklib3
 {
     public class DebugInfoTest
     {
-        const string DEBUG_INFO = @"{""hash"":""0xbda6737a03e308a4b024aa92fbc6587b4dd2c337"",""documents"":[""c:\\Users\\harry\\Source\\neo\\seattle\\samples\\token-sample\\src\\Apoc.Crowdsale.cs"",""c:\\Users\\harry\\Source\\neo\\seattle\\samples\\token-sample\\src\\Apoc.cs""],""methods"":[{""id"":""DevHawk.Contracts.ApocToken.OnPayment(Neo.UInt160, System.Numerics.BigInteger, object)"",""name"":""DevHawk.Contracts.ApocToken,OnPayment"",""range"":""0-203"",""params"":[""from,Hash160"",""amount,Integer"",""data,Any""],""return"":""Void"",""variables"":[],""sequence-points"":[""3[0]13:9-13:10"",""4[0]14:17-14:48"",""14[0]15:13-15:14""]},{""id"":""DevHawk.Contracts.AssetStorage.GetPaymentStatus()"",""name"":""DevHawk.Contracts.AssetStorage,GetPaymentStatus"",""range"":""204-249"",""params"":[],""return"":""Boolean"",""variables"":[],""sequence-points"":[""204[1]31:9-31:10"",""205[1]32:13-32:106"",""249[1]33:9-33:10""]}],""events"":[{""id"":""Transfer"",""name"":""DevHawk.Contracts.ApocToken,OnTransfer"",""params"":[""arg1,Hash160"",""arg2,Hash160"",""arg3,Integer""]}]}";
-
         [Fact]
         public async Task can_load_debug_json()
         {
+            var debugInfoJson = GetResource("Registrar.debug.json");
             var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
             {
                 { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(DEBUG_INFO) },
+                { @"c:\fakeContract.debug.json", new MockFileData(debugInfoJson) },
             });
             var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
-        static MockFileData CreateCompressedDebugInfo(string contractName, string debugInfo)
-        {
-            var jsonDebugInfo = Neo.IO.Json.JObject.Parse(debugInfo);
-            using var memoryStream = new MemoryStream();
-            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
-            {
-                using var stream = archive.CreateEntry($"{contractName}.debug.json").Open();
-                stream.Write(jsonDebugInfo.ToByteArray(false));
-            }
-            return new MockFileData(memoryStream.ToArray());
-        }
-
         [Fact]
         public async Task can_load_nefdbgnfo()
         {
+            var debugInfoJson = GetResource("Registrar.debug.json");
+            var compressedDebugInfo = CreateCompressedDebugInfo("fakeContract", debugInfoJson);
             var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
             {
                 { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.nefdbgnfo", CreateCompressedDebugInfo("fakeContract", DEBUG_INFO) },
+                { @"c:\fakeContract.nefdbgnfo", new MockFileData(compressedDebugInfo) },
             });
             var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
             Assert.True(debugInfo.IsT0);
@@ -61,79 +55,109 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public async Task resolve_source_current_directory()
+        public void can_load_minimal_debug_info()
         {
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(DEBUG_INFO) },
-                { @"c:\src\Apoc.cs", new MockFileData("") },
-                { @"c:\src\Apoc.Crowdsale.cs", new MockFileData("") },
-            }, @"c:\src");
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
-            Assert.True(debugInfo.IsT0);
+            var hash = "0xf69e5188632deb3a9273519efc86cb68da8d42b8";
 
-            Assert.Collection(debugInfo.AsT0.Documents,
-                d => Assert.Equal(@"c:\src\Apoc.Crowdsale.cs", d),
-                d => Assert.Equal(@"c:\src\Apoc.cs", d));
+            var json = new JObject(
+                new JProperty("hash", hash));
+
+            var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
+            Assert.Equal(UInt160.Parse(hash), debugInfo.ScriptHash);
+        }
+
+
+        [Fact]
+        public void cant_load_debug_info_without_hash()
+        {
+            var debugInfoJson = GetResource("Registrar.debug.json");
+            var json = JObject.Parse(debugInfoJson);
+            json.Remove("hash");
+
+            var ex = Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
+            Assert.Equal("Missing hash value", ex.Message);
         }
 
         [Fact]
-        public async Task resolve_source_files_exist()
+        public void resolve_source_current_directory()
         {
             var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
             {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(DEBUG_INFO) },
+                { @"c:\src\Apoc.cs", new MockFileData("") },
+                { @"c:\src\Apoc.Crowdsale.cs", new MockFileData("") },
+            }, @"c:\src");
+            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
+
+            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
+
+            Assert.Equal(@"c:\src\Apoc.cs", actual);
+        }
+
+        [Fact]
+        public void resolve_source_files_exist()
+        {
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
                 { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", new MockFileData("") },
-                { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.Crowdsale.cs", new MockFileData("") },
             }, @"c:\src");
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
-            Assert.True(debugInfo.IsT0);
+            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
 
-            Assert.Collection(debugInfo.AsT0.Documents,
-                d => Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.Crowdsale.cs", d),
-                d => Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", d));
+            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
+
+            Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", actual);
         }
 
         [Fact]
-        public async Task resolve_source_files_dont_exist()
+        public void resolve_source_files_dont_exist()
         {
             var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
             {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(DEBUG_INFO) },
             }, @"c:\src");
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
-            Assert.True(debugInfo.IsT0);
+            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
 
-            Assert.Collection(debugInfo.AsT0.Documents,
-                d => Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.Crowdsale.cs", d),
-                d => Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", d));
+            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
+
+            Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", actual);
         }
 
         [Fact]
-        public async Task resolve_source_via_map()
+        public void resolve_source_via_map()
         {
             var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
             {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(DEBUG_INFO) },
                 { @"c:\src\Apoc.cs", new MockFileData("") },
-                { @"c:\src\Apoc.Crowdsale.cs", new MockFileData("") },
             });
-
             var sourceMap = new Dictionary<string, string>
             {
                 { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src", @"c:\src"}
             };
+            var resolver = new DebugInfo.DocumentResolver(sourceMap, fileSystem);
 
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", sourceMap, fileSystem);
-            Assert.True(debugInfo.IsT0);
+            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
 
-            Assert.Collection(debugInfo.AsT0.Documents,
-                d => Assert.Equal(@"c:\src\Apoc.Crowdsale.cs", d),
-                d => Assert.Equal(@"c:\src\Apoc.cs", d));
+            Assert.Equal(@"c:\src\Apoc.cs", actual);
+        }
+
+        static byte[] CreateCompressedDebugInfo(string contractName, string debugInfo)
+        {
+            var jsonDebugInfo = Neo.IO.Json.JObject.Parse(debugInfo);
+            using var memoryStream = new MemoryStream();
+            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+            {
+                using var stream = archive.CreateEntry($"{contractName}.debug.json").Open();
+                stream.Write(jsonDebugInfo.ToByteArray(false));
+            }
+            return memoryStream.ToArray();
+        }
+
+        static string GetResource(string name)
+        {
+            var assembly = typeof(DebugInfoTest).Assembly;
+            using var resource = assembly.GetManifestResourceStream(name)
+                ?? assembly.GetManifestResourceStream($"test.bctklib-3._testFiles.{name}")
+                ?? throw new FileNotFoundException();
+            using var streamReader = new System.IO.StreamReader(resource);
+            return streamReader.ReadToEnd();
         }
     }
 }
