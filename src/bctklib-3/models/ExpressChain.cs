@@ -12,7 +12,8 @@ namespace Neo.BlockchainToolkit.Models
             /* Neo 2 TestNet */ 1953787457,
             /* Neo 3 MainNet */ 5195086,
             /* Neo 3 TestNet */ 1951352142,
-            /* Neo 3 RC1 TestNet */ 827601742);
+            /* Neo 3 RC1 TestNet */ 827601742,
+            /* Neo 3 RC2 TestNet */ 844378958);
 
         public static uint GenerateNetworkValue()
         {
