@@ -172,17 +172,21 @@ namespace Neo.BlockchainToolkit
                 }
             }
 
-            if (Uri.TryCreate(value, UriKind.Absolute, out var uri)
-                && uri.IsFile)
+            if (value.StartsWith("file://"))
             {
-                if (!fileSystem.File.Exists(uri.AbsolutePath))
+                var file = value[7..];
+                file = fileSystem.Path.IsPathFullyQualified(file) 
+                    ? file
+                    : fileSystem.Path.GetFullPath(file, fileSystem.Directory.GetCurrentDirectory());
+
+                if (!fileSystem.File.Exists(file))
                 {
-                    throw new System.IO.FileNotFoundException(null, uri.AbsolutePath);
+                    throw new System.IO.FileNotFoundException(null, file);
                 }
 
                 return new ContractParameter(ContractParameterType.ByteArray)
                 {
-                    Value = fileSystem.File.ReadAllBytes(uri.AbsolutePath)
+                    Value = fileSystem.File.ReadAllBytes(file)
                 };
             }
 

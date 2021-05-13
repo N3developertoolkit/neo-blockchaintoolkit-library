@@ -202,6 +202,57 @@ namespace test.bctklib3
         }
 
         [Fact]
+        public void TestParseStringParameter_file_uri_relative()
+        {
+            const string PATH = @"c:\some\fake\path\file.txt";
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
+                { PATH, mockFile },
+            }, @"c:\some\fake\path\");
+
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var param = parser.ParseStringParameter($"file://./file.txt");
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri_relative_2()
+        {
+            const string PATH = @"c:\some\fake\path\file.txt";
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
+                { PATH, mockFile },
+            }, @"c:\some\fake\");
+
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var param = parser.ParseStringParameter($"file://.\\path\\file.txt");
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri_relative_3()
+        {
+            const string PATH = @"c:\some\fake\path\file.txt";
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
+                { PATH, mockFile },
+            }, @"c:\some\fake\path\test");
+
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var param = parser.ParseStringParameter($"file://..\\file.txt");
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
+        }
+
+        [Fact]
         public void TestParseStringParameter_file_uri_not_found()
         {
             const string PATH = @"c:\some\fake\path\file.txt";
