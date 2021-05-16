@@ -156,10 +156,39 @@ namespace test.bctklib3
                 s => {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
+                    Assert.Null(s.SlotIndex);
                 },
                 s => {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
+                    Assert.Null(s.SlotIndex);
+                });
+        }
+
+        [Fact]
+        public void can_parse_static_variables_explicit_slot_indexes()
+        {
+            var json = new JObject(
+                new JProperty("hash", TEST_HASH),
+                new JProperty("static-variables", 
+                    new JArray(
+                        "testStatic1,String,1", 
+                        "testStatic2,Hash160,3")));
+
+            var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
+
+            Assert.Collection(debugInfo.StaticVariables,
+                s => {
+                    Assert.Equal("testStatic1", s.Name);
+                    Assert.Equal("String", s.Type);
+                    Assert.True(s.SlotIndex.HasValue);
+                    Assert.Equal<uint>(1, s.SlotIndex!.Value);
+                },
+                s => {
+                    Assert.Equal("testStatic2", s.Name);
+                    Assert.Equal("Hash160", s.Type);
+                    Assert.True(s.SlotIndex.HasValue);
+                    Assert.Equal<uint>(3, s.SlotIndex!.Value);
                 });
         }
 
