@@ -148,7 +148,7 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        static Lazy<Regex> spRegex = new Lazy<Regex>(() => new Regex(@"^(\d+)\[(\d+)\](\d+)\:(\d+)\-(\d+)\:(\d+)$"));
+        static Regex spRegex = new Regex(@"^(\d+)\[(-?\d+)\](\d+)\:(\d+)\-(\d+)\:(\d+)$");
 
         internal static DebugInfo Load(JObject json, Func<JToken,string> funcResolveDocument)
         {
@@ -210,15 +210,8 @@ namespace Neo.BlockchainToolkit.Models
             static DebugInfo.SequencePoint ParseSequencePoint(JToken token)
             {
                 var value = token.Value<string>() ?? throw new FormatException("invalid Sequence Point token");
-                var matches = spRegex.Value.Match(value);
+                var matches = spRegex.Match(value);
                 if (matches.Groups.Count != 7) throw new FormatException($"Invalid Sequence Point \"{value}\"");
-
-                int ParseGroup(int i)
-                {
-                    return int.TryParse(matches.Groups[i].Value, out var value)
-                        ? value
-                        : throw new FormatException($"Invalid Sequence Point \"{value}\"");
-                }
 
                 return new DebugInfo.SequencePoint
                 {
@@ -227,6 +220,13 @@ namespace Neo.BlockchainToolkit.Models
                     Start = (ParseGroup(3), ParseGroup(4)),
                     End = (ParseGroup(5), ParseGroup(6)),
                 };
+
+                int ParseGroup(int i)
+                {
+                    return int.TryParse(matches.Groups[i].Value, out var value)
+                        ? value
+                        : throw new FormatException($"Invalid Sequence Point \"{value}\"");
+                }
             }
 
             static DebugInfo.Method ParseMethod(JToken token)
