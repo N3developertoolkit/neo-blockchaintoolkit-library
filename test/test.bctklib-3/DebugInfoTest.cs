@@ -7,7 +7,6 @@ using System.IO.Compression;
 using System.Threading.Tasks;
 using Neo;
 using Neo.BlockchainToolkit.Models;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -190,6 +189,14 @@ namespace test.bctklib3
                     Assert.True(s.SlotIndex.HasValue);
                     Assert.Equal<uint>(3, s.SlotIndex!.Value);
                 });
+        }
+
+        [Fact]
+        public void can_load_debug_info_with_invalid_sequence_points()
+        {
+            var debugInfoJson = GetResource("invalidSequencePoints.json");
+            var json = JObject.Parse(debugInfoJson);
+            var debug = DebugInfo.Load(json, t => t.Value<string>()!);
         }
 
         static byte[] CreateCompressedDebugInfo(string contractName, string debugInfo)
