@@ -19,8 +19,8 @@ namespace Neo.BlockchainToolkit.Models
         public IReadOnlyList<string> Documents { get; set; } = ImmutableList<string>.Empty;
         public IReadOnlyList<Method> Methods { get; set; } = ImmutableList<Method>.Empty;
         public IReadOnlyList<Event> Events { get; set; } = ImmutableList<Event>.Empty;
-        public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> StaticVariables { get; set; } 
-            = ImmutableList<(string, string, uint?)>.Empty;
+        public IReadOnlyList<(string Name, string Type, int? SlotIndex)> StaticVariables { get; set; } 
+            = ImmutableList<(string, string, int?)>.Empty;
 
         public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
         {
@@ -62,10 +62,10 @@ namespace Neo.BlockchainToolkit.Models
             public string Name { get; set; } = string.Empty;
             public (int Start, int End) Range { get; set; }
             public string ReturnType { get; set; } = string.Empty;
-            public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> Parameters { get; set; }
-                = ImmutableList<(string, string, uint?)>.Empty;
-            public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> Variables { get; set; }
-                = ImmutableList<(string, string, uint?)>.Empty;
+            public IReadOnlyList<(string Name, string Type, int? SlotIndex)> Parameters { get; set; }
+                = ImmutableList<(string, string, int?)>.Empty;
+            public IReadOnlyList<(string Name, string Type, int? SlotIndex)> Variables { get; set; }
+                = ImmutableList<(string, string, int?)>.Empty;
             public IReadOnlyList<SequencePoint> SequencePoints { get; set; }
                 = ImmutableList<SequencePoint>.Empty;
         }
@@ -75,8 +75,8 @@ namespace Neo.BlockchainToolkit.Models
             public string Id { get; set; } = string.Empty;
             public string Namespace { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
-            public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> Parameters { get; set; }
-                = ImmutableList<(string, string, uint?)>.Empty;
+            public IReadOnlyList<(string Name, string Type, int? SlotIndex)> Parameters { get; set; }
+                = ImmutableList<(string, string, int?)>.Empty;
         }
 
         public class SequencePoint
@@ -172,7 +172,7 @@ namespace Neo.BlockchainToolkit.Models
                 StaticVariables = staticVars,
             };
 
-            static (string, string, uint?) ParseType(JToken token)
+            static (string, string, int?) ParseType(JToken token)
             {
                 var value = token.Value<string>() ?? throw new FormatException("invalid type token");
                 var values = value.Split(',');
@@ -181,8 +181,10 @@ namespace Neo.BlockchainToolkit.Models
                     return (values[0], values[1], null);
                 }
                 if (values.Length == 3 
-                    && uint.TryParse(values[2], out var slotIndex))
+                    && int.TryParse(values[2], out var slotIndex)
+                    && slotIndex >= 0)
                 {
+
                     return (values[0], values[1], slotIndex);
                 }
 

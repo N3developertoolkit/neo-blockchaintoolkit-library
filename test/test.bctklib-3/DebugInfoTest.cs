@@ -181,13 +181,13 @@ namespace test.bctklib3
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
                     Assert.True(s.SlotIndex.HasValue);
-                    Assert.Equal<uint>(1, s.SlotIndex!.Value);
+                    Assert.Equal(1, s.SlotIndex!.Value);
                 },
                 s => {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
                     Assert.True(s.SlotIndex.HasValue);
-                    Assert.Equal<uint>(3, s.SlotIndex!.Value);
+                    Assert.Equal(3, s.SlotIndex!.Value);
                 });
         }
 
