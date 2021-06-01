@@ -155,12 +155,12 @@ namespace test.bctklib3
                 s => {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
-                    Assert.Null(s.SlotIndex);
+                    Assert.Equal(0, s.Index);
                 },
                 s => {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
-                    Assert.Null(s.SlotIndex);
+                    Assert.Equal(1, s.Index);
                 });
         }
 
@@ -180,15 +180,26 @@ namespace test.bctklib3
                 s => {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
-                    Assert.True(s.SlotIndex.HasValue);
-                    Assert.Equal<uint>(1, s.SlotIndex!.Value);
+                    Assert.Equal(1, s.Index);
                 },
                 s => {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
-                    Assert.True(s.SlotIndex.HasValue);
-                    Assert.Equal<uint>(3, s.SlotIndex!.Value);
+                    Assert.Equal(3, s.Index);
                 });
+        }
+
+        [Fact]
+        public void throw_format_exception_when_mix_and_match_optional_slot_index()
+        {
+            var json = new JObject(
+                new JProperty("hash", TEST_HASH),
+                new JProperty("static-variables", 
+                    new JArray(
+                        "testStatic1,String,1", 
+                        "testStatic2,Hash160")));
+
+            Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
         }
 
         [Fact]

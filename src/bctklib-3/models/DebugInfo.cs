@@ -19,8 +19,8 @@ namespace Neo.BlockchainToolkit.Models
         public IReadOnlyList<string> Documents { get; set; } = ImmutableList<string>.Empty;
         public IReadOnlyList<Method> Methods { get; set; } = ImmutableList<Method>.Empty;
         public IReadOnlyList<Event> Events { get; set; } = ImmutableList<Event>.Empty;
-        public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> StaticVariables { get; set; } 
-            = ImmutableList<(string, string, uint?)>.Empty;
+        public IReadOnlyList<SlotVariable> StaticVariables { get; set; }
+            = ImmutableList<SlotVariable>.Empty;
 
         public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
         {
@@ -55,6 +55,20 @@ namespace Neo.BlockchainToolkit.Models
             return Load(root, documentResolver.ResolveDocument);
         }
 
+        public readonly struct SlotVariable
+        {
+            public readonly string Name;
+            public readonly string Type;
+            public readonly int Index;
+
+            public SlotVariable(string name, string type, int Index)
+            {
+                Name = name;
+                Type = type;
+                this.Index = Index;
+            }
+        }
+
         public class Method
         {
             public string Id { get; set; } = string.Empty;
@@ -62,12 +76,9 @@ namespace Neo.BlockchainToolkit.Models
             public string Name { get; set; } = string.Empty;
             public (int Start, int End) Range { get; set; }
             public string ReturnType { get; set; } = string.Empty;
-            public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> Parameters { get; set; }
-                = ImmutableList<(string, string, uint?)>.Empty;
-            public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> Variables { get; set; }
-                = ImmutableList<(string, string, uint?)>.Empty;
-            public IReadOnlyList<SequencePoint> SequencePoints { get; set; }
-                = ImmutableList<SequencePoint>.Empty;
+            public IReadOnlyList<SlotVariable> Parameters { get; set; } = ImmutableList<SlotVariable>.Empty;
+            public IReadOnlyList<SlotVariable> Variables { get; set; } = ImmutableList<SlotVariable>.Empty;
+            public IReadOnlyList<SequencePoint> SequencePoints { get; set; } = ImmutableList<SequencePoint>.Empty;
         }
 
         public class Event
@@ -75,8 +86,7 @@ namespace Neo.BlockchainToolkit.Models
             public string Id { get; set; } = string.Empty;
             public string Namespace { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
-            public IReadOnlyList<(string Name, string Type, uint? SlotIndex)> Parameters { get; set; }
-                = ImmutableList<(string, string, uint?)>.Empty;
+            public IReadOnlyList<SlotVariable> Parameters { get; set; } = ImmutableList<SlotVariable>.Empty;
         }
 
         public class SequencePoint
@@ -103,7 +113,7 @@ namespace Neo.BlockchainToolkit.Models
                 var _document = token.Value<string>() ?? "";
                 if (fileSystem.File.Exists(_document))
                 {
-                    return _document ;
+                    return _document;
                 }
 
                 foreach (var kvp in folderMap)
@@ -150,7 +160,7 @@ namespace Neo.BlockchainToolkit.Models
 
         static Regex spRegex = new Regex(@"^(\d+)\[(-?\d+)\](\d+)\:(\d+)\-(\d+)\:(\d+)$");
 
-        internal static DebugInfo Load(JObject json, Func<JToken,string> funcResolveDocument)
+        internal static DebugInfo Load(JObject json, Func<JToken, string> funcResolveDocument)
         {
             var hash = json.TryGetValue("hash", out var hashToken)
                 ? UInt160.TryParse(hashToken.ToObject<string>(), out var _hash)
@@ -161,7 +171,7 @@ namespace Neo.BlockchainToolkit.Models
             var documents = EnumToken(json, "documents").Select(funcResolveDocument).ToImmutableList();
             var events = EnumToken(json, "events").Select(ParseEvent).ToImmutableList();
             var methods = EnumToken(json, "methods").Select(ParseMethod).ToImmutableList();
-            var staticVars = EnumToken(json, "static-variables").Select(ParseType).ToImmutableList();
+            var staticVars = LoadSlotVariables(json, "static-variables").ToImmutableList();
 
             return new DebugInfo
             {
@@ -172,21 +182,34 @@ namespace Neo.BlockchainToolkit.Models
                 StaticVariables = staticVars,
             };
 
-            static (string, string, uint?) ParseType(JToken token)
+            static IEnumerable<SlotVariable> LoadSlotVariables(JToken token, string propertyName)
             {
-                var value = token.Value<string>() ?? throw new FormatException("invalid type token");
-                var values = value.Split(',');
-                if (values.Length == 2)
+                var vars = EnumToken(token, propertyName).Select(ParseType).ToList();
+                if (vars.Any(t => t.slotIndex.HasValue) && !vars.All(t => t.slotIndex.HasValue))
                 {
-                    return (values[0], values[1], null);
-                }
-                if (values.Length == 3 
-                    && uint.TryParse(values[2], out var slotIndex))
-                {
-                    return (values[0], values[1], slotIndex);
+                    throw new FormatException("cannot mix and match optional slot index information");
                 }
 
-                throw new FormatException($"invalid type string \"{value}\"");
+                return vars.Select((v, i) => new SlotVariable(v.name, v.type, v.slotIndex!.HasValue ? v.slotIndex.Value : i));
+
+                static (string name, string type, int? slotIndex) ParseType(JToken token)
+                {
+                    var value = token.Value<string>() ?? throw new FormatException("invalid type token");
+                    var values = value.Split(',');
+                    if (values.Length == 2)
+                    {
+                        return (values[0], values[1], null);
+                    }
+                    if (values.Length == 3
+                        && int.TryParse(values[2], out var slotIndex)
+                        && slotIndex >= 0)
+                    {
+
+                        return (values[0], values[1], slotIndex);
+                    }
+
+                    throw new FormatException($"invalid type string \"{value}\"");
+                }
             }
 
             static DebugInfo.Event ParseEvent(JToken token)
@@ -196,7 +219,7 @@ namespace Neo.BlockchainToolkit.Models
                 var (ns, name) = TrySplitComma(nameValue, out var _name)
                     ? _name
                     : throw new FormatException("Invalid name string \"{value}\"");
-                var @params = EnumToken(token, "params").Select(ParseType).ToImmutableList();
+                var @params = LoadSlotVariables(token, "params").ToImmutableList();
 
                 return new DebugInfo.Event()
                 {
@@ -233,8 +256,8 @@ namespace Neo.BlockchainToolkit.Models
             {
                 var id = token.Value<string>("id") ?? throw new FormatException("Invalid method id");
                 var @return = token.Value<string>("return") ?? "Void";
-                var @params = EnumToken(token, "params").Select(ParseType).ToImmutableList();
-                var variables = EnumToken(token, "variables").Select(ParseType).ToImmutableList();
+                var @params = LoadSlotVariables(token, "params").ToImmutableList();
+                var variables = LoadSlotVariables(token, "variables").ToImmutableList();
                 var sequencePoints = EnumToken(token, "sequence-points").Select(ParseSequencePoint).ToImmutableList();
 
                 var nameValue = token.Value<string>("name") ?? throw new FormatException("Invalid method name");
