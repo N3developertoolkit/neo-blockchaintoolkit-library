@@ -59,13 +59,13 @@ namespace Neo.BlockchainToolkit.Models
         {
             public readonly string Name;
             public readonly string Type;
-            public readonly int SlotIndex;
+            public readonly int Index;
 
-            public SlotVariable(string name, string type, int slotIndex)
+            public SlotVariable(string name, string type, int Index)
             {
                 Name = name;
                 Type = type;
-                SlotIndex = slotIndex;
+                this.Index = Index;
             }
         }
 

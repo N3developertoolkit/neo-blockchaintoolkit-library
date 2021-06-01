@@ -155,12 +155,12 @@ namespace test.bctklib3
                 s => {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
-                    Assert.Equal(0, s.SlotIndex);
+                    Assert.Equal(0, s.Index);
                 },
                 s => {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
-                    Assert.Equal(1, s.SlotIndex);
+                    Assert.Equal(1, s.Index);
                 });
         }
 
@@ -180,12 +180,12 @@ namespace test.bctklib3
                 s => {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
-                    Assert.Equal(1, s.SlotIndex);
+                    Assert.Equal(1, s.Index);
                 },
                 s => {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
-                    Assert.Equal(3, s.SlotIndex);
+                    Assert.Equal(3, s.Index);
                 });
         }
 
