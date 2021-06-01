@@ -18,6 +18,19 @@ namespace test.bctklib3
         const string TEST_HASH = "0xf69e5188632deb3a9273519efc86cb68da8d42b8";
 
         [Fact]
+        public async Task can_load_debug_json_nccs_rc3()
+        {
+            var debugInfoJson = GetResource("nccs_rc3.json");
+            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
+            {
+                { @"c:\fakeContract.nef", new MockFileData("") },
+                { @"c:\fakeContract.debug.json", new MockFileData(debugInfoJson) },
+            });
+            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
+            Assert.True(debugInfo.IsT0);
+        }
+
+        [Fact]
         public async Task can_load_debug_json()
         {
             var debugInfoJson = GetResource("Registrar.debug.json");
