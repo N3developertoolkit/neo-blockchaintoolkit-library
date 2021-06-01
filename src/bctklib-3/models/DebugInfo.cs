@@ -185,6 +185,19 @@ namespace Neo.BlockchainToolkit.Models
             static IEnumerable<SlotVariable> LoadSlotVariables(JToken token, string propertyName)
             {
                 var vars = EnumToken(token, propertyName).Select(ParseType).ToList();
+
+                // Work around https://github.com/neo-project/neo-devpack-dotnet/issues/637
+                // if a variable list has any slot indexes, but the first variable is "this,Any" remove it
+                if (vars.Any(t => t.slotIndex.HasValue)
+                    && vars.Count > 0
+                    && vars[0].name == "this"
+                    && vars[0].type == "Any"
+                    && !vars[0].slotIndex.HasValue)
+                {
+                    vars.RemoveAt(0);
+                }
+                // end https://github.com/neo-project/neo-devpack-dotnet/issues/637 workaround
+
                 if (vars.Any(t => t.slotIndex.HasValue) && !vars.All(t => t.slotIndex.HasValue))
                 {
                     throw new FormatException("cannot mix and match optional slot index information");
