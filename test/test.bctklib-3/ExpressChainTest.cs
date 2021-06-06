@@ -19,8 +19,8 @@ namespace test.bctklib3
         public void missing_address_version_defaults_correctly()
         {
             var fileSystem = new MockFileSystem();
-            var drives = fileSystem.DriveInfo.GetDrives();
-            fileSystem.AddFile(FILENAME, new MockFileData("{'magic': 1218031260}"));
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+            fileSystem.AddFile(fileName, new MockFileData("{'magic': 1218031260}"));
 
             var chain = fileSystem.LoadChain(FILENAME);
             chain.AddressVersion.Should().Be(ProtocolSettings.Default.AddressVersion);
