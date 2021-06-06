@@ -34,6 +34,10 @@ stages:
     workspace:
       clean: all
     steps:
+    - script: |
+        sudo apt-get update
+        sudo apt-get install libsnappy-dev libc6-dev librocksdb-dev -y
+      condition: startsWith(variables['image'], 'ubuntu-')
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
@@ -51,11 +55,11 @@ stages:
         command: 'test'
         projects: 'test/test.bctklib-3/test.bctklib-3.csproj'
         arguments: '-c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
-    - task: PublishCodeCoverageResults@1
-      displayName: 'Publish code coverage'
-      inputs:
-        codeCoverageTool: 'Cobertura'
-        summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
+    # - task: PublishCodeCoverageResults@1
+    #   displayName: 'Publish code coverage'
+    #   inputs:
+    #     codeCoverageTool: 'Cobertura'
+    #     summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
     # - task: DotNetCoreCLI@2
     #   displayName: 'dotnet pack'
     #   inputs:
