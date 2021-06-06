@@ -82,6 +82,18 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        internal static string NormalizePath(this IFileSystem fileSystem, string path)
+        {
+            if (fileSystem.Path.DirectorySeparatorChar == '\\')
+            {
+                return fileSystem.Path.GetFullPath(path);
+            }
+            else
+            {
+                return path.Replace('\\', '/');
+            }
+        }
+
         public static ExpressWallet GetWallet(this ExpressChain chain, string name)
             => TryGetWallet(chain, name, out var wallet)
                 ? wallet

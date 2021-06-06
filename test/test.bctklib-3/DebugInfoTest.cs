@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
 using Neo;
 using Neo.BlockchainToolkit.Models;
@@ -21,12 +22,12 @@ namespace test.bctklib3
         public async Task can_load_debug_json_nccs_rc3()
         {
             var debugInfoJson = GetResource("nccs_rc3.json");
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(debugInfoJson) },
-            });
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
+            fileSystem.AddFile(nefPath, MockFileData.NullObject);
+            fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
+            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
@@ -34,12 +35,12 @@ namespace test.bctklib3
         public async Task can_load_debug_json()
         {
             var debugInfoJson = GetResource("Registrar.debug.json");
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.debug.json", new MockFileData(debugInfoJson) },
-            });
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
+            fileSystem.AddFile(nefPath, MockFileData.NullObject);
+            fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
+            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
@@ -48,23 +49,22 @@ namespace test.bctklib3
         {
             var debugInfoJson = GetResource("Registrar.debug.json");
             var compressedDebugInfo = CreateCompressedDebugInfo("fakeContract", debugInfoJson);
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-                { @"c:\fakeContract.nefdbgnfo", new MockFileData(compressedDebugInfo) },
-            });
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
+            fileSystem.AddFile(nefPath, MockFileData.NullObject);
+            fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.nefdbgnfo"), new MockFileData(compressedDebugInfo));
+            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
         [Fact]
         public async Task not_found_debug_info()
         {
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\fakeContract.nef", new MockFileData("") },
-            });
-            var debugInfo = await DebugInfo.LoadAsync(@"c:\fakeContract.nef", null, fileSystem);
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
+            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT1);
         }
 
@@ -95,61 +95,87 @@ namespace test.bctklib3
         [Fact]
         public void resolve_source_current_directory()
         {
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\src\Apoc.cs", new MockFileData("") },
-                { @"c:\src\Apoc.Crowdsale.cs", new MockFileData("") },
-            }, @"c:\src");
-            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var srcPath = fileSystem.Path.Combine(rootPath, "src");
+            fileSystem.Directory.SetCurrentDirectory(srcPath);
+            var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
+            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+            fileSystem.AddFile(fileSystem.Path.Combine(srcPath, "Apoc.Crowdsale.cs"), MockFileData.NullObject);
 
+            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
             var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
 
-            Assert.Equal(@"c:\src\Apoc.cs", actual);
+            Assert.Equal(apocPath, actual);
         }
 
         [Fact]
         public void resolve_source_files_exist()
         {
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", new MockFileData("") },
-            }, @"c:\src");
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var srcPath = fileSystem.Path.Combine(rootPath, "neo", "token-sample", "src");
+            fileSystem.Directory.SetCurrentDirectory(srcPath);
+            var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
+            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+
             var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
+            var actual = resolver.ResolveDocument(apocPath);
 
-            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
-
-            Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", actual);
+            Assert.Equal(apocPath, actual);
         }
 
         [Fact]
         public void resolve_source_files_dont_exist()
         {
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-            }, @"c:\src");
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var srcPath = fileSystem.Path.Combine(rootPath, "neo", "token-sample", "src");
+            fileSystem.Directory.SetCurrentDirectory(srcPath);
+            var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
+
             var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
+            var actual = resolver.ResolveDocument(apocPath);
 
-            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
-
-            Assert.Equal(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs", actual);
+            Assert.Equal(apocPath, actual);
         }
 
         [Fact]
         public void resolve_source_via_map()
         {
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { @"c:\src\Apoc.cs", new MockFileData("") },
-            });
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var srcPath = fileSystem.Path.Combine(rootPath, "neo", "token-sample", "src");
+            var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
+            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+
             var sourceMap = new Dictionary<string, string>
             {
-                { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src", @"c:\src"}
+                { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src", srcPath}
             };
             var resolver = new DebugInfo.DocumentResolver(sourceMap, fileSystem);
-
             var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
 
-            Assert.Equal(@"c:\src\Apoc.cs", actual);
+            Assert.Equal(apocPath, actual);
+        }
+
+        [Fact]
+        public void resolve_source_via_map_2()
+        {
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var tokenSamplePath = fileSystem.Path.Combine(rootPath, "neo", "token-sample");
+            var apocPath = fileSystem.Path.Combine(tokenSamplePath, "src", "Apoc.cs");
+            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+
+            var sourceMap = new Dictionary<string, string>
+            {
+                { @"c:\Users\harry\Source\neo\seattle\samples\token-sample", tokenSamplePath}
+            };
+            var resolver = new DebugInfo.DocumentResolver(sourceMap, fileSystem);
+            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
+
+            Assert.Equal(apocPath, actual);
         }
 
         [Fact]
@@ -157,20 +183,22 @@ namespace test.bctklib3
         {
             var json = new JObject(
                 new JProperty("hash", TEST_HASH),
-                new JProperty("static-variables", 
+                new JProperty("static-variables",
                     new JArray(
-                        "testStatic1,String", 
+                        "testStatic1,String",
                         "testStatic2,Hash160")));
 
             var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
 
             Assert.Collection(debugInfo.StaticVariables,
-                s => {
+                s =>
+                {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
                     Assert.Equal(0, s.Index);
                 },
-                s => {
+                s =>
+                {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
                     Assert.Equal(1, s.Index);
@@ -182,20 +210,22 @@ namespace test.bctklib3
         {
             var json = new JObject(
                 new JProperty("hash", TEST_HASH),
-                new JProperty("static-variables", 
+                new JProperty("static-variables",
                     new JArray(
-                        "testStatic1,String,1", 
+                        "testStatic1,String,1",
                         "testStatic2,Hash160,3")));
 
             var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
 
             Assert.Collection(debugInfo.StaticVariables,
-                s => {
+                s =>
+                {
                     Assert.Equal("testStatic1", s.Name);
                     Assert.Equal("String", s.Type);
                     Assert.Equal(1, s.Index);
                 },
-                s => {
+                s =>
+                {
                     Assert.Equal("testStatic2", s.Name);
                     Assert.Equal("Hash160", s.Type);
                     Assert.Equal(3, s.Index);
@@ -207,9 +237,9 @@ namespace test.bctklib3
         {
             var json = new JObject(
                 new JProperty("hash", TEST_HASH),
-                new JProperty("static-variables", 
+                new JProperty("static-variables",
                     new JArray(
-                        "testStatic1,String,1", 
+                        "testStatic1,String,1",
                         "testStatic2,Hash160")));
 
             Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
