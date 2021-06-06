@@ -2,7 +2,6 @@ variables:
   isMasterBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isReleaseBranch: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
   azureArtifactsBranch: $[or(eq(variables.isMasterBranch, true), eq(variables.isReleaseBranch, true))]
-  nugetOrgBranch: $[eq(variables.isReleaseBranch, true)]
 
 trigger:
   batch: false
@@ -19,16 +18,26 @@ trigger:
     - 'docs/*'
 
 stages:
-- stage: build
+- stage: 
   variables:
     buildConfiguration: Release
   jobs:
-  - job:
+  - job: build
+    strategy:
+      matrix:
+        'Windows':
+          image: 'windows-2019'
+        'Ubuntu':
+          image: 'ubuntu-20.04'
     pool:
-      vmImage: 'windows-2019'
+      vmImage: $(image)
     workspace:
       clean: all
     steps:
+    - script: |
+        sudo apt-get update
+        sudo apt-get install libsnappy-dev libc6-dev librocksdb-dev -y
+      condition: startsWith(variables['image'], 'ubuntu-')
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
@@ -44,20 +53,26 @@ stages:
       displayName: 'dotnet test'
       inputs:
         command: 'test'
-        arguments: -c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --settings ./test/runsettings.xml
-    - task: PublishCodeCoverageResults@1
-      displayName: 'Publish code coverage'
+        projects: 'test/test.bctklib-3/test.bctklib-3.csproj'
+        arguments: '-c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
+  - job: publish
+    dependsOn: build
+    pool:
+      vmImage: 'ubuntu-20.04'
+    workspace:
+      clean: all
+    steps:
+    - task: UseDotNet@2
       inputs:
-          codeCoverageTool: cobertura
-          summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+        packageType: 'sdk'
+        useGlobalJson: true
     - task: DotNetCoreCLI@2
       displayName: 'dotnet pack'
       inputs:
         command: 'pack'
-        packagesToPack: 'src/**/*.csproj'
+        packagesToPack: 'src/bctklib-3/bctklib-3.csproj'
         includesymbols: true
         versioningScheme: 'off'
-        arguments: --no-build
     - publish: '$(Build.ArtifactStagingDirectory)'
       displayName: 'publish build artifact'
       artifact: NugetPackage
@@ -69,29 +84,3 @@ stages:
         packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
         nuGetFeedType: 'internal'
         publishVstsFeed: 'c96908c2-e4b5-4c77-b955-4b690f24380b/9e84eb49-63f0-4b48-a8c4-039901073643'
-
-# - stage: publishNugetOrg
-#   displayName: 'publish artifacts to nuget.org'
-#   dependsOn: build
-#   condition: and(succeeded(), eq(variables.nugetOrgBranch, true))
-#   jobs:
-#     - deployment: 
-#       pool:
-#         vmImage: 'ubuntu-latest'
-#       environment: 'nuget-org'
-#       strategy:
-#         runOnce:
-#           deploy:
-#             steps:
-#               - task: NuGetCommand@2
-#                 inputs:
-#                   command: 'push'
-#                   packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.nupkg'
-#                   nuGetFeedType: 'external'
-#                   publishFeedCredentials: 'nuget-org'
-#               - task: NuGetCommand@2
-#                 inputs:
-#                   command: 'push'
-#                   packagesToPush: '$(Pipeline.Workspace)/NugetPackage/*.snupkg'
-#                   nuGetFeedType: 'external'
-#                   publishFeedCredentials: 'nuget-org'

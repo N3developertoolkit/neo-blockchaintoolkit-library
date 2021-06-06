@@ -1,4 +1,5 @@
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
 using System.Text.Json;
 using FluentAssertions;
 using Neo;
@@ -10,7 +11,7 @@ namespace test.bctklib3
 {
     public class ExpressChainTest
     {
-        const string FILENAME = "c:/default.neo-express";
+        const string FILENAME = "default.neo-express";
         const string TEST_SETTING = "test.setting";
         const string TEST_SETTING_VALUE = "some value";
 
@@ -18,7 +19,8 @@ namespace test.bctklib3
         public void missing_address_version_defaults_correctly()
         {
             var fileSystem = new MockFileSystem();
-            fileSystem.AddFile(FILENAME, new MockFileData("{'magic': 1218031260}"));
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+            fileSystem.AddFile(fileName, new MockFileData("{'magic': 1218031260}"));
 
             var chain = fileSystem.LoadChain(FILENAME);
             chain.AddressVersion.Should().Be(ProtocolSettings.Default.AddressVersion);
@@ -30,9 +32,10 @@ namespace test.bctklib3
             const byte addressVersion = 0x53;
 
             var fileSystem = new MockFileSystem();
-            fileSystem.AddFile(FILENAME, new MockFileData($"{{'magic': 1218031260, 'address-version': {addressVersion} }}"));
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+            fileSystem.AddFile(fileName, new MockFileData($"{{'magic': 1218031260, 'address-version': {addressVersion} }}"));
 
-            var chain = fileSystem.LoadChain(FILENAME);
+            var chain = fileSystem.LoadChain(fileName);
             chain.AddressVersion.Should().Be(addressVersion);
         }
 
@@ -40,9 +43,10 @@ namespace test.bctklib3
         public void settings_default_to_empty_dictionary()
         {
             var fileSystem = new MockFileSystem();
-            fileSystem.AddFile(FILENAME, new MockFileData($"{{ }}"));
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+            fileSystem.AddFile(fileName, new MockFileData($"{{ }}"));
 
-            var chain = fileSystem.LoadChain(FILENAME);
+            var chain = fileSystem.LoadChain(fileName);
             chain.Settings.Should().BeEmpty();
         }
 
@@ -50,10 +54,11 @@ namespace test.bctklib3
         public void empty_settings_save_correctly()
         {
             var fileSystem = new MockFileSystem();
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
             var chain = new ExpressChain();
-            fileSystem.SaveChain(chain, FILENAME);
+            fileSystem.SaveChain(chain, fileName);
 
-            using var json = JsonDocument.Parse(fileSystem.GetFile(FILENAME).Contents);
+            using var json = JsonDocument.Parse(fileSystem.GetFile(fileName).Contents);
             var settings = json.RootElement.GetProperty("settings");
             settings.EnumerateObject().Should().BeEmpty();
         }
@@ -62,11 +67,12 @@ namespace test.bctklib3
         public void settings_save_correctly()
         {
             var fileSystem = new MockFileSystem();
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
             var chain = new ExpressChain();
             chain.Settings.Add(TEST_SETTING, TEST_SETTING_VALUE);
-            fileSystem.SaveChain(chain, FILENAME);
+            fileSystem.SaveChain(chain, fileName);
 
-            using var json = JsonDocument.Parse(fileSystem.GetFile(FILENAME).Contents);
+            using var json = JsonDocument.Parse(fileSystem.GetFile(fileName).Contents);
             var settings = json.RootElement.GetProperty("settings");
             settings.EnumerateObject().Should().NotBeEmpty();
             settings.GetProperty(TEST_SETTING).GetString().Should().Be(TEST_SETTING_VALUE);
@@ -76,9 +82,10 @@ namespace test.bctklib3
         public void settings_load_correctly()
         {
             var fileSystem = new MockFileSystem();
-            fileSystem.AddFile(FILENAME, new MockFileData($"{{'settings': {{ '{TEST_SETTING}': '{TEST_SETTING_VALUE}' }} }}"));
+            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+            fileSystem.AddFile(fileName, new MockFileData($"{{'settings': {{ '{TEST_SETTING}': '{TEST_SETTING_VALUE}' }} }}"));
 
-            var chain = fileSystem.LoadChain(FILENAME);
+            var chain = fileSystem.LoadChain(fileName);
 
             chain.Settings.Should().Contain(TEST_SETTING, TEST_SETTING_VALUE);
         }

@@ -174,7 +174,7 @@ namespace Neo.BlockchainToolkit
 
             if (value.StartsWith("file://"))
             {
-                var file = value[7..];
+                var file = fileSystem.NormalizePath(value[7..]);
                 file = fileSystem.Path.IsPathFullyQualified(file) 
                     ? file
                     : fileSystem.Path.GetFullPath(file, fileSystem.Directory.GetCurrentDirectory());

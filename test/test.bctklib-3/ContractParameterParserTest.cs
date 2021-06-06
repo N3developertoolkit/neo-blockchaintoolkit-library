@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Neo;
@@ -187,47 +188,91 @@ namespace test.bctklib3
         [Fact]
         public void TestParseStringParameter_file_uri()
         {
-            const string PATH = @"c:\some\fake\path\file.txt";
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePathFile = fileSystem.Path.Combine(rootPath, "some", "fake", "path", "file.txt");
             var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
-
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { PATH, mockFile },
-            });
+            fileSystem.AddFile(someFakePathFile, mockFile);
 
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
-            var param = parser.ParseStringParameter($"file://{PATH}");
+            var param = parser.ParseStringParameter($"file://{someFakePathFile}");
             param.Type.Should().Be(ContractParameterType.ByteArray);
             param.Value.Should().BeEquivalentTo(mockFile.Contents);
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative()
+        public void TestParseStringParameter_file_uri_not_found()
         {
-            const string PATH = @"c:\some\fake\path\file.txt";
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePathFile = fileSystem.Path.Combine(rootPath, "some", "fake", "path", "file.txt");
             var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
 
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { PATH, mockFile },
-            }, @"c:\some\fake\path\");
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var exception = Assert.Throws<FileNotFoundException>(() => parser.ParseStringParameter($"file://{someFakePathFile}"));
+
+            Assert.Equal(someFakePathFile, exception.FileName);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri_relative_current_directory_unix()
+        {
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
+            fileSystem.Directory.SetCurrentDirectory(someFakePath);
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+            fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
             var param = parser.ParseStringParameter($"file://./file.txt");
+
             param.Type.Should().Be(ContractParameterType.ByteArray);
             param.Value.Should().BeEquivalentTo(mockFile.Contents);
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_2()
+        public void TestParseStringParameter_file_uri_relative_current_directory_windows()
         {
-            const string PATH = @"c:\some\fake\path\file.txt";
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
+            fileSystem.Directory.SetCurrentDirectory(someFakePath);
             var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+            fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { PATH, mockFile },
-            }, @"c:\some\fake\");
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var param = parser.ParseStringParameter($"file://.\\file.txt");
+
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri_relative_subdirectory_unix()
+        {
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
+            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.GetDirectoryName(someFakePath));
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+            fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
+
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
+            var param = parser.ParseStringParameter($"file://./path/file.txt");
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_file_uri_relative_subdirectory_windows()
+        {
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
+            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.GetDirectoryName(someFakePath));
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+            fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
             var param = parser.ParseStringParameter($"file://.\\path\\file.txt");
@@ -236,33 +281,37 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_3()
+        public void TestParseStringParameter_file_uri_relative_parent_directory_unix()
         {
-            const string PATH = @"c:\some\fake\path\file.txt";
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
+            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.Combine(someFakePath, "test"));
             var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
-
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData>
-            {
-                { PATH, mockFile },
-            }, @"c:\some\fake\path\test");
+            fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
-            var param = parser.ParseStringParameter($"file://..\\file.txt");
+            var param = parser.ParseStringParameter($"file://../file.txt");
+
             param.Type.Should().Be(ContractParameterType.ByteArray);
             param.Value.Should().BeEquivalentTo(mockFile.Contents);
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_not_found()
+        public void TestParseStringParameter_file_uri_relative_parent_directory_windows()
         {
-            const string PATH = @"c:\some\fake\path\file.txt";
-            var fileSystem = new MockFileSystem(new Dictionary<string, MockFileData> { });
+            var fileSystem = new MockFileSystem();
+            var rootPath = fileSystem.AllDirectories.First();
+            var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
+            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.Combine(someFakePath, "test"));
+            var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
+            fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
-            var exception = Assert.Throws<FileNotFoundException>(() => parser.ParseStringParameter($"file://{PATH}"));
+            var param = parser.ParseStringParameter($"file://..\\file.txt");
 
-            // only check file name due to forward/back slash changes
-            Assert.Equal(Path.GetFileName(PATH), Path.GetFileName(exception.FileName));
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(mockFile.Contents);
         }
     }
 }

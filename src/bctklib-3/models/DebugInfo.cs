@@ -120,7 +120,8 @@ namespace Neo.BlockchainToolkit.Models
                 {
                     if (_document.StartsWith(kvp.Key))
                     {
-                        var mapDocument = fileSystem.Path.Join(kvp.Value, _document.Substring(kvp.Key.Length));
+                        var remainder = FileNameUtilities.TrimStartDirectorySeparators(_document.Substring(kvp.Key.Length));
+                        var mapDocument = fileSystem.NormalizePath(fileSystem.Path.Join(kvp.Value, remainder));
                         if (fileSystem.File.Exists(mapDocument))
                         {
                             return mapDocument;
@@ -129,10 +130,10 @@ namespace Neo.BlockchainToolkit.Models
                 }
 
                 var cwd = fileSystem.Directory.GetCurrentDirectory();
-                var cwdDocument = fileSystem.Path.Join(cwd, fileSystem.Path.GetFileName(_document));
+                var cwdDocument = fileSystem.Path.Join(cwd, FileNameUtilities.GetFileName(_document));
                 if (fileSystem.File.Exists(cwdDocument))
                 {
-                    var directoryName = fileSystem.Path.GetDirectoryName(_document);
+                    var directoryName = FileNameUtilities.GetDirectoryName(_document);
                     if (directoryName != null)
                     {
                         folderMap.Add(directoryName, cwd);
@@ -141,7 +142,7 @@ namespace Neo.BlockchainToolkit.Models
                     return cwdDocument;
                 }
 
-                var folderName = fileSystem.Path.GetFileName(cwd);
+                var folderName = FileNameUtilities.GetFileName(cwd);
                 var folderIndex = _document.IndexOf(folderName);
                 if (folderIndex >= 0)
                 {
