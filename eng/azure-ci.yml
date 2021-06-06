@@ -18,11 +18,11 @@ trigger:
     - 'docs/*'
 
 stages:
-- stage: build
+- stage: 
   variables:
     buildConfiguration: Release
   jobs:
-  - job:
+  - job: build
     strategy:
       matrix:
         'Windows':
@@ -55,27 +55,32 @@ stages:
         command: 'test'
         projects: 'test/test.bctklib-3/test.bctklib-3.csproj'
         arguments: '-c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
-    # - task: PublishCodeCoverageResults@1
-    #   displayName: 'Publish code coverage'
-    #   inputs:
-    #     codeCoverageTool: 'Cobertura'
-    #     summaryFileLocation: '$(Build.SourcesDirectory)/**/coverage.cobertura.xml'
-    # - task: DotNetCoreCLI@2
-    #   displayName: 'dotnet pack'
-    #   inputs:
-    #     command: 'pack'
-    #     packagesToPack: 'src/**/*.csproj'
-    #     includesymbols: true
-    #     versioningScheme: 'off'
-    #     arguments: --no-build
-    # - publish: '$(Build.ArtifactStagingDirectory)'
-    #   displayName: 'publish build artifact'
-    #   artifact: NugetPackage
-    # - task: NuGetCommand@2
-    #   displayName: 'publish package to azure artifacts'
-    #   condition: and(succeeded(), eq(variables.azureArtifactsBranch, true))
-    #   inputs:
-    #     command: 'push'
-    #     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    #     nuGetFeedType: 'internal'
-    #     publishVstsFeed: 'c96908c2-e4b5-4c77-b955-4b690f24380b/9e84eb49-63f0-4b48-a8c4-039901073643'
+  - job: publish
+    dependsOn: build
+    pool:
+      vmImage: 'ubuntu-20.04'
+    workspace:
+      clean: all
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        useGlobalJson: true
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet pack'
+      inputs:
+        command: 'pack'
+        packagesToPack: 'src/bctklib-3/bctklib-3.csproj'
+        includesymbols: true
+        versioningScheme: 'off'
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'publish build artifact'
+      artifact: NugetPackage
+    - task: NuGetCommand@2
+      displayName: 'publish package to azure artifacts'
+      condition: and(succeeded(), eq(variables.azureArtifactsBranch, true))
+      inputs:
+        command: 'push'
+        packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+        nuGetFeedType: 'internal'
+        publishVstsFeed: 'c96908c2-e4b5-4c77-b955-4b690f24380b/9e84eb49-63f0-4b48-a8c4-039901073643'
