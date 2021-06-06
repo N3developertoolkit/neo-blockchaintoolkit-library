@@ -211,12 +211,11 @@ namespace test.bctklib3
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION, fileSystem: fileSystem);
             var exception = Assert.Throws<FileNotFoundException>(() => parser.ParseStringParameter($"file://{someFakePathFile}"));
 
-            // only check file name due to forward/back slash changes
-            Assert.Equal(Path.GetFileName(someFakePathFile), Path.GetFileName(exception.FileName));
+            Assert.Equal(someFakePathFile, exception.FileName);
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative()
+        public void TestParseStringParameter_file_uri_relative_current_directory_unix()
         {
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
@@ -233,7 +232,7 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_windows()
+        public void TestParseStringParameter_file_uri_relative_current_directory_windows()
         {
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
@@ -250,7 +249,7 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_2_unix()
+        public void TestParseStringParameter_file_uri_relative_subdirectory_unix()
         {
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
@@ -266,7 +265,7 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_2_windows()
+        public void TestParseStringParameter_file_uri_relative_subdirectory_windows()
         {
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
@@ -282,7 +281,7 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_3()
+        public void TestParseStringParameter_file_uri_relative_parent_directory_unix()
         {
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
@@ -299,7 +298,7 @@ namespace test.bctklib3
         }
 
         [Fact]
-        public void TestParseStringParameter_file_uri_relative_3_windows()
+        public void TestParseStringParameter_file_uri_relative_parent_directory_windows()
         {
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();

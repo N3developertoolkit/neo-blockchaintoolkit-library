@@ -11,7 +11,6 @@ using Neo.BlockchainToolkit.Models;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-
 namespace test.bctklib3
 {
     public class DebugInfoTest

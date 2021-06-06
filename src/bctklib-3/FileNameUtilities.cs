@@ -1,5 +1,10 @@
+// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root of https://github.com/dotnet/symreader-portable for license information.
+
 namespace Neo.BlockchainToolkit
 {
+    // This Library contains logic that need to handle both Windows and Unix style paths. For example, debug info can be created on Windows and read
+    // on Mac/Linux or vis versa. So the standard Path.GetFileName/GetDirectoryName method will not work.
+
     // This logic lifted from https://github.com/dotnet/symreader-portable/blob/main/src/Microsoft.DiaSymReader.PortablePdb/Utilities/FileNameUtilities.cs
     internal static class FileNameUtilities
     {
