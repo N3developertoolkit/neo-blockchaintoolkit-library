@@ -49,9 +49,8 @@ stages:
       displayName: 'dotnet test'
       inputs:
         command: 'test'
+        projects: 'test/test.bctklib-3/test.bctklib-3.csproj'
         arguments: '-c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
-        publishTestResults: true
-        projects: test.bctklib-3
     - task: PublishCodeCoverageResults@1
       displayName: 'Publish code coverage'
       inputs:
