@@ -38,16 +38,41 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         private readonly WitnessChecker witnessChecker;
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings) : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+        public static Transaction CreateTestTransaction(UInt160 signerAccount, WitnessScope witnessScope = WitnessScope.CalledByEntry)
+            => CreateTestTransaction(new Signer
+            {
+                Account = signerAccount,
+                Scopes = witnessScope,
+                AllowedContracts = Array.Empty<UInt160>(),
+                AllowedGroups = Array.Empty<Neo.Cryptography.ECC.ECPoint>()
+            });
+
+        public static Transaction CreateTestTransaction(Signer? signer = null) => new Transaction
+        {
+            Nonce = (uint)new Random().Next(),
+            Script = Array.Empty<byte>(),
+            Signers = signer == null ? Array.Empty<Signer>() : new[] { signer },
+            Attributes = Array.Empty<TransactionAttribute>(),
+            Witnesses = Array.Empty<Witness>(),
+        };
+
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings) 
+            : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer) : this(TriggerType.Application, new TestVerifiable(signer), snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry) 
+            : this(TriggerType.Application, CreateTestTransaction(signer, witnessScope), snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, Transaction transaction) 
+            : this(TriggerType.Application, transaction, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
         public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas, WitnessChecker? witnessChecker)
-            : base(trigger, container ?? new TestVerifiable(), snapshot, persistingBlock, settings, gas)
+            : base(trigger, container ?? CreateTestTransaction(), snapshot, persistingBlock, settings, gas)
         {
             this.witnessChecker = witnessChecker ?? CheckWitness;
             ApplicationEngine.Log += OnLog;
