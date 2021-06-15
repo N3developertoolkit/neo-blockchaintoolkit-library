@@ -65,7 +65,7 @@ stages:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        useGlobalJson: true
+        version: '5.0.x'
     - task: DotNetCoreCLI@2
       displayName: 'dotnet pack'
       inputs:
