@@ -9,18 +9,18 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 
         public StorageItem Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
         {
-            if (reader.ReadArrayHeader() != 1)
+            if (reader.NextMessagePackType == MessagePackType.Array)
             {
-                throw new MessagePackSerializationException();
+                var count = reader.ReadArrayHeader();
+                if (count != 1) throw new MessagePackSerializationException($"Invalid StorageItem Array Header {count}");
             }
 
-            var value = reader.ReadBytes()?.ToArray() ?? throw new MessagePackSerializationException();
+            var value = options.Resolver.GetFormatter<byte[]>().Deserialize(ref reader, options);
             return new StorageItem(value);
         }
 
         public void Serialize(ref MessagePackWriter writer, StorageItem value, MessagePackSerializerOptions options)
         {
-            writer.WriteArrayHeader(1);
             writer.Write(value.Value);
         }
     }

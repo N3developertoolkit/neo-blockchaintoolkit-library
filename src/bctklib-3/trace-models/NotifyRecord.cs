@@ -44,5 +44,24 @@ namespace Neo.BlockchainToolkit.TraceDebug
             }
             mpWriter.Flush();
         }
+
+        public static void Write(ref MessagePackWriter writer, MessagePackSerializerOptions options, UInt160 scriptHash, string scriptName, string eventName, IReadOnlyCollection<StackItem> state)
+        {
+            var stackItemFormatter = options.Resolver.GetFormatterWithVerify<StackItem>();
+            var stringFormatter = options.Resolver.GetFormatterWithVerify<string>();
+
+            writer.WriteArrayHeader(2);
+            writer.WriteInt32(RecordKey);
+            writer.WriteArrayHeader(4);
+            options.Resolver.GetFormatterWithVerify<UInt160>().Serialize(ref writer, scriptHash, options);
+            stringFormatter.Serialize(ref writer, scriptName, options);
+            stringFormatter.Serialize(ref writer, eventName, options);
+            writer.WriteArrayHeader(state.Count);
+            foreach (var item in state)
+            {
+                stackItemFormatter.Serialize(ref writer, item, options);
+            }
+            writer.Flush();
+        }
     }
 }

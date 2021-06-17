@@ -11,13 +11,26 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 
         public UInt160 Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
         {
-            var seq = reader.ReadRaw(UInt160.Length);
-            return new UInt160(seq.IsSingleSegment ? seq.FirstSpan : seq.ToArray());
+            // post RC3 serialization format of UInt160
+            if (reader.NextMessagePackType == MessagePackType.Binary)
+            {
+                var value = options.Resolver.GetFormatter<byte[]>().Deserialize(ref reader, options);
+                return new UInt160(value);
+            }
+
+            // pre RC3 serialization format of UInt160
+            if (reader.NextMessagePackType == MessagePackType.Integer)
+            {
+                var seq = reader.ReadRaw(UInt160.Length);
+                return new UInt160(seq.IsSingleSegment ? seq.FirstSpan : seq.ToArray());
+            }
+
+            throw new MessagePackSerializationException($"Unexpected UInt160 MessagePack type {reader.NextMessagePackType}");
         }
 
         public void Serialize(ref MessagePackWriter writer, UInt160 value, MessagePackSerializerOptions options)
         {
-            writer.WriteRaw(value.ToArray().AsSpan(0, UInt160.Length));
+            writer.Write(value.ToArray());
         }
     }
 }

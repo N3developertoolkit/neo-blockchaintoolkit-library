@@ -28,24 +28,28 @@ namespace Neo.BlockchainToolkit.TraceDebug
 
         public static void Write(IBufferWriter<byte> writer, MessagePackSerializerOptions options, UInt160 scriptHash, IEnumerable<(StorageKey key, StorageItem item)> storages)
         {
-            var count = storages.Count();
-            if (count > 0)
-            {
-                var byteArrayResolver = options.Resolver.GetFormatterWithVerify<byte[]>();
-                var storageItemResolver = options.Resolver.GetFormatterWithVerify<StorageItem>();
+            var mpWriter = new MessagePackWriter(writer);
+            Write(ref mpWriter, options, scriptHash, storages);
+            mpWriter.Flush();
+        }
 
-                var mpWriter = new MessagePackWriter(writer);
-                mpWriter.WriteArrayHeader(2);
-                mpWriter.WriteInt32(RecordKey);
-                mpWriter.WriteArrayHeader(2);
-                options.Resolver.GetFormatterWithVerify<UInt160>().Serialize(ref mpWriter, scriptHash, options);
-                mpWriter.WriteMapHeader(count);
-                foreach (var (key, item) in storages)
-                {
-                    byteArrayResolver.Serialize(ref mpWriter, key.Key, options);
-                    storageItemResolver.Serialize(ref mpWriter, item, options);
-                }
-                mpWriter.Flush();
+        public static void Write(ref MessagePackWriter writer, MessagePackSerializerOptions options, UInt160 scriptHash, IEnumerable<(StorageKey key, StorageItem item)> storages)
+        {
+            var count = storages.Count();
+            if (count <= 0) return;
+
+            var byteArrayFormatter = options.Resolver.GetFormatterWithVerify<byte[]>();
+            var storageItemFormatter = options.Resolver.GetFormatterWithVerify<StorageItem>();
+
+            writer.WriteArrayHeader(2);
+            writer.WriteInt32(RecordKey);
+            writer.WriteArrayHeader(2);
+            options.Resolver.GetFormatterWithVerify<UInt160>().Serialize(ref writer, scriptHash, options);
+            writer.WriteMapHeader(count);
+            foreach (var (key, item) in storages)
+            {
+                byteArrayFormatter.Serialize(ref writer, key.Key, options);
+                storageItemFormatter.Serialize(ref writer, item, options);
             }
         }
     }

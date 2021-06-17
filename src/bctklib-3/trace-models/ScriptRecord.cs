@@ -23,15 +23,21 @@ namespace Neo.BlockchainToolkit.TraceDebug
 
         public static void Write(IBufferWriter<byte> writer, MessagePackSerializerOptions options, byte[] script)
         {
+            var mpWriter = new MessagePackWriter(writer);
+            Write(ref mpWriter, options, script);
+            mpWriter.Flush();
+        }
+
+        public static void Write(ref MessagePackWriter writer, MessagePackSerializerOptions options, byte[] script)
+        {
             var scriptHash = Neo.SmartContract.Helper.ToScriptHash(script);
 
-            var mpWriter = new MessagePackWriter(writer);
-            mpWriter.WriteArrayHeader(2);
-            mpWriter.WriteInt32(RecordKey);
-            mpWriter.WriteArrayHeader(2);
-            options.Resolver.GetFormatterWithVerify<UInt160>().Serialize(ref mpWriter, scriptHash, options);
-            options.Resolver.GetFormatterWithVerify<byte[]>().Serialize(ref mpWriter, script, options);
-            mpWriter.Flush();
+            writer.WriteArrayHeader(2);
+            writer.WriteInt32(RecordKey);
+            writer.WriteArrayHeader(2);
+            options.Resolver.GetFormatterWithVerify<UInt160>().Serialize(ref writer, scriptHash, options);
+            options.Resolver.GetFormatterWithVerify<Script>().Serialize(ref writer, script, options);
+            writer.Flush();
         }
     }
 }

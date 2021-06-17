@@ -11,6 +11,7 @@ namespace MessagePack.Resolvers
                 ScriptFormatter.Instance,
                 StackItemFormatter.Instance,
                 StorageItemFormatter.Instance,
+                TraceRecordFormatter.Instance,
                 UInt160Formatter.Instance
             },
             new IFormatterResolver[]

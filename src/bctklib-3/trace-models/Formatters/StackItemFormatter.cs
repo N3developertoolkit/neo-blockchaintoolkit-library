@@ -26,44 +26,35 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 
         public StackItem Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
         {
-            var resolver = options.Resolver;
-
             var count = reader.ReadArrayHeader();
-            if (count != 2) throw new MessagePackSerializationException();
+            if (count != 2) throw new MessagePackSerializationException($"Invalid StackItem Array Header {count}");
 
-            var type = resolver.GetFormatterWithVerify<StackItemType>().Deserialize(ref reader, options);
-
+            var type = options.Resolver.GetFormatterWithVerify<StackItemType>().Deserialize(ref reader, options);
             switch (type)
             {
                 case StackItemType.Any:
                     reader.ReadNil();
                     return StackItem.Null;
                 case StackItemType.Boolean:
-                    return reader.ReadBoolean()
-                        ? StackItem.True
-                        : StackItem.False;
+                    return reader.ReadBoolean() ? StackItem.True : StackItem.False;
                 case StackItemType.Buffer:
                     {
-                        var bytes = reader.ReadBytes();
-                        return bytes.HasValue
-                            ? new NeoBuffer(bytes.Value.ToArray())
-                            : throw new MessagePackSerializationException("Invalid Buffer");
+                        var bytes = options.Resolver.GetFormatter<byte[]>().Deserialize(ref reader, options);
+                        return new NeoBuffer(bytes);
                     }
                 case StackItemType.ByteString:
                     {
-                        var bytes = reader.ReadBytes();
-                        return bytes.HasValue
-                            ? new NeoByteString(bytes.Value.ToArray())
-                            : throw new MessagePackSerializationException("Invalid ByteString");
+                        var bytes = options.Resolver.GetFormatter<byte[]>().Deserialize(ref reader, options);
+                        return new NeoByteString(bytes);
                     }
                 case StackItemType.Integer:
                     {
-                        var integer = resolver.GetFormatterWithVerify<BigInteger>().Deserialize(ref reader, options);
+                        var integer = options.Resolver.GetFormatterWithVerify<BigInteger>().Deserialize(ref reader, options);
                         return new NeoInteger(integer);
                     }
                 case StackItemType.InteropInterface:
                     {
-                        var typeName = resolver.GetFormatterWithVerify<string>().Deserialize(ref reader, options);
+                        var typeName = options.Resolver.GetFormatterWithVerify<string>().Deserialize(ref reader, options);
                         return new TraceInteropInterface(typeName);
                     }
                 case StackItemType.Pointer:
@@ -85,8 +76,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                         var array = type == StackItemType.Array
                             ? new NeoArray()
                             : new NeoStruct();
-                        var zzz = reader.ReadArrayHeader();
-                        for (int i = 0; i < zzz; i++)
+                         for (int i = 0; i < reader.ReadArrayHeader(); i++)
                         {
                             array.Add(Deserialize(ref reader, options));
                         }
@@ -94,7 +84,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     }
             }
 
-            throw new MessagePackSerializationException("Invalid StackItem");
+            throw new MessagePackSerializationException($"Invalid StackItem {type}");
         }
 
         public void Serialize(ref MessagePackWriter writer, StackItem value, MessagePackSerializerOptions options)
@@ -115,7 +105,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                     break;
                 case NeoByteString byteString:
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.ByteString, options);
-                    writer.Write(byteString);
+                    writer.Write(byteString.GetSpan());
                     break;
                 case NeoInteger integer:
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.Integer, options);
@@ -156,6 +146,8 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                         }
                         break;
                     }
+                default:
+                    throw new MessagePackSerializationException($"Invalid StackItem {value.GetType()}");
             }
         }
     }
