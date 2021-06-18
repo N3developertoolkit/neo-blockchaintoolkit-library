@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using MessagePack;
 using Neo.VM;
@@ -13,32 +14,46 @@ namespace Neo.BlockchainToolkit.TraceDebug
         [Key(0)]
         public readonly VMState State;
         [Key(1)]
+        public readonly long GasConsumed;
+        [Key(2)]
         public readonly IReadOnlyList<StackFrame> StackFrames;
 
-        public TraceRecord(VMState state, IReadOnlyList<StackFrame> stackFrames)
+        public TraceRecord(VMState state, long gasConsumed, IReadOnlyList<StackFrame> stackFrames)
         {
             State = state;
+            GasConsumed = gasConsumed;
             StackFrames = stackFrames;
         }
 
         public static void Write(IBufferWriter<byte> writer,
                                  MessagePackSerializerOptions options,
-                                 IDictionary<UInt160, UInt160> scriptIdMap,
                                  VMState vmState,
-                                 IReadOnlyCollection<ExecutionContext> contexts)
+                                 long gasConsumed,
+                                 IReadOnlyCollection<ExecutionContext> contexts,
+                                 Func<ExecutionContext, UInt160> getScriptIdentifier)
         {
-            var resolver = options.Resolver;
             var mpWriter = new MessagePackWriter(writer);
-            mpWriter.WriteArrayHeader(2);
-            mpWriter.WriteInt32(RecordKey);
-            mpWriter.WriteArrayHeader(2);
-            resolver.GetFormatterWithVerify<VMState>().Serialize(ref mpWriter, vmState, options);
-            mpWriter.WriteArrayHeader(contexts.Count);
+            Write(ref mpWriter, options, vmState, gasConsumed, contexts, getScriptIdentifier);
+            mpWriter.Flush();
+        }
+
+        public static void Write(ref MessagePackWriter writer,
+                                 MessagePackSerializerOptions options,
+                                 VMState vmState,
+                                 long gasConsumed,
+                                 IReadOnlyCollection<ExecutionContext> contexts,
+                                 Func<ExecutionContext, UInt160> getScriptIdentifier)
+        {
+            writer.WriteArrayHeader(2);
+            writer.WriteInt32(RecordKey);
+            writer.WriteArrayHeader(3);
+            options.Resolver.GetFormatterWithVerify<VMState>().Serialize(ref writer, vmState, options);
+            writer.WriteInt64(gasConsumed);
+            writer.WriteArrayHeader(contexts.Count);
             foreach (var context in contexts)
             {
-                StackFrame.Write(ref mpWriter, options, scriptIdMap, context);
+                StackFrame.Write(ref writer, options, context, getScriptIdentifier(context));
             }
-            mpWriter.Flush();
         }
     }
 }

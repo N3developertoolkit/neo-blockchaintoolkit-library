@@ -1,5 +1,3 @@
-using System.Buffers;
-using Neo.Ledger;
 using Neo.VM;
 
 namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
@@ -15,7 +13,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
 
         public void Serialize(ref MessagePackWriter writer, Script value, MessagePackSerializerOptions options)
         {
-            options.Resolver.GetFormatter<byte[]>().Serialize(ref writer, value, options);
+            writer.Write((byte[])value);
         }
     }
 }

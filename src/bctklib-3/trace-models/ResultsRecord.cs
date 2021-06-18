@@ -28,18 +28,18 @@ namespace Neo.BlockchainToolkit.TraceDebug
         public static void Write(IBufferWriter<byte> writer, MessagePackSerializerOptions options, VMState vmState, long gasConsumed, IReadOnlyCollection<StackItem> resultStack)
         {
             var mpWriter = new MessagePackWriter(writer);
-            mpWriter.WriteArrayHeader(2);
-            mpWriter.WriteInt32(RecordKey);
-            mpWriter.WriteArrayHeader(3);
-            options.Resolver.GetFormatterWithVerify<VMState>().Serialize(ref mpWriter, vmState, options);
-            mpWriter.Write(gasConsumed);
-            mpWriter.WriteArrayHeader(resultStack.Count);
-            foreach (var item in resultStack)
-            {
-                options.Resolver.GetFormatterWithVerify<StackItem>().Serialize(ref mpWriter, item, options);
-            }
+            Write(ref mpWriter, options, vmState, gasConsumed, resultStack);
             mpWriter.Flush();
         }
 
+        public static void Write(ref MessagePackWriter writer, MessagePackSerializerOptions options, VMState vmState, long gasConsumed, IReadOnlyCollection<StackItem> resultStack)
+        {
+            writer.WriteArrayHeader(2);
+            writer.WriteInt32(RecordKey);
+            writer.WriteArrayHeader(3);
+            options.Resolver.GetFormatterWithVerify<VMState>().Serialize(ref writer, vmState, options);
+            writer.Write(gasConsumed);
+            options.Resolver.GetFormatterWithVerify<IReadOnlyCollection<StackItem>>().Serialize(ref writer, resultStack, options);
+        }
     }
 }

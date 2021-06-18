@@ -23,12 +23,17 @@ namespace Neo.BlockchainToolkit.TraceDebug
         public static void Write(IBufferWriter<byte> writer, MessagePackSerializerOptions options, uint network, byte addressVersion)
         {
             var mpWriter = new MessagePackWriter(writer);
-            mpWriter.WriteArrayHeader(2);
-            mpWriter.WriteInt32(RecordKey);
-            mpWriter.WriteArrayHeader(2);
-            options.Resolver.GetFormatterWithVerify<uint>().Serialize(ref mpWriter, network, options);
-            options.Resolver.GetFormatterWithVerify<byte>().Serialize(ref mpWriter, addressVersion, options);
+            Write(ref mpWriter, options, network, addressVersion);
             mpWriter.Flush();
+        }
+
+        public static void Write(ref MessagePackWriter writer, MessagePackSerializerOptions options, uint network, byte addressVersion)
+        {
+            writer.WriteArrayHeader(2);
+            writer.WriteInt32(RecordKey);
+            writer.WriteArrayHeader(2);
+            writer.WriteUInt32(network);
+            writer.Write(addressVersion);
         }
     }
 }
