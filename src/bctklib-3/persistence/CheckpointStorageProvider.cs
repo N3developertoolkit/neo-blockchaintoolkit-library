@@ -102,7 +102,7 @@ namespace Neo.BlockchainToolkit.Persistence
             var trackingMap = GetTrackingMap(storeName);
             foreach (var change in changes)
             {
-                trackingMap.SetItem(change.Key, change.Value);
+                trackingMap = trackingMap.SetItem(change.Key, change.Value);
             }
             UpdateTrackingMap(storeName, trackingMap);
         }
