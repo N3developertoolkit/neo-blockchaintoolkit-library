@@ -63,7 +63,8 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                 case StackItemType.Map:
                     {
                         var map = new NeoMap();
-                        for (int i = 0; i < reader.ReadMapHeader(); i++)
+                        var mapCount = reader.ReadMapHeader();
+                        for (int i = 0; i < mapCount; i++)
                         {
                             var key = (PrimitiveType)Deserialize(ref reader, options);
                             map[key] = Deserialize(ref reader, options);
@@ -76,7 +77,8 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
                         var array = type == StackItemType.Array
                             ? new NeoArray()
                             : new NeoStruct();
-                         for (int i = 0; i < reader.ReadArrayHeader(); i++)
+                        var arrayCount = reader.ReadArrayHeader();
+                        for (int i = 0; i < arrayCount; i++)
                         {
                             array.Add(Deserialize(ref reader, options));
                         }
