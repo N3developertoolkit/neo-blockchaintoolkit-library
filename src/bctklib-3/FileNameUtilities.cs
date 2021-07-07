@@ -60,6 +60,8 @@ namespace Neo.BlockchainToolkit
 
         internal static string TrimStartDirectorySeparators(string path)
         {
+            if (path.Length == 0) return path;
+
             var i = 0;
             while (IsDirectorySeparator(path[i]))
             {
