@@ -84,7 +84,9 @@ namespace Neo.BlockchainToolkit
                         ? uint160
                         : throw new InvalidOperationException($"contract \"{contract}\" not found");
 
-                var operation = json.Value<string>("operation");
+                var operation = json.Value<string>("operation")
+                    ?? throw new JsonException("missing operation field");
+
                 var args = json.TryGetValue("args", out var jsonArgs)
                     ? ParseParameters(jsonArgs).ToArray()
                     : Array.Empty<ContractParameter>();
