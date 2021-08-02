@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\bctklib-3\bctklib-3.csproj" />
+    <ProjectReference Include="..\..\src\bctklib\bctklib.csproj" />
   </ItemGroup>
 
   <ItemGroup>

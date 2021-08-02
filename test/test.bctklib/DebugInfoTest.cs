@@ -268,7 +268,7 @@ namespace test.bctklib3
         {
             var assembly = typeof(DebugInfoTest).Assembly;
             using var resource = assembly.GetManifestResourceStream(name)
-                ?? assembly.GetManifestResourceStream($"test.bctklib-3._testFiles.{name}")
+                ?? assembly.GetManifestResourceStream($"test.bctklib._testFiles.{name}")
                 ?? throw new FileNotFoundException();
             using var streamReader = new System.IO.StreamReader(resource);
             return streamReader.ReadToEnd();

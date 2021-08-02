@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>neo-bctklib-3</AssemblyName>
+    <AssemblyName>neo-bctklib</AssemblyName>
     <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
     <Copyright>2015-2021 The Neo Project</Copyright>
@@ -10,7 +10,7 @@
     <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
     <PackageIcon>ngdsea.png</PackageIcon>
-    <PackageId>Neo.BlockchainToolkit3</PackageId>
+    <PackageId>Neo.BlockchainToolkit.Library</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</PackageProjectUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -27,7 +27,7 @@
     <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
   <ItemGroup>
-    <InternalsVisibleTo Include="test.bctklib-3" />
+    <InternalsVisibleTo Include="test.bctklib" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="InternalsVisibleTo.MSBuild" Version="1.0.4">
