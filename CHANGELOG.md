@@ -8,9 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This project uses [NerdBank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning)
 to manage version numbers. This tool automatically sets the Semantic Versioning Patch
 value based on the [Git height](https://github.com/dotnet/Nerdbank.GitVersioning#what-is-git-height)
-of the commit that generated the build. As such, released versions of this extension
+of the commit that generated the build. As such, released versions of this package
 will not have contiguous patch numbers. Initial major and minor releases will be documented
-in this file without a patch number. Patch version will be included for bug fix releases, but
+in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
 ## [3.0] - 2021-08-02
