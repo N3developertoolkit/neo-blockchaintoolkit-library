@@ -2,6 +2,8 @@ variables:
   isMasterBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isReleaseBranch: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
   azureArtifactsBranch: $[or(eq(variables.isMasterBranch, true), eq(variables.isReleaseBranch, true))]
+  dotNetSdkVersion: '5.0.x'
+
 
 trigger:
   batch: false
@@ -37,11 +39,12 @@ stages:
     - script: |
         sudo apt-get update
         sudo apt-get install libsnappy-dev libc6-dev librocksdb-dev -y
+      displayName: 'install rocksdb dependencies (ubuntu only)'
       condition: startsWith(variables['image'], 'ubuntu-')
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '5.0.x'
+        version: $(dotNetSdkVersion)
     - task: DotNetCoreCLI@2
       displayName: 'dotnet build'
       inputs:
@@ -53,7 +56,7 @@ stages:
       displayName: 'dotnet test'
       inputs:
         command: 'test'
-        projects: 'test/test.bctklib-3/test.bctklib-3.csproj'
+        projects: 'test/**/*.csproj'
         arguments: '-c $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Build.SourcesDirectory)/TestResults/Coverage/'
   - job: publish
     dependsOn: build
@@ -65,12 +68,12 @@ stages:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '5.0.x'
+        version: $(dotNetSdkVersion)
     - task: DotNetCoreCLI@2
       displayName: 'dotnet pack'
       inputs:
         command: 'pack'
-        packagesToPack: 'src/bctklib-3/bctklib-3.csproj'
+        packagesToPack: 'src/bctklib/bctklib.csproj'
         includesymbols: true
         versioningScheme: 'off'
     - publish: '$(Build.ArtifactStagingDirectory)'

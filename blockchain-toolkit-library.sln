@@ -5,11 +5,11 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E0E95C85-6FA9-43D8-BD96-6E022F628C0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bctklib-3", "src\bctklib-3\bctklib-3.csproj", "{B223299A-B83B-4D16-98EB-6A12CE940386}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bctklib", "src\bctklib\bctklib.csproj", "{B223299A-B83B-4D16-98EB-6A12CE940386}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{91A23DE6-FADC-42AB-8266-898C6445BAB1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test.bctklib-3", "test\test.bctklib-3\test.bctklib-3.csproj", "{85ED10D1-DBC5-44D8-A76D-A3A296257FC8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "test.bctklib", "test\test.bctklib\test.bctklib.csproj", "{85ED10D1-DBC5-44D8-A76D-A3A296257FC8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
