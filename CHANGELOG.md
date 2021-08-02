@@ -13,6 +13,14 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fix releases, but
 may not exactly match a publicly released version.
 
+## [3.0] - 2021-08-02
+
+### Changed
+
+* Neo N3 release support
+* Bumped major version to 3 for consistency with Neo N3 release
+* Changed package name from Neo.BlockchainToolkit3 to Neo.BlockchainToolkit.Library
+
 ## [1.0.56-preview] - 2021-07-21
 
 ### Changed
