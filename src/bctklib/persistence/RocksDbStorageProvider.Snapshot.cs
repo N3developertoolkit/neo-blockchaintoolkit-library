@@ -38,7 +38,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public bool Contains(byte[]? key) => TryGet(key) != null;
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
-                => RocksDbStorageProvider.Seek(db, columnFamily, key, direction, readOptions);
+                => db.Seek(columnFamily, key, direction, readOptions);
 
             public void Put(byte[]? key, byte[] value)
                 => writeBatch.Put(key ?? Array.Empty<byte>(), value, columnFamily);

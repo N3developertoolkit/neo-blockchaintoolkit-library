@@ -44,7 +44,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
             {
-                return RocksDbStorageProvider.Seek(db, columnFamily, key, direction, readOptions);
+                return db.Seek(columnFamily, key, direction, readOptions);
             }
 
             public void Put(byte[]? key, byte[]? value)
