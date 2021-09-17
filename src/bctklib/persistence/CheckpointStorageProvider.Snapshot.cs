@@ -42,7 +42,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Delete(byte[] key)
             {
-                writeBatchMap = writeBatchMap.SetItem(key ?? Array.Empty<byte>(), new None());
+                writeBatchMap = writeBatchMap.SetItem(key ?? Array.Empty<byte>(), default(None));
             }
 
             public void Commit()

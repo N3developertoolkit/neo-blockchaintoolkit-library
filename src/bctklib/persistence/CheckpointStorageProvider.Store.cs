@@ -26,7 +26,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Put(byte[]? key, byte[]? value) => provider.Update(storeName, key, value);
 
-            public void Delete(byte[]? key) => provider.Update(storeName, key, new None());
+            public void Delete(byte[]? key) => provider.Update(storeName, key, default(None));
 
             public ISnapshot GetSnapshot() => provider.GetSnapshot(storeName);
         }
