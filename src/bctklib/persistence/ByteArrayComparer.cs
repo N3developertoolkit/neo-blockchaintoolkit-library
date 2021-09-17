@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    internal class ByteArrayComparer : IEqualityComparer<byte[]>, IComparer<byte[]>
+    class ByteArrayComparer : IEqualityComparer<byte[]>, IComparer<byte[]>
     {
         public static ByteArrayComparer Default { get; } = new ByteArrayComparer(false);
         public static ByteArrayComparer Reverse { get; } = new ByteArrayComparer(true);
