@@ -37,7 +37,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static ReadOnlyMemory<byte> CloneReadOnlyMemory(this byte[]? array)
+        public static ReadOnlyMemory<byte> CloneAsReadOnlyMemory(this byte[]? array)
         {
             return array == null ? default : array.AsSpan().ToArray();
         }
@@ -46,7 +46,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             if (trackingMap.TryGetValue(key ?? default, out var mapValue))
             {
-                return mapValue.Match<byte[]?>(v => v.ToArray(), n => null);
+                return mapValue.Match<byte[]?>(v => v.ToArray(), _ => null);
             }
 
             return store.TryGet(key);
@@ -54,11 +54,14 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static IEnumerable<(byte[] Key, byte[] Value)> Seek(this TrackingMap trackingMap, IReadOnlyStore store, byte[]? key, SeekDirection direction)
         {
-            var comparer = direction == SeekDirection.Forward ? ReadOnlyMemoryComparer.Default : ReadOnlyMemoryComparer.Reverse;
+            key ??= Array.Empty<byte>();
+            var comparer = direction == SeekDirection.Forward 
+                ? ReadOnlyMemoryComparer.Default 
+                : ReadOnlyMemoryComparer.Reverse;
 
             var memoryItems = trackingMap
                 .Where(kvp => kvp.Value.IsT0)
-                .Where(kvp => key == null || key.Length == 0 || comparer.Compare(kvp.Key, key ?? default) >= 0)
+                .Where(kvp => key.Length == 0 || comparer.Compare(kvp.Key, key) >= 0)
                 .Select(kvp => (Key: kvp.Key.ToArray(), Value: kvp.Value.AsT0.ToArray()));
 
             var storeItems = store

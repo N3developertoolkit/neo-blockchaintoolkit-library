@@ -33,12 +33,12 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Put(byte[]? key, byte[]? value)
         {
-            trackingMap = trackingMap.SetItem(key.CloneReadOnlyMemory(), value.CloneReadOnlyMemory());
+            trackingMap = trackingMap.SetItem(key.CloneAsReadOnlyMemory(), value.CloneAsReadOnlyMemory());
         }
 
         public void Delete(byte[]? key)
         {
-            trackingMap = trackingMap.SetItem(key.CloneReadOnlyMemory(), default(None));
+            trackingMap = trackingMap.SetItem(key.CloneAsReadOnlyMemory(), default(None));
         }
 
         public ISnapshot GetSnapshot()
