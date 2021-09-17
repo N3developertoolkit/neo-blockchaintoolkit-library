@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
@@ -116,10 +118,78 @@ namespace test.bctklib3
             Assert.Null(store.TryGet(new byte[] { 0xff }));
         }
 
-        [Fact(Skip = "Not Implemented")]
-        public void can_seek()
+        static IStore GetSeekStore()
         {
-            throw new NotImplementedException();
+            var memoryStore = new MemoryStore();
+            memoryStore.Put(new byte[] { 0x00, 0x01 }, BitConverter.GetBytes(1));
+            memoryStore.Put(new byte[] { 0x00, 0x02 }, BitConverter.GetBytes(2));
+            memoryStore.Put(new byte[] { 0x01, 0x01 }, BitConverter.GetBytes(11));
+            memoryStore.Put(new byte[] { 0x01, 0x02 }, BitConverter.GetBytes(12));
+            memoryStore.Put(new byte[] { 0x02, 0x01 }, BitConverter.GetBytes(21));
+            memoryStore.Put(new byte[] { 0x02, 0x02 }, BitConverter.GetBytes(22));
+
+            var store = new MemoryTrackingStore(memoryStore);
+            store.Put(new byte[] { 0x00, 0x03 }, BitConverter.GetBytes(3));
+            store.Put(new byte[] { 0x00, 0x04 }, BitConverter.GetBytes(4));
+            store.Put(new byte[] { 0x01, 0x03 }, BitConverter.GetBytes(13));
+            store.Put(new byte[] { 0x01, 0x04 }, BitConverter.GetBytes(14));
+            store.Put(new byte[] { 0x02, 0x03 }, BitConverter.GetBytes(23));
+            store.Put(new byte[] { 0x02, 0x04 }, BitConverter.GetBytes(24));
+
+            return store;
+        }
+
+        static IEnumerable<(byte[], byte[])> GetSeekExpected()
+        {
+            for (byte i = 0; i <= 2; i++)
+            {
+                for (byte j = 1; j <= 4; j++)
+                {
+                    var k = new byte[] { i, j };
+                    var v = i * 10 + j;
+                    yield return (k, BitConverter.GetBytes(v));
+                }
+            }
+        }
+
+        [Fact]
+        public void can_seek_forward_no_prefix()
+        {
+            var store = GetSeekStore();
+
+            var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward).ToArray();
+            var expected = GetSeekExpected().ToArray();
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void can_seek_backwards_no_prefix()
+        {
+            var store = GetSeekStore();
+
+            var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Backward).ToArray();
+            var expected = GetSeekExpected().Reverse().ToArray();
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void seek_forwards_with_prefix()
+        {
+            var store = GetSeekStore();
+
+            var actual = store.Seek(new byte[] { 0x01 }, SeekDirection.Forward).ToArray();
+            var expected = GetSeekExpected().Where(kvp => kvp.Item1[0] >= 0x01).ToArray();
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void seek_backwards_with_prefix()
+        {
+            var store = GetSeekStore();
+
+            var actual = store.Seek(new byte[] { 0x02 }, SeekDirection.Backward).ToArray();
+            var expected = GetSeekExpected().Where(kvp => kvp.Item1[0] <= 0x01).Reverse().ToArray();
+            Assert.Equal(expected, actual);
         }
     }
 }
