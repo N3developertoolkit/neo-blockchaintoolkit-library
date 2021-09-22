@@ -6,7 +6,7 @@ using OneOf;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    class NullStore : IReadOnlyStore
+    public class NullStore : IReadOnlyStore
     {
         public static NullStore Instance = new NullStore();
 

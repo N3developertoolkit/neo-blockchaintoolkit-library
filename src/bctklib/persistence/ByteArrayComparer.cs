@@ -9,30 +9,27 @@ namespace Neo.BlockchainToolkit.Persistence
         public static ByteArrayComparer Default { get; } = new ByteArrayComparer(false);
         public static ByteArrayComparer Reverse { get; } = new ByteArrayComparer(true);
 
-        private readonly bool reverse;
+        readonly bool reverse;
 
-        private ByteArrayComparer(bool reverse = false)
+        ByteArrayComparer(bool reverse = false)
         {
             this.reverse = reverse;
         }
 
-        public int Compare([AllowNull] byte[] x, [AllowNull] byte[] y)
+        public int Compare(byte[]? x, byte[]? y)
         {
-            return reverse ? -Compare() : Compare();
-
-            int Compare()
-            {
-                if (x == null && y == null)
-                    return 0;
-                if (x == null)
-                    return -1;
-                if (y == null)
-                    return 1;
-                return x.AsSpan().SequenceCompareTo(y.AsSpan());
-            }
+            if (x == null && y == null) return 0;
+            if (x == null) return reverse ? 1 : -1;
+            if (y == null) return reverse ? -1 : 1;
+            return Compare(x.AsSpan(), y.AsSpan());
         }
 
-        public bool Equals([AllowNull] byte[] x, [AllowNull] byte[] y)
+        public int Compare(ReadOnlySpan<byte> x, ReadOnlySpan<byte> y)
+        {
+            return reverse ? y.SequenceCompareTo(x) : x.SequenceCompareTo(y);
+        }
+
+        public bool Equals(byte[]? x, byte[]? y)
         {
             if (x == null && y == null)
                 return true;
@@ -41,14 +38,14 @@ namespace Neo.BlockchainToolkit.Persistence
             return x.AsSpan().SequenceEqual(y.AsSpan());
         }
 
-        public int GetHashCode([DisallowNull] byte[] obj)
+        public int GetHashCode(byte[] obj)
         {
-            int hash = 0;
+            var hash = new HashCode();
             for (int i = 0; i < obj.Length; i++)
             {
-                hash = HashCode.Combine(hash, i, obj[i]);
+                hash.Add(obj[i]);
             }
-            return hash;
+            return hash.ToHashCode();
         }
     }
 }
