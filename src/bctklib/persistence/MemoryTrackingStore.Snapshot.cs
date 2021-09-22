@@ -14,14 +14,14 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             readonly IReadOnlyStore store;
             readonly TrackingMap trackingMap;
-            readonly Action<TrackingMap> updateAction;
+            readonly Action<TrackingMap> commitAction;
             TrackingMap writeBatchMap = TrackingMap.Empty.WithComparers(ReadOnlyMemoryComparer.Default);
 
-            public Snapshot(IReadOnlyStore store, TrackingMap trackingMap, Action<TrackingMap> updateAction)
+            public Snapshot(IReadOnlyStore store, TrackingMap trackingMap, Action<TrackingMap> commitAction)
             {
                 this.store = store;
                 this.trackingMap = trackingMap;
-                this.updateAction = updateAction;
+                this.commitAction = commitAction;
             }
 
             public void Dispose() { }
@@ -35,18 +35,15 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Put(byte[]? key, byte[] value)
             {
-                var _key = key == null ? default : key.AsSpan().ToArray();
-                ReadOnlyMemory<byte> _value = value == null ? default : value.AsSpan().ToArray();
-                writeBatchMap = writeBatchMap.SetItem(_key, _value);
+                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key.CloneAsReadOnlyMemory(), value.CloneAsReadOnlyMemory());
             }
 
             public void Delete(byte[]? key)
             {
-                var _key = key == null ? default : key.AsSpan().ToArray();
-                writeBatchMap = writeBatchMap.SetItem(_key, default(None));
+                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key.CloneAsReadOnlyMemory(), default(None));
             }
 
-            public void Commit() => updateAction(writeBatchMap);
+            public void Commit() => commitAction(writeBatchMap);
         }
     }
 }

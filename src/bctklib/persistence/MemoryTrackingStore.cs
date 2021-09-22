@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Neo.Persistence;
 using OneOf;
 using None = OneOf.Types.None;
@@ -21,8 +22,9 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Dispose()
         {
-            // (store as IDisposable)?.Dispose();
         }
+
+        public ISnapshot GetSnapshot() => new Snapshot(store, trackingMap, this.CommitSnapshot);
 
         public bool Contains(byte[] key) => TryGet(key) != null;
 
@@ -33,27 +35,43 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Put(byte[]? key, byte[]? value)
         {
-            trackingMap = trackingMap.SetItem(key.CloneAsReadOnlyMemory(), value.CloneAsReadOnlyMemory());
+            AtomicUpdate(ref trackingMap, key.CloneAsReadOnlyMemory(), value.CloneAsReadOnlyMemory());
         }
 
         public void Delete(byte[]? key)
         {
-            trackingMap = trackingMap.SetItem(key.CloneAsReadOnlyMemory(), default(None));
+            AtomicUpdate(ref trackingMap, key.CloneAsReadOnlyMemory(), default(None));
         }
 
-        public ISnapshot GetSnapshot()
+        static void AtomicUpdate(ref TrackingMap trackingMap, ReadOnlyMemory<byte> key, OneOf<ReadOnlyMemory<byte>, None> value)
         {
-            return new Snapshot(store, trackingMap, this.Update);
-        }
-
-        void Update(TrackingMap writeBatchMap)
-        {
-            var updatedTrackingMap = trackingMap;
-            foreach (var change in writeBatchMap)
+            var priorCollection = Volatile.Read(ref trackingMap);
+            do
             {
-                updatedTrackingMap = updatedTrackingMap.SetItem(change.Key, change.Value);
+                var updatedCollection = priorCollection.SetItem(key, value);
+                var interlockedResult = Interlocked.CompareExchange(ref trackingMap, updatedCollection, priorCollection);
+                if (object.ReferenceEquals(priorCollection, interlockedResult)) break;
+                priorCollection = interlockedResult;
             }
-            trackingMap = updatedTrackingMap;
+            while (true);
+        }
+
+        void CommitSnapshot(TrackingMap writeBatchMap)
+        {
+            var priorCollection = Volatile.Read(ref trackingMap);
+            do
+            {
+                var updatedCollection = Volatile.Read(ref trackingMap);
+                foreach (var change in writeBatchMap)
+                {
+                    updatedCollection = updatedCollection.SetItem(change.Key, change.Value);
+                }
+
+                var interlockedResult = Interlocked.CompareExchange(ref trackingMap, updatedCollection, priorCollection);
+                if (object.ReferenceEquals(priorCollection, interlockedResult)) break;
+                priorCollection = interlockedResult;
+            }
+            while (true);
         }
     }
 }
