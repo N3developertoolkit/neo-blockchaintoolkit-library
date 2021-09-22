@@ -21,13 +21,13 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static RocksDbStorageProvider Open(string path)
         {
-            var db = RocksDbStore.OpenDb(path);
+            var db = RocksDbUtility.OpenDb(path);
             return new RocksDbStorageProvider(db, readOnly: false);
         }
 
         public static RocksDbStorageProvider OpenReadOnly(string path)
         {
-            var db = RocksDbStore.OpenReadOnlyDb(path);
+            var db = RocksDbUtility.OpenReadOnlyDb(path);
             return new RocksDbStorageProvider(db, readOnly: true);
         }
 
@@ -76,23 +76,23 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void CreateCheckpoint(string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
         {
-            Checkpoint.Create(db, checkPointFileName, magic, addressVersion, scriptHash);
+            RocksDbUtility.CreateCheckpoint(db, checkPointFileName, magic, addressVersion, scriptHash);
         }
 
-        [Obsolete("use Checkpoint.Restore instead")]
+        [Obsolete("use " + nameof(RocksDbUtility) + "." + nameof(RocksDbUtility.RestoreCheckpoint) + " instead")]
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, ProtocolSettings settings, UInt160 scriptHash)
             => RestoreCheckpoint(checkPointArchive, restorePath, settings.Network, settings.AddressVersion, scriptHash);
 
-        [Obsolete("use Checkpoint.Restore instead")]
+        [Obsolete("use " + nameof(RocksDbUtility) + "." + nameof(RocksDbUtility.RestoreCheckpoint) + " instead")]
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
         {
-            return Checkpoint.Restore(checkPointArchive, restorePath, magic, addressVersion, scriptHash);
+            return RocksDbUtility.RestoreCheckpoint(checkPointArchive, restorePath, magic, addressVersion, scriptHash);
         }
 
-        [Obsolete("use Checkpoint.Restore instead")]
+        [Obsolete("use " + nameof(RocksDbUtility) + "." + nameof(RocksDbUtility.RestoreCheckpoint) + " instead")]
         public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath)
         {
-            return Checkpoint.Restore(checkPointArchive, restorePath);
+            return RocksDbUtility.RestoreCheckpoint(checkPointArchive, restorePath);
         }
     }
 }

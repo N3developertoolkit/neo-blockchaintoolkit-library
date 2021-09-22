@@ -1,19 +1,46 @@
 using System;
 using System.IO;
 using System.IO.Compression;
-using Neo.BlockchainToolkit.Models;
 using Neo.Wallets;
 using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    static class Checkpoint
+    static class RocksDbUtility
     {
+        public static RocksDb OpenDb(string path)
+        {
+            var columnFamilies = GetColumnFamilies(path);
+            return RocksDb.Open(new DbOptions().SetCreateIfMissing(true), path, columnFamilies);
+        }
+
+        public static RocksDb OpenReadOnlyDb(string path)
+        {
+            var columnFamilies = GetColumnFamilies(path);
+            return RocksDb.OpenReadOnly(new DbOptions(), path, columnFamilies, false);
+        }
+
+        static ColumnFamilies GetColumnFamilies(string path)
+        {
+            if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
+            {
+                var columnFamilyOptions = new ColumnFamilyOptions();
+                var families = new ColumnFamilies();
+                foreach (var name in names)
+                {
+                    families.Add(name, columnFamilyOptions);
+                }
+                return families;
+            }
+
+            return new ColumnFamilies();
+        }
+
         private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;
 
         private static string GetAddressFilePath(string directory) => Path.Combine(directory, ADDRESS_FILENAME);
 
-        public static void Create(RocksDb db, string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
+        public static void CreateCheckpoint(RocksDb db, string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
         {
             if (File.Exists(checkPointFileName))
             {
@@ -50,7 +77,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static (uint magic, byte addressVersion) Restore(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
         {
             var metadata = GetCheckpointMetadata(checkPointArchive);
             if (magic != metadata.magic
@@ -64,7 +91,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return (metadata.magic, metadata.addressVersion);
         }
 
-        public static (uint magic, byte addressVersion) Restore(string checkPointArchive, string restorePath)
+        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath)
         {
             var metadata = GetCheckpointMetadata(checkPointArchive);
             ExtractCheckpoint(checkPointArchive, restorePath);

@@ -13,7 +13,7 @@ namespace test.bctklib3
             using var _ = Utility.GetDeleteDirectoryDisposable(path);
 
             {
-                var db = RocksDbStore.OpenDb(path);
+                var db = RocksDbUtility.OpenDb(path);
                 using var store = new RocksDbStore(db, db.GetDefaultColumnFamily(), false, false);
                 store.Put(new byte[] { 0x00, 0x03 }, BitConverter.GetBytes(3));
                 store.Put(new byte[] { 0x00, 0x04 }, BitConverter.GetBytes(4));
@@ -24,7 +24,7 @@ namespace test.bctklib3
             }
 
             {
-                var db = RocksDbStore.OpenReadOnlyDb(path);
+                var db = RocksDbUtility.OpenReadOnlyDb(path);
                 using var store = new RocksDbStore(db, db.GetDefaultColumnFamily(), true, false);
                 var actual = store.TryGet(new byte[] { 0x00, 0x03 });
                 Assert.Equal<byte[]>(BitConverter.GetBytes(3), actual!);
@@ -38,7 +38,7 @@ namespace test.bctklib3
             using var _ = Utility.GetDeleteDirectoryDisposable(path);
 
             {
-                var db = RocksDbStore.OpenDb(path);
+                var db = RocksDbUtility.OpenDb(path);
                 using var store = new RocksDbStore(db, db.GetDefaultColumnFamily(), false, false);
                 store.Put(new byte[] { 0x00, 0x03 }, BitConverter.GetBytes(3));
                 store.Put(new byte[] { 0x00, 0x04 }, BitConverter.GetBytes(4));
@@ -49,7 +49,7 @@ namespace test.bctklib3
             }
 
             {
-                var db = RocksDbStore.OpenReadOnlyDb(path);
+                var db = RocksDbUtility.OpenReadOnlyDb(path);
                 using var store = new RocksDbStore(db, db.GetDefaultColumnFamily(), true, false);
 
                 Assert.Throws<InvalidOperationException>(() => store.Put(new byte[] { 0x04, 0x03 }, BitConverter.GetBytes(43)));

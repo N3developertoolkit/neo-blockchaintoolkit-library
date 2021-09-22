@@ -24,34 +24,6 @@ namespace Neo.BlockchainToolkit.Persistence
             this.shared = shared;
         }
 
-        internal static RocksDb OpenDb(string path)
-        {
-            var columnFamilies = GetColumnFamilies(path);
-            return RocksDb.Open(new DbOptions().SetCreateIfMissing(true), path, columnFamilies);
-        }
-
-        internal static RocksDb OpenReadOnlyDb(string path)
-        {
-            var columnFamilies = GetColumnFamilies(path);
-            return RocksDb.OpenReadOnly(new DbOptions(), path, columnFamilies, false);
-        }
-
-        internal static ColumnFamilies GetColumnFamilies(string path)
-        {
-            if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
-            {
-                var columnFamilyOptions = new ColumnFamilyOptions();
-                var families = new ColumnFamilies();
-                foreach (var name in names)
-                {
-                    families.Add(name, columnFamilyOptions);
-                }
-                return families;
-            }
-
-            return new ColumnFamilies();
-        }
-
         public void Dispose()
         {
             disposed = true;
