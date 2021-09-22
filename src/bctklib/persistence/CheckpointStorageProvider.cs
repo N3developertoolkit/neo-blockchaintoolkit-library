@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Neo.Persistence;
 using Neo.Plugins;
@@ -9,6 +11,8 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         readonly IStorageProvider? storageProvider;
         readonly IDisposable? checkpointCleanup;
+        readonly Lazy<IStore> defaultStore;
+        ImmutableDictionary<string, IStore> stores = ImmutableDictionary<string, IStore>.Empty;
 
         public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, IDisposable? checkpointCleanup = null)
             : this((IStorageProvider?)rocksDbStorageProvider, checkpointCleanup)
@@ -19,6 +23,8 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             this.storageProvider = storageProvider;
             this.checkpointCleanup = checkpointCleanup;
+
+            defaultStore = new Lazy<IStore>(() => new MemoryTrackingStore(GetStorageProviderStore(null)));
         }
 
         public void Dispose()
@@ -29,24 +35,21 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public IStore GetStore(string? storeName)
         {
-            IReadOnlyStore roStore = storageProvider != null && TryGetStore(storageProvider, storeName, out var store)
-                ? store
-                : NullStore.Instance;
-            return new MemoryTrackingStore(roStore);
+            if (storeName == null) return defaultStore.Value;
+            return ImmutableInterlocked.GetOrAdd(ref stores, storeName, 
+                key => new MemoryTrackingStore(GetStorageProviderStore(key)));
         }
 
-        static bool TryGetStore(IStorageProvider storageProvider, string? path, [MaybeNullWhen(false)] out IStore store)
+        IReadOnlyStore GetStorageProviderStore(string? path)
         {
+            IReadOnlyStore? roStore = null;
             try
             {
-                store = storageProvider.GetStore(path);
-                return true;
+                roStore = storageProvider?.GetStore(path);
             }
-            catch
-            {
-                store = null;
-                return false;
-            }
+            catch {}
+
+            return roStore ?? NullStore.Instance;
         }
     }
 }
