@@ -6,7 +6,7 @@ using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    static class RocksDbUtility
+    public static class RocksDbUtility
     {
         public static RocksDb OpenDb(string path)
         {
