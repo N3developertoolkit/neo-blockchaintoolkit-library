@@ -26,6 +26,17 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly ICache cache;
         readonly IReadOnlyDictionary<int, (UInt160 hash, ContractManifest manifest)> contractMap;
 
+        public StateServiceStore(string uri, uint index, string? cachePath = null)
+            : this(new Uri(uri), index, cachePath)
+        {
+        }
+
+        public StateServiceStore(string uri, UInt256 rootHash, string? cachePath = null)
+            : this(new Uri(uri), rootHash, cachePath)
+        {
+        }
+
+
         public StateServiceStore(Uri uri, uint index, string? cachePath = null)
             : this(new SyncRpcClient(uri), index, cachePath)
         {
@@ -56,6 +67,11 @@ namespace Neo.BlockchainToolkit.Persistence
                 .Where(kvp => kvp.key.AsSpan().StartsWith(prefix.Span))
                 .Select(kvp => new StorageItem(kvp.value).GetInteroperable<ContractState>())
                 .ToImmutableDictionary(c => c.Id, c => (c.Hash, c.Manifest));
+        }
+
+        public RpcVersion GetVersion()
+        {
+            return rpcClient.GetVersion();
         }
 
         IEnumerable<(byte[] key, byte[] value)> EnumerateContractStates(UInt160 contractHash)

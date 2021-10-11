@@ -13,15 +13,18 @@ namespace Neo.BlockchainToolkit.Persistence
     public partial class MemoryTrackingStore : IStore
     {
         readonly IReadOnlyStore store;
+        readonly IDisposable? disposable;
         TrackingMap trackingMap = TrackingMap.Empty.WithComparers(ReadOnlyMemoryComparer.Default);
 
-        public MemoryTrackingStore(IReadOnlyStore store)
+        public MemoryTrackingStore(IReadOnlyStore store, IDisposable? disposable = null)
         {
             this.store = store;
+            this.disposable = disposable;
         }
 
         public void Dispose()
         {
+            disposable?.Dispose();
         }
 
         public ISnapshot GetSnapshot() => new Snapshot(store, trackingMap, this.CommitSnapshot);
