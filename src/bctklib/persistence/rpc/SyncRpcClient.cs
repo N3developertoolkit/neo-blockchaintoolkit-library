@@ -6,6 +6,7 @@ using Neo;
 using Neo.IO.Json;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
+using OneOf;
 
 namespace Neo.BlockchainToolkit.Persistence.RPC
 {
@@ -39,18 +40,6 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
                 Params = paraArgs
             };
         }
-        static RpcResponse AsRpcResponse(string content)
-        {
-            var response = RpcResponse.FromJson(JObject.Parse(content));
-            response.RawResponse = content;
-
-            if (response.Error != null)
-            {
-                throw new RpcException(response.Error.Code, response.Error.Message);
-            }
-
-            return response;
-        }
 
         HttpRequestMessage AsHttpRequest(RpcRequest request)
         {
@@ -61,22 +50,34 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
             };
         }
 
+        public JObject RpcSend(string method, params JObject[] paraArgs)
+        {
+            var response = TryRpcSend(method, paraArgs);
+            return response.TryPickT0(out var value, out var exception)
+                ? value : throw exception;
+        }
+
+        public OneOf<JObject, RpcException> TryRpcSend(string method, params JObject[] paraArgs)
+        {
+            var request = AsRpcRequest(method, paraArgs);
+            var response = Send(request);
+
+            return response.Error == null
+                ? response.Result
+                : new RpcException(response.Error.Code, response.Error.Message);
+        }
+
         public RpcResponse Send(RpcRequest request)
         {
             using var requestMsg = AsHttpRequest(request);
             using var responseMsg = httpClient.Send(requestMsg);
             using var contentStream = responseMsg.Content.ReadAsStream();
             using var contentReader = new StreamReader(contentStream);
-            return AsRpcResponse(contentReader.ReadToEnd());
+
+            var content = contentReader.ReadToEnd();
+            var response = RpcResponse.FromJson(JObject.Parse(content));
+            response.RawResponse = content;
+            return response;
         }
-
-        public virtual JObject RpcSend(string method, params JObject[] paraArgs)
-        {
-            var request = AsRpcRequest(method, paraArgs);
-            var response = Send(request);
-            return response.Result;
-        }
-
-
     }
 }

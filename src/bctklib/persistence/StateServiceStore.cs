@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using Neo;
 using Neo.BlockchainToolkit.Persistence.RPC;
 using Neo.IO;
 using Neo.Persistence;
@@ -17,16 +16,20 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class StateServiceStore : IReadOnlyStore, IDisposable
     {
-        interface ICache : IDisposable
+        interface ICachingClient : IDisposable
         {
-            bool TryGet(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[] value);
-            IEnumerable<(byte[] key, byte[] value)> Seek(UInt160 contractHash, ReadOnlyMemory<byte> prefix, SeekDirection direction);
+            RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null);
+            UInt256 GetBlockHash(uint index);
+            byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key);
+            RpcStateRoot GetStateRoot(uint index);
+            byte[] GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key);
+            RpcVersion GetVersion();
         }
 
-        readonly SyncRpcClient rpcClient;
+        readonly ICachingClient rpcClient;
         readonly uint index;
         readonly UInt256 rootHash;
-        // readonly ICache cache;
+
         readonly IReadOnlyDictionary<int, (UInt160 hash, ContractManifest manifest)> contractMap;
 
         public StateServiceStore(string uri, uint index, string? cachePath = null)
@@ -41,9 +44,9 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public StateServiceStore(SyncRpcClient rpcClient, uint index, string? cachePath = null)
         {
-            this.rpcClient = rpcClient;
+            this.rpcClient = new MemoryCacheClient(rpcClient);
             this.index = index;
-            this.rootHash = rpcClient.GetStateRoot(index).RootHash;
+            this.rootHash = this.rpcClient.GetStateRoot(index).RootHash;
 
             // this.cache = string.IsNullOrEmpty(cachePath)
             //     ? new MemoryCache(EnumerateContractStates)
@@ -53,8 +56,7 @@ namespace Neo.BlockchainToolkit.Persistence
             memoryOwner.Memory.Span[0] = 0x08; // ContractManagement.Prefix_Contract == 8
             var prefix = memoryOwner.Memory.Slice(0, 1);
 
-            contractMap = rpcClient
-                .EnumerateFindStates(rootHash, NativeContract.ContractManagement.Hash, prefix)
+            contractMap = EnumerateFindStates(this.rpcClient, rootHash, NativeContract.ContractManagement.Hash, prefix)
                 .Where(kvp => kvp.key.AsSpan().StartsWith(prefix.Span))
                 .Select(kvp => new StorageItem(kvp.value).GetInteroperable<ContractState>())
                 .ToImmutableDictionary(c => c.Id, c => (c.Hash, c.Manifest));
@@ -63,7 +65,6 @@ namespace Neo.BlockchainToolkit.Persistence
         public void Dispose()
         {
             rpcClient.Dispose();
-            // cache.Dispose();
         }
 
         public RpcVersion GetVersion() => rpcClient.GetVersion();
@@ -85,26 +86,19 @@ namespace Neo.BlockchainToolkit.Persistence
                 return key[4] switch
                 {
                     Ledger_Prefix_CurrentBlock => GetLedgerCurrentBlock(rpcClient, index),
-                    Ledger_Prefix_BlockHash => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4)),
-                    Ledger_Prefix_Block => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4)),
-                    Ledger_Prefix_Transaction => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4)),
+                    Ledger_Prefix_BlockHash => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsMemory(4)),
+                    Ledger_Prefix_Block => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsMemory(4)),
+                    Ledger_Prefix_Transaction => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsMemory(4)),
                     _ => throw new NotSupportedException()
                 };
             }
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                return rpcClient.GetState(rootHash, contract.hash, key.AsSpan(4));
+                return rpcClient.GetState(rootHash, contract.hash, key.AsMemory(4));
             }
 
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
-
-            static byte[] GetLedgerCurrentBlock(SyncRpcClient rpcClient, uint index)
-            {
-                var blockHash = rpcClient.GetBlockHash(index);
-                var hashIndexState = new VM.Types.Struct() { blockHash.ToArray(), index };
-                return BinarySerializer.Serialize(hashIndexState, 1024 * 1024);
-            }
         }
 
         public bool Contains(byte[] key) => TryGet(key) == null;
@@ -174,8 +168,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 ? ReadOnlyMemoryComparer.Default
                 : ReadOnlyMemoryComparer.Reverse;
 
-            return rpcClient
-                .EnumerateFindStates(rootHash, contractHash, prefix)
+            return EnumerateFindStates(rpcClient, rootHash, contractHash, prefix)
                 .Select(kvp =>
                 {
                     var k = new byte[kvp.key.Length + 4];
@@ -184,6 +177,29 @@ namespace Neo.BlockchainToolkit.Persistence
                     return (key: k, kvp.value);
                 })
                 .OrderBy(kvp => kvp.key, comparer);
+        }
+
+        static byte[] GetLedgerCurrentBlock(ICachingClient rpcClient, uint index)
+        {
+            var blockHash = rpcClient.GetBlockHash(index);
+            var hashIndexState = new VM.Types.Struct() { blockHash.ToArray(), index };
+            return BinarySerializer.Serialize(hashIndexState, 1024 * 1024);
+        }
+
+        static IEnumerable<(byte[] key, byte[] value)> EnumerateFindStates(ICachingClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        {
+            var from = Array.Empty<byte>();
+            while (true)
+            {
+                var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix, from, pageSize);
+                var states = foundStates.Results;
+                for (int i = 0; i < states.Length; i++)
+                {
+                    yield return (states[i].key, states[i].value);
+                }
+                if (!foundStates.Truncated || states.Length == 0) break;
+                from = states[states.Length - 1].key;
+            }
         }
     }
 }

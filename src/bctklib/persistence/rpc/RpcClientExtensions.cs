@@ -34,38 +34,24 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
 
         public static byte[]? GetState(this SyncRpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            try
+            var result = rpcClient.TryRpcSend(Neo.Network.RPC.RpcClient.GetRpcName(),
+                rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
+
+            if (result.TryPickT0(out var json, out var exception))
             {
-                var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(),
-                    rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
-                return Convert.FromBase64String(result.AsString());
+                return Convert.FromBase64String(json.AsString());
             }
-            catch (RpcException ex)
+            else
             {
                 const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
-
-                if (ex.HResult == COR_E_KEYNOTFOUND)
+                if (exception.HResult == COR_E_KEYNOTFOUND)
                 {
                     return null;
                 }
-
-                throw;
-            }
-        }
-
-        public static IEnumerable<(byte[] key, byte[] value)> EnumerateFindStates(this SyncRpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
-        {
-            var from = Array.Empty<byte>();
-            while (true)
-            {
-                var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from, pageSize);
-                var states = foundStates.Results;
-                for (int i = 0; i < states.Length; i++)
+                else 
                 {
-                    yield return (states[i].key, states[i].value);
+                    throw exception;
                 }
-                if (!foundStates.Truncated || states.Length == 0) break;
-                from = states[states.Length - 1].key;
             }
         }
 
