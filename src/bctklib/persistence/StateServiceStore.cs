@@ -5,8 +5,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using Neo.BlockchainToolkit.Persistence.RPC;
 using Neo.IO;
+using Neo.Network.RPC;
+using Neo.Network.RPC.Models;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Manifest;
@@ -23,12 +24,12 @@ namespace Neo.BlockchainToolkit.Persistence
             byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key);
             RpcStateRoot GetStateRoot(uint index);
             byte[] GetLedgerStorage(ReadOnlyMemory<byte> key);
-            RpcVersion GetVersion();
         }
 
-        readonly ICachingClient rpcClient;
+        readonly ICachingClient cachingClient;
         readonly uint index;
         readonly UInt256 rootHash;
+        readonly RpcVersion version;
 
         readonly IReadOnlyDictionary<int, (UInt160 hash, ContractManifest manifest)> contractMap;
 
@@ -38,25 +39,31 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
         public StateServiceStore(Uri uri, uint index, string? cachePath = null)
-            : this(new SyncRpcClient(uri), index, cachePath)
         {
-        }
+            // create temporary RpcClient in order to get network version info 
+            // and configure protocol settings correctly
+            using (var tempRpcClient = new RpcClient(uri))
+            {
+                version = tempRpcClient.GetVersion();
+            }
 
-        public StateServiceStore(SyncRpcClient rpcClient, uint index, string? cachePath = null)
-        {
-            this.rpcClient = string.IsNullOrEmpty(cachePath)
+            var protocolSettings = ProtocolSettings.Default with
+            {
+                AddressVersion = version.Protocol.AddressVersion,
+                Network = version.Protocol.Network
+            };
+            var rpcClient = new RpcClient(uri, protocolSettings: protocolSettings);
+            this.cachingClient = string.IsNullOrEmpty(cachePath)
                 ? new MemoryCacheClient(rpcClient)
                 : new RocksDbCacheClient(rpcClient, cachePath);
             this.index = index;
-            this.rootHash = this.rpcClient.GetStateRoot(index).RootHash;
-
-            // this.cache = 
+            this.rootHash = this.cachingClient.GetStateRoot(index).RootHash;
 
             using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
             memoryOwner.Memory.Span[0] = 0x08; // ContractManagement.Prefix_Contract == 8
             var prefix = memoryOwner.Memory.Slice(0, 1);
 
-            contractMap = EnumerateFindStates(this.rpcClient, rootHash, NativeContract.ContractManagement.Hash, prefix)
+            contractMap = EnumerateFindStates(this.cachingClient, rootHash, NativeContract.ContractManagement.Hash, prefix)
                 .Where(kvp => kvp.key.AsSpan().StartsWith(prefix.Span))
                 .Select(kvp => new StorageItem(kvp.value).GetInteroperable<ContractState>())
                 .ToImmutableDictionary(c => c.Id, c => (c.Hash, c.Manifest));
@@ -64,10 +71,10 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Dispose()
         {
-            rpcClient.Dispose();
+            cachingClient.Dispose();
         }
 
-        public RpcVersion GetVersion() => rpcClient.GetVersion();
+        public RpcVersion GetVersion() => version;
 
         const byte Ledger_Prefix_BlockHash = 9;
         const byte Ledger_Prefix_CurrentBlock = 12;
@@ -85,17 +92,17 @@ namespace Neo.BlockchainToolkit.Persistence
                 // TODO: integrate this into the cache
                 return key[4] switch
                 {
-                    Ledger_Prefix_CurrentBlock => GetLedgerCurrentBlock(rpcClient, index),
-                    Ledger_Prefix_BlockHash => rpcClient.GetLedgerStorage(key.AsMemory(4)),
-                    Ledger_Prefix_Block => rpcClient.GetLedgerStorage(key.AsMemory(4)),
-                    Ledger_Prefix_Transaction => rpcClient.GetLedgerStorage(key.AsMemory(4)),
+                    Ledger_Prefix_CurrentBlock => GetLedgerCurrentBlock(cachingClient, index),
+                    Ledger_Prefix_BlockHash => cachingClient.GetLedgerStorage(key.AsMemory(4)),
+                    Ledger_Prefix_Block => cachingClient.GetLedgerStorage(key.AsMemory(4)),
+                    Ledger_Prefix_Transaction => cachingClient.GetLedgerStorage(key.AsMemory(4)),
                     _ => throw new NotSupportedException()
                 };
             }
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                return rpcClient.GetState(rootHash, contract.hash, key.AsMemory(4));
+                return cachingClient.GetState(rootHash, contract.hash, key.AsMemory(4));
             }
 
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
@@ -175,7 +182,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 ? ReadOnlyMemoryComparer.Default
                 : ReadOnlyMemoryComparer.Reverse;
 
-            return EnumerateFindStates(rpcClient, rootHash, contractHash, prefix)
+            return EnumerateFindStates(cachingClient, rootHash, contractHash, prefix)
                 .Select(kvp =>
                 {
                     var k = new byte[kvp.key.Length + 4];

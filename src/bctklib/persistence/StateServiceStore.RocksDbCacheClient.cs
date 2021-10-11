@@ -1,17 +1,12 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
-using Neo.BlockchainToolkit.Persistence.RPC;
-using Neo.IO;
 using Neo.IO.Json;
+using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
-using Neo.Persistence;
 using RocksDbSharp;
-using RpcVersion = Neo.BlockchainToolkit.Persistence.RPC.RpcVersion;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -19,10 +14,10 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         class RocksDbCacheClient : ICachingClient
         {
-            readonly SyncRpcClient rpcClient;
+            readonly RpcClient rpcClient;
             readonly RocksDb db;
 
-            public RocksDbCacheClient(SyncRpcClient rpcClient, string cachePath)
+            public RocksDbCacheClient(RpcClient rpcClient, string cachePath)
             {
                 this.rpcClient = rpcClient;
 
@@ -64,7 +59,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
 
                 var json = GetCachedJson(key, family, () => {
-                    var @params = RpcClientExtensions.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
+                    var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
                     return rpcClient.RpcSend("findstates", @params);
                 });
                 return RpcFoundStates.FromJson(json);
@@ -92,7 +87,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 else
                 {
-                    var request = SyncRpcClient.AsRpcRequest("getstate",
+                    var request = "getstate".AsRpcRequest(
                         rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key.Span));
                     rpcResponse = rpcClient.Send(request);
                     db.Put(key.Span, rpcResponse.ToJson().ToByteArray(false), family);
@@ -118,14 +113,6 @@ namespace Neo.BlockchainToolkit.Persistence
                 var json = GetCachedJson(key.Span, family,
                     () => rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
                 return Convert.FromBase64String(json.AsString());
-            }
-
-            public RpcVersion GetVersion()
-            {
-                var family = db.GetDefaultColumnFamily();
-                var key = Encoding.UTF8.GetBytes(nameof(GetVersion));
-                var json = GetCachedJson(key, family, () => rpcClient.RpcSend("getversion"));
-                return RpcVersion.FromJson(json);
             }
 
             readonly static Encoding encoding = Encoding.UTF8;

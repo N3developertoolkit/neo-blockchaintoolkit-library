@@ -38,12 +38,13 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static int GetHashCode(ReadOnlySpan<byte> span)
         {
-            int hash = new HashCode().ToHashCode();
+            var hash = default(HashCode);
             for (int i = 0; i < span.Length; i++)
             {
-                hash = HashCode.Combine(hash, i, span[i]);
+                hash.Add(i);
+                hash.Add(span[i]);
             }
-            return hash;
+            return hash.ToHashCode();
         }
     }
 }

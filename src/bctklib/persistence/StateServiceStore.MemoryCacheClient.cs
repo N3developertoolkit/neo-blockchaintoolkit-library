@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Neo;
-using Neo.BlockchainToolkit.Persistence.RPC;
+using Neo.Network.RPC;
+using Neo.Network.RPC.Models;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -10,19 +11,17 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         class MemoryCacheClient : ICachingClient
         {
-            readonly SyncRpcClient rpcClient;
+            readonly RpcClient rpcClient;
 
-            readonly Lazy<RpcVersion> version;
             LockingDictionary<uint, RpcStateRoot> stateRoots = new();
             LockingDictionary<uint, UInt256> blockHashes = new();
             LockingDictionary<int, RpcFoundStates> foundStates = new();
             LockingDictionary<int, byte[]?> retrievedStates = new();
             LockingDictionary<int, byte[]> storages = new();
 
-            public MemoryCacheClient(SyncRpcClient rpcClient)
+            public MemoryCacheClient(RpcClient rpcClient)
             {
                 this.rpcClient = rpcClient;
-                version = new Lazy<RpcVersion>(() => rpcClient.GetVersion());
             }
 
             public void Dispose()
@@ -65,11 +64,6 @@ namespace Neo.BlockchainToolkit.Persistence
                 var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
                 var hash = ReadOnlyMemoryComparer.GetHashCode(key.Span);
                 return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
-            }
-
-            public RpcVersion GetVersion()
-            {
-                return version.Value;
             }
         }
     }
