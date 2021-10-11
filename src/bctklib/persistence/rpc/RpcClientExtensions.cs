@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Neo.IO.Json;
+using Neo.Network.RPC;
 
 namespace Neo.BlockchainToolkit.Persistence.RPC
 {
@@ -31,11 +32,25 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
             return RpcStateRoot.FromJson(result);
         }
 
-        public static byte[] GetState(this SyncRpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        public static byte[]? GetState(this SyncRpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(),
-                rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
-            return Convert.FromBase64String(result.AsString());
+            try
+            {
+                var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(),
+                    rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
+                return Convert.FromBase64String(result.AsString());
+            }
+            catch (RpcException ex)
+            {
+                const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
+
+                if (ex.HResult == COR_E_KEYNOTFOUND)
+                {
+                    return null;
+                }
+
+                throw;
+            }
         }
 
         public static IEnumerable<(byte[] key, byte[] value)> EnumerateFindStates(this SyncRpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
