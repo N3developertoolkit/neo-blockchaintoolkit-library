@@ -60,9 +60,10 @@ namespace Neo.BlockchainToolkit.Persistence
                 return stateRoots.GetOrAdd(index, i => rpcClient.GetStateRoot(i));
             }
 
-            public byte[] GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key)
+            public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
             {
-                var hash = HashCode.Combine(contractHash, ReadOnlyMemoryComparer.GetHashCode(key.Span));
+                var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
+                var hash = ReadOnlyMemoryComparer.GetHashCode(key.Span);
                 return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
             }
 

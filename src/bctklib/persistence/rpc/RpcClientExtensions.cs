@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Neo.IO.Json;
 using Neo.Network.RPC;
+using Neo.Network.RPC.Models;
 
 namespace Neo.BlockchainToolkit.Persistence.RPC
 {
@@ -34,24 +35,29 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
 
         public static byte[]? GetState(this SyncRpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            var result = rpcClient.TryRpcSend(Neo.Network.RPC.RpcClient.GetRpcName(),
+            var request = SyncRpcClient.AsRpcRequest(Neo.Network.RPC.RpcClient.GetRpcName(),
                 rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
+            var response = rpcClient.Send(request);
+            return response.AsStateResponse();
+        }
 
-            if (result.TryPickT0(out var json, out var exception))
-            {
-                return Convert.FromBase64String(json.AsString());
-            }
-            else
+        public static byte[]? AsStateResponse(this RpcResponse response)
+        {
+            if (response.Error != null)
             {
                 const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
-                if (exception.HResult == COR_E_KEYNOTFOUND)
+                if (response.Error.Code == COR_E_KEYNOTFOUND)
                 {
                     return null;
                 }
-                else 
+                else
                 {
-                    throw exception;
+                    throw new RpcException(response.Error.Code, response.Error.Message);
                 }
+            }
+            else
+            {
+                return Convert.FromBase64String(response.Result.AsString());
             }
         }
 
@@ -62,7 +68,7 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
             return RpcFoundStates.FromJson(result);
         }
 
-        static JObject[] MakeFindStatesParams(UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
+        public static JObject[] MakeFindStatesParams(UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
         {
             var paramCount = from.Length == 0 ? 3 : count == null ? 4 : 5;
             var @params = new JObject[paramCount];

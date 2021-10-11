@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Network.RPC;
+using Neo.Persistence;
 using Neo.SmartContract.Native;
 
 namespace state_store
@@ -36,31 +37,37 @@ namespace state_store
 
             try
             {
-                Console.Write($"StateServiceStore ctor ");
-                var sw = Stopwatch.StartNew();
-                using (var store = new StateServiceStore(uri, count - 1))
+                // Console.Write($"StateServiceStore ctor ");
+                // var sw = Stopwatch.StartNew();
+                using (var store = new StateServiceStore(uri, count - 1, cachePath))
                 {
-                    var t1 = sw.Elapsed;
-                    Console.WriteLine(t1);
+                    // var t1 = sw.Elapsed;
+                    // Console.WriteLine(t1);
 
-                    var key = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
-                    foreach (var contract in NativeContract.Contracts)
+                    using var snapshot = new SnapshotCache(store);
+                    foreach (var contract in NativeContract.ContractManagement.ListContracts(snapshot))
                     {
-                        if (contract.Id == NativeContract.Ledger.Id) continue;
-
-                        Console.WriteLine($"{contract.Name} {contract.Id}");
-                        // BinaryPrimitives.WriteInt32LittleEndian(key.AsSpan(0, 4), contract.Id);
-
-                        // sw.Restart();
-                        // store.TryGet(key);
-                        // var t = sw.Elapsed;
-                        // Console.WriteLine(t);
+                        Console.WriteLine($"{contract.Manifest.Name} {contract.Id}");
                     }
 
-                    foreach (var kvp in store.ContractMap.OrderBy(p => p.Key))
-                    {
-                        Console.WriteLine($"{kvp.Key} {kvp.Value.manifest.Name}");
-                    }
+                    // var key = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
+                    // foreach (var contract in NativeContract.Contracts)
+                    // {
+                    //     if (contract.Id == NativeContract.Ledger.Id) continue;
+
+                    //     Console.WriteLine($"{contract.Name} {contract.Id}");
+                    //     // BinaryPrimitives.WriteInt32LittleEndian(key.AsSpan(0, 4), contract.Id);
+
+                    //     // sw.Restart();
+                    //     // store.TryGet(key);
+                    //     // var t = sw.Elapsed;
+                    //     // Console.WriteLine(t);
+                    // }
+
+                    // foreach (var kvp in store.ContractMap.OrderBy(p => p.Key))
+                    // {
+                    //     Console.WriteLine($"{kvp.Key} {kvp.Value.manifest.Name}");
+                    // }
 
                 }
 
@@ -71,7 +78,7 @@ namespace state_store
             }
             finally
             {
-                // Directory.Delete(cachePath, true);
+                if (Directory.Exists(cachePath)) Directory.Delete(cachePath, true);
             }
         }
     }

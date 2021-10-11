@@ -13,32 +13,14 @@ namespace Neo.BlockchainToolkit.Persistence
 
     static class Extensions
     {
-        public static unsafe bool TryGet(this RocksDb db, ColumnFamilyHandle columnFamily, ReadOnlySpan<byte> key, ReadOptions readOptions, out byte[] value)
+        readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
+        public static ColumnFamilyHandle GetOrCreateColumnFamily(this RocksDb db, string familyName, ColumnFamilyOptions? options = null)
         {
-            fixed (byte* keyPtr = key)
+            if (!db.TryGetColumnFamily(familyName, out var familyHandle))
             {
-                var pinnableSlice = Native.Instance.rocksdb_get_pinned_cf(db.Handle, readOptions.Handle,
-                    columnFamily.Handle, (IntPtr)keyPtr, (UIntPtr)key.Length);
-
-                try
-                {
-                    var valuePtr = Native.Instance.rocksdb_pinnableslice_value(pinnableSlice, out var valueLength);
-
-                    if (valuePtr == IntPtr.Zero)
-                    {
-                        value = Array.Empty<byte>();
-                        return false;
-                    }
-
-                    var span = new ReadOnlySpan<byte>((byte*)valuePtr, (int)valueLength);
-                    value = span.ToArray();
-                    return true;
-                }
-                finally
-                {
-                    Native.Instance.rocksdb_pinnableslice_destroy(pinnableSlice);
-                }
+                familyHandle = db.CreateColumnFamily(options ?? defaultColumnFamilyOptions, familyName);
             }
+            return familyHandle;
         }
 
         public static IEnumerable<(byte[] key, byte[] value)> Seek(this RocksDb db, ColumnFamilyHandle columnFamily, ReadOnlySpan<byte> prefix, SeekDirection direction, ReadOptions? readOptions)

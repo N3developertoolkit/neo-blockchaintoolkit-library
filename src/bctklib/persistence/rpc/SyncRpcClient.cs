@@ -30,7 +30,7 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
             httpClient.Dispose();
         }
 
-        static RpcRequest AsRpcRequest(string method, params JObject[] paraArgs)
+        public static RpcRequest AsRpcRequest(string method, params JObject[] paraArgs)
         {
             return new RpcRequest
             {
@@ -52,19 +52,15 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
 
         public JObject RpcSend(string method, params JObject[] paraArgs)
         {
-            var response = TryRpcSend(method, paraArgs);
-            return response.TryPickT0(out var value, out var exception)
-                ? value : throw exception;
-        }
-
-        public OneOf<JObject, RpcException> TryRpcSend(string method, params JObject[] paraArgs)
-        {
             var request = AsRpcRequest(method, paraArgs);
             var response = Send(request);
 
-            return response.Error == null
-                ? response.Result
-                : new RpcException(response.Error.Code, response.Error.Message);
+            if (response.Error != null)
+            {
+                throw new RpcException(response.Error.Code, response.Error.Message);
+            }
+
+            return response.Result;
         }
 
         public RpcResponse Send(RpcRequest request)
