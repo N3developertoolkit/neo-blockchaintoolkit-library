@@ -23,17 +23,28 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public bool Equals(ReadOnlyMemory<byte> x, ReadOnlyMemory<byte> y)
         {
-            return x.Span.SequenceEqual(y.Span);
+            return Equals(x.Span, y.Span);
         }
 
         public int GetHashCode(ReadOnlyMemory<byte> obj)
         {
-            int hash = 0;
-            for (int i = 0; i < obj.Length; i++)
+            return GetHashCode(obj.Span);
+        }
+
+        public static bool Equals(ReadOnlySpan<byte> x, ReadOnlySpan<byte> y)
+        {
+            return x.SequenceEqual(y);
+        }
+
+        public static int GetHashCode(ReadOnlySpan<byte> span)
+        {
+            var hash = default(HashCode);
+            for (int i = 0; i < span.Length; i++)
             {
-                hash = HashCode.Combine(hash, i, obj.Span[i]);
+                hash.Add(i);
+                hash.Add(span[i]);
             }
-            return hash;
+            return hash.ToHashCode();
         }
     }
 }

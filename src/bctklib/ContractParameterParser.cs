@@ -42,7 +42,7 @@ namespace Neo.BlockchainToolkit
         public async Task<Script> LoadInvocationScriptAsync(string path)
         {
             var invokeFile = fileSystem.Path.GetFullPath(path);
-            if (!fileSystem.File.Exists(invokeFile)) throw new ArgumentException($"{path} doens't exist", nameof(path));
+            if (!fileSystem.File.Exists(invokeFile)) throw new ArgumentException($"{path} doesn't exist", nameof(path));
 
             using var streamReader = fileSystem.File.OpenText(invokeFile);
             using var jsonReader = new JsonTextReader(streamReader);
@@ -262,7 +262,7 @@ namespace Neo.BlockchainToolkit
         {
             var type = Enum.Parse<ContractParameterType>(
                 json.Value<string>("type") ?? throw new JsonException("missing type field"));
-            var valueProp = json["value"] ?? throw new JsonException("missing value vield");
+            var valueProp = json["value"] ?? throw new JsonException("missing value field");
 
             object value = type switch
             {

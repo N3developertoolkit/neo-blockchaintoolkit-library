@@ -9,42 +9,68 @@ using None = OneOf.Types.None;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    using TrackingMap = ImmutableSortedDictionary<ReadOnlyMemory<byte>, OneOf<ReadOnlyMemory<byte>, None>>;
+    using TrackingMap = ImmutableDictionary<ReadOnlyMemory<byte>, OneOf<ReadOnlyMemory<byte>, None>>;
 
     static class Extensions
     {
-        public static IEnumerable<(byte[] key, byte[] value)> Seek(this RocksDb db, ColumnFamilyHandle columnFamily, byte[]? key, SeekDirection direction, ReadOptions? readOptions)
+        readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
+        public static ColumnFamilyHandle GetOrCreateColumnFamily(this RocksDb db, string familyName, ColumnFamilyOptions? options = null)
         {
-            key ??= Array.Empty<byte>();
-            using var iterator = db.NewIterator(columnFamily, readOptions);
+            if (!db.TryGetColumnFamily(familyName, out var familyHandle))
+            {
+                familyHandle = db.CreateColumnFamily(options ?? defaultColumnFamilyOptions, familyName);
+            }
+            return familyHandle;
+        }
 
-            Func<Iterator> iteratorNext;
+        public static IEnumerable<(byte[] key, byte[] value)> Seek(this RocksDb db, ColumnFamilyHandle columnFamily, ReadOnlySpan<byte> prefix, SeekDirection direction, ReadOptions? readOptions)
+        {
+            var iterator = db.NewIterator(columnFamily, readOptions);
+
             if (direction == SeekDirection.Forward)
             {
-                iterator.Seek(key);
-                iteratorNext = iterator.Next;
+                Seek(iterator, prefix);
+                return SeekInternal(iterator, iterator.Next);
             }
             else
             {
-                iterator.SeekForPrev(key);
-                iteratorNext = iterator.Prev;
+                SeekForPrev(iterator, prefix);
+                return SeekInternal(iterator, iterator.Prev);
             }
 
-            while (iterator.Valid())
+            IEnumerable<(byte[] key, byte[] value)> SeekInternal(Iterator iterator, Func<Iterator> nextAction)
             {
-                yield return (iterator.Key(), iterator.Value());
-                iteratorNext();
+                using (iterator)
+                {
+                    while (iterator.Valid())
+                    {
+                        yield return (iterator.Key(), iterator.Value());
+                        nextAction();
+                    }
+                }
+            }
+
+            unsafe static Iterator Seek(Iterator @this, ReadOnlySpan<byte> prefix)
+            {
+                fixed (byte* prefixPtr = prefix)
+                {
+                    return @this.Seek(prefixPtr, (ulong)prefix.Length);
+                }
+            }
+
+            unsafe static Iterator SeekForPrev(Iterator @this, ReadOnlySpan<byte> prefix)
+            {
+                fixed (byte* prefixPtr = prefix)
+                {
+                    return @this.SeekForPrev(prefixPtr, (ulong)prefix.Length);
+                }
             }
         }
 
-        public static ReadOnlyMemory<byte> CloneAsReadOnlyMemory(this byte[]? array)
-        {
-            return array == null ? default : array.AsSpan().ToArray();
-        }
- 
         public static byte[]? TryGet(this TrackingMap trackingMap, IReadOnlyStore store, byte[]? key)
         {
-            if (trackingMap.TryGetValue(key ?? default, out var mapValue))
+            key ??= Array.Empty<byte>();
+            if (trackingMap.TryGetValue(key, out var mapValue))
             {
                 return mapValue.Match<byte[]?>(v => v.ToArray(), _ => null);
             }
@@ -55,8 +81,8 @@ namespace Neo.BlockchainToolkit.Persistence
         public static IEnumerable<(byte[] Key, byte[] Value)> Seek(this TrackingMap trackingMap, IReadOnlyStore store, byte[]? key, SeekDirection direction)
         {
             key ??= Array.Empty<byte>();
-            var comparer = direction == SeekDirection.Forward 
-                ? ReadOnlyMemoryComparer.Default 
+            var comparer = direction == SeekDirection.Forward
+                ? ReadOnlyMemoryComparer.Default
                 : ReadOnlyMemoryComparer.Reverse;
 
             var memoryItems = trackingMap
