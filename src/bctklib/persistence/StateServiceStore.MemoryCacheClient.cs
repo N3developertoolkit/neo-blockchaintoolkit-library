@@ -9,7 +9,7 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class StateServiceStore
     {
-        class MemoryCacheClient : ICachingClient
+        internal class MemoryCacheClient : ICachingClient
         {
             readonly RpcClient rpcClient;
 

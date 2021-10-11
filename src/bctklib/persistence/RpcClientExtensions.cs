@@ -7,6 +7,8 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     static class RpcClientExtensions
     {
+        internal const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
+
         public static RpcVersion GetVersion(this RpcClient rpcClient)
         {
             var result = rpcClient.RpcSend(RpcClient.GetRpcName());
@@ -33,10 +35,17 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static byte[]? GetState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            var request = AsRpcRequest(RpcClient.GetRpcName(),
-                rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
-            var response = rpcClient.Send(request);
-            return response.AsStateResponse();
+            try
+            {
+                var result = rpcClient.RpcSend(RpcClient.GetRpcName(),
+                    rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
+                return Convert.FromBase64String(result.AsString());
+            }
+            catch (RpcException ex)
+            {
+                if (ex.HResult == COR_E_KEYNOTFOUND) return null;
+                throw;
+            }
         }
 
         public static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
@@ -44,37 +53,6 @@ namespace Neo.BlockchainToolkit.Persistence
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
             return RpcFoundStates.FromJson(result);
-        }
-
-        public static RpcRequest AsRpcRequest(this string method, params JObject[] paraArgs)
-        {
-            return new RpcRequest
-            {
-                Id = 1,
-                JsonRpc = "2.0",
-                Method = method,
-                Params = paraArgs
-            };
-        }
-
-        public static byte[]? AsStateResponse(this RpcResponse response)
-        {
-            if (response.Error != null)
-            {
-                const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
-                if (response.Error.Code == COR_E_KEYNOTFOUND)
-                {
-                    return null;
-                }
-                else
-                {
-                    throw new RpcException(response.Error.Code, response.Error.Message);
-                }
-            }
-            else
-            {
-                return Convert.FromBase64String(response.Result.AsString());
-            }
         }
     }
 }
