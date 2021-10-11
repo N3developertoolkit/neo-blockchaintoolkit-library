@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using Neo.BlockchainToolkit.TraceDebug;
 using Neo.Network.P2P.Payloads;
