@@ -11,6 +11,7 @@ using Neo.BlockchainToolkit.Models;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
+#pragma warning disable VSTHRD200
 namespace test.bctklib3
 {
     public class DebugInfoTest
@@ -275,3 +276,4 @@ namespace test.bctklib3
         }
     }
 }
+#pragma warning restore VSTHRD200

@@ -6,7 +6,7 @@ using OneOf;
 using None = OneOf.Types.None;
 namespace Neo.BlockchainToolkit.Persistence
 {
-    using TrackingMap = ImmutableSortedDictionary<ReadOnlyMemory<byte>, OneOf<ReadOnlyMemory<byte>, None>>;
+    using TrackingMap = ImmutableDictionary<ReadOnlyMemory<byte>, OneOf<ReadOnlyMemory<byte>, None>>;
 
     public partial class MemoryTrackingStore
     {
@@ -26,21 +26,21 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Dispose() { }
 
-            public bool Contains(byte[] key) => TryGet(key) != null;
+            public bool Contains(byte[]? key) => TryGet(key) != null;
 
-            public byte[]? TryGet(byte[] key) => trackingMap.TryGet(store, key);
+            public byte[]? TryGet(byte[]? key) => trackingMap.TryGet(store, key);
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
                 => trackingMap.Seek(store, key, direction);
 
             public void Put(byte[]? key, byte[] value)
             {
-                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key.CloneAsReadOnlyMemory(), value.CloneAsReadOnlyMemory());
+                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key, value);
             }
 
             public void Delete(byte[]? key)
             {
-                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key.CloneAsReadOnlyMemory(), default(None));
+                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key, default(None));
             }
 
             public void Commit() => commitAction(writeBatchMap);

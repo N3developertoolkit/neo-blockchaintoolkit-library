@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\bctklib\bctklib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="nito.disposables" Version="2.2.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>state_store</RootNamespace>
+  </PropertyGroup>
+
+</Project>
