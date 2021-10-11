@@ -16,9 +16,13 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly WriteOptions writeOptions = new WriteOptions();
         readonly WriteOptions writeSyncOptions = new WriteOptions().SetSync(true);
 
-        public RocksDbStore(RocksDb db, bool readOnly = false, bool shared = false)
-            : this(db, db.GetDefaultColumnFamily(), readOnly, shared)
+        public RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false, bool shared = false)
         {
+            this.db = db;
+            this.columnFamily = string.IsNullOrEmpty(columnFamilyName)
+                ? db.GetDefaultColumnFamily() : db.GetColumnFamily(columnFamilyName);
+            this.readOnly = readOnly;
+            this.shared = shared;
         }
 
         public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false, bool shared = false)
@@ -28,19 +32,6 @@ namespace Neo.BlockchainToolkit.Persistence
             this.readOnly = readOnly;
             this.shared = shared;
         }
-
-        public static RocksDbStore Open(string path)
-        {
-            var db = RocksDbUtility.OpenDb(path);
-            return new RocksDbStore(db, readOnly: false);
-        }
-
-        public static RocksDbStore OpenReadOnly(string path)
-        {
-            var db = RocksDbUtility.OpenReadOnlyDb(path);
-            return new RocksDbStore(db, readOnly: true);
-        }
-
 
         public void Dispose()
         {
