@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using Neo.IO.Json;
@@ -12,7 +13,7 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class StateServiceStore
     {
-        class RocksDbCacheClient : ICachingClient
+        internal class RocksDbCacheClient : ICachingClient
         {
             readonly RpcClient rpcClient;
             readonly RocksDb db;
@@ -58,7 +59,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 if (from.Length > 0) from.Span.CopyTo(key.Slice(prefix.Length));
                 if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
 
-                var json = GetCachedJson(key, family, () => {
+                var json = GetCachedJson(key, family, () =>
+                {
                     var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
                     return rpcClient.RpcSend("findstates", @params);
                 });
@@ -79,21 +81,39 @@ namespace Neo.BlockchainToolkit.Persistence
                 var family = db.GetOrCreateColumnFamily(familyName);
                 var value = db.Get(key.Span, family);
 
-                RpcResponse rpcResponse;
+                JObject jsonValue;
                 if (value != null)
                 {
-                    var json = JObject.Parse(value);
-                    rpcResponse = RpcResponse.FromJson(json);
+                    jsonValue = JObject.Parse(value);
                 }
                 else
                 {
-                    var request = "getstate".AsRpcRequest(
-                        rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key.Span));
-                    rpcResponse = rpcClient.Send(request);
-                    db.Put(key.Span, rpcResponse.ToJson().ToByteArray(false), family);
+                    try
+                    {
+                        jsonValue = rpcClient.RpcSend("getstate",
+                            rootHash.ToString(),
+                            scriptHash.ToString(),
+                            Convert.ToBase64String(key.Span));
+                    }
+                    catch (RpcException ex)
+                    {
+                        if (ex.HResult == RpcClientExtensions.COR_E_KEYNOTFOUND)
+                        {
+                            jsonValue = JObject.Null;
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                    var jsonBytes = jsonValue == null
+                        ? Neo.Utility.StrictUTF8.GetBytes("null")
+                        : jsonValue.ToByteArray(false);
+                    db.Put(key.Span, jsonBytes, family);
                 }
 
-                return rpcResponse.AsStateResponse();
+                return jsonValue == null || jsonValue == JObject.Null ? null 
+                    : Convert.FromBase64String(jsonValue.AsString());
             }
 
             public RpcStateRoot GetStateRoot(uint index)
