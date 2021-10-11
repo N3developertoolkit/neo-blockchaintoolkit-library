@@ -94,7 +94,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                return rpcClient.GetState(rootHash, contract.hash, key);
+                return rpcClient.GetState(rootHash, contract.hash, key.AsSpan(4));
             }
 
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
