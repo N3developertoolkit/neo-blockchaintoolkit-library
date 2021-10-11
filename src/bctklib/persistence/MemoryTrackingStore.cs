@@ -6,6 +6,7 @@ using System.Threading;
 using Neo.Persistence;
 using OneOf;
 using None = OneOf.Types.None;
+
 namespace Neo.BlockchainToolkit.Persistence
 {
     using TrackingMap = ImmutableSortedDictionary<ReadOnlyMemory<byte>, OneOf<ReadOnlyMemory<byte>, None>>;

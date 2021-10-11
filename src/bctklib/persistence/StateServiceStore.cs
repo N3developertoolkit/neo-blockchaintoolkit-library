@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using Neo;
 using Neo.BlockchainToolkit.Persistence.RPC;
+using Neo.IO;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Manifest;
@@ -22,6 +23,7 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
         readonly SyncRpcClient rpcClient;
+        readonly uint index;
         readonly UInt256 rootHash;
         readonly ICache cache;
         readonly IReadOnlyDictionary<int, (UInt160 hash, ContractManifest manifest)> contractMap;
@@ -31,30 +33,16 @@ namespace Neo.BlockchainToolkit.Persistence
         {
         }
 
-        public StateServiceStore(string uri, UInt256 rootHash, string? cachePath = null)
-            : this(new Uri(uri), rootHash, cachePath)
-        {
-        }
-
         public StateServiceStore(Uri uri, uint index, string? cachePath = null)
             : this(new SyncRpcClient(uri), index, cachePath)
         {
         }
 
-        public StateServiceStore(Uri uri, UInt256 rootHash, string? cachePath = null)
-            : this(new SyncRpcClient(uri), rootHash, cachePath)
-        {
-        }
-
         public StateServiceStore(SyncRpcClient rpcClient, uint index, string? cachePath = null)
-            : this(rpcClient, rpcClient.GetStateRoot(index).RootHash, cachePath)
-        {
-        }
-
-        public StateServiceStore(SyncRpcClient rpcClient, UInt256 rootHash, string? cachePath = null)
         {
             this.rpcClient = rpcClient;
-            this.rootHash = rootHash;
+            this.index = index;
+            this.rootHash = rpcClient.GetStateRoot(index).RootHash;
             this.cache = string.IsNullOrEmpty(cachePath)
                 ? new MemoryCache(EnumerateContractStates)
                 : new RocksDbCache(EnumerateContractStates, cachePath);
@@ -84,9 +72,28 @@ namespace Neo.BlockchainToolkit.Persistence
             return rpcClient.EnumerateFindStates(rootHash, contractHash, default);
         }
 
+        const byte Ledger_Prefix_BlockHash = 9;
+        const byte Ledger_Prefix_CurrentBlock = 12;
+        const byte Ledger_Prefix_Block = 5;
+        const byte Ledger_Prefix_Transaction = 11;
+
         public byte[]? TryGet(byte[] key)
         {
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
+
+            if (contractId == NativeContract.Ledger.Id)
+            {
+                // TODO: integrate this into the cache
+                return key[4] switch
+                {
+                    Ledger_Prefix_CurrentBlock => GetLedgerCurrentBlock(rpcClient, index),
+                    Ledger_Prefix_BlockHash => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4)),
+                    Ledger_Prefix_Block => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4)),
+                    Ledger_Prefix_Transaction => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4)),
+                    _ => throw new NotSupportedException()
+                };
+            }
+
             if (contractMap.TryGetValue(contractId, out var contract)
                 && cache.TryGet(contract.hash, key.AsMemory(4), out var value))
             {
@@ -94,6 +101,13 @@ namespace Neo.BlockchainToolkit.Persistence
             }
 
             return null;
+
+            static byte[] GetLedgerCurrentBlock(SyncRpcClient rpcClient, uint index)
+            {
+                var blockHash = rpcClient.GetBlockHash(index);
+                var hashIndexState = new VM.Types.Struct() { blockHash.ToArray(), index };
+                return BinarySerializer.Serialize(hashIndexState, 1024 * 1024);
+            }
         }
 
         public bool Contains(byte[] key) => TryGet(key) == null;
@@ -101,6 +115,21 @@ namespace Neo.BlockchainToolkit.Persistence
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction)
         {
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
+            if (contractId == NativeContract.Ledger.Id)
+            {
+                // The only place the native Ledger contract uses seek is in the Initialized
+                // method, and it's only checking for the existence of any value with  
+                // Prefix_Block value. So return a single empty value in this case so the .Any()
+                // method returns true
+
+                if (key[4] == Ledger_Prefix_Block && key.Length == 5)
+                {
+                    return Enumerable.Repeat((key, Array.Empty<byte>()), 1);
+                }
+
+                throw new NotSupportedException("Native Ledger contract does not support Seek");
+            }
+
             if (contractMap.TryGetValue(contractId, out var contract))
             {
                 return cache.Seek(contract.hash, key.AsMemory(4), direction)

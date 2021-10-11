@@ -13,6 +13,18 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
             return RpcVersion.FromJson(result);
         }
 
+        public static UInt256 GetBlockHash(this SyncRpcClient rpcClient, uint index)
+        {
+            var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(), index);
+            return UInt256.Parse(result.AsString());
+        }
+
+        public static byte[] GetStorage(this SyncRpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)
+        {
+            var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(), contractHash.ToString(), Convert.ToBase64String(key));
+            return Convert.FromBase64String(result.AsString());
+        }
+
         public static RpcStateRoot GetStateRoot(this SyncRpcClient rpcClient, uint index)
         {
             var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(), index);
