@@ -7,6 +7,12 @@ namespace Neo.BlockchainToolkit.Persistence.RPC
 
     static class RpcClientExtensions
     {
+        public static RpcVersion GetVersion(this SyncRpcClient rpcClient)
+        {
+            var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName());
+            return RpcVersion.FromJson(result);
+        }
+
         public static RpcStateRoot GetStateRoot(this SyncRpcClient rpcClient, uint index)
         {
             var result = rpcClient.RpcSend(Neo.Network.RPC.RpcClient.GetRpcName(), index);
