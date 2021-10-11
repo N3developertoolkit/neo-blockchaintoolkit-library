@@ -27,11 +27,11 @@ namespace Neo.BlockchainToolkit.Persistence
             public IEnumerable<(byte[] key, byte[] value)> Seek(UInt160 contractHash, ReadOnlyMemory<byte> prefix, SeekDirection direction)
             {
                 var comparer = direction == SeekDirection.Forward
-                    ? ByteArrayComparer.Default
-                    : ByteArrayComparer.Reverse;
+                    ? ReadOnlyMemoryComparer.Default
+                    : ReadOnlyMemoryComparer.Reverse;
 
                 return GetCachedStates(contractHash)
-                    .Where(kvp => prefix.Length == 0 || comparer.Compare(kvp.key, prefix.Span) >= 0)
+                    .Where(kvp => prefix.Length == 0 || comparer.Compare(kvp.key, prefix) >= 0)
                     .OrderBy(kvp => kvp.key, comparer);
             }
 

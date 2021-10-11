@@ -3,9 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Neo;
 using Neo.IO;
-using Neo.Network.RPC;
 using Neo.Persistence;
 using RocksDbSharp;
 
@@ -51,42 +49,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public IEnumerable<(byte[] key, byte[] value)> Seek(UInt160 contractHash, ReadOnlyMemory<byte> prefix, SeekDirection direction)
             {
                 var family = PopulateLocalCache(contractHash);
-                using var iterator = db.NewIterator(family);
-
-                if (direction == SeekDirection.Forward)
-                {
-                    Seek(iterator, prefix.Span);
-                    while (iterator.Valid())
-                    {
-                        yield return (iterator.Key(), iterator.Value());
-                        iterator.Next();
-                    }
-                }
-                else
-                {
-                    SeekForPrev(iterator, prefix.Span);
-                    while (iterator.Valid())
-                    {
-                        yield return (iterator.Key(), iterator.Value());
-                        iterator.Prev();
-                    }
-                }
-
-                unsafe static Iterator Seek(Iterator @this, ReadOnlySpan<byte> prefix)
-                {
-                    fixed (byte* prefixPtr = prefix)
-                    {
-                        return @this.Seek(prefixPtr, (ulong)prefix.Length);
-                    }
-                }
-
-                unsafe static Iterator SeekForPrev(Iterator @this, ReadOnlySpan<byte> prefix)
-                {
-                    fixed (byte* prefixPtr = prefix)
-                    {
-                        return @this.SeekForPrev(prefixPtr, (ulong)prefix.Length);
-                    }
-                }
+                return db.Seek(family, prefix.Span, direction, defaultReadOptions);
             }
 
             static readonly ReadOptions defaultReadOptions = new ReadOptions();
@@ -94,34 +57,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public bool TryGet(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[] value)
             {
                 var family = PopulateLocalCache(contractHash);
-                return TryGet(db, family, key.Span, defaultReadOptions, out value);
-
-                static unsafe bool TryGet(RocksDb db, ColumnFamilyHandle columnFamily, ReadOnlySpan<byte> key, ReadOptions readOptions, out byte[] value)
-                {
-                    fixed (byte* keyPtr = key)
-                    {
-                        var pinnableSlice = Native.Instance.rocksdb_get_pinned_cf(db.Handle, readOptions.Handle,
-                            columnFamily.Handle, (IntPtr)keyPtr, (UIntPtr)key.Length);
-
-                        try
-                        {
-                            var valuePtr = Native.Instance.rocksdb_pinnableslice_value(pinnableSlice, out var valueLength);
-                            if (valuePtr == IntPtr.Zero)
-                            {
-                                value = Array.Empty<byte>();
-                                return false;
-                            }
-
-                            var span = new ReadOnlySpan<byte>((byte*)valuePtr, (int)valueLength);
-                            value = span.ToArray();
-                            return true;
-                        }
-                        finally
-                        {
-                            Native.Instance.rocksdb_pinnableslice_destroy(pinnableSlice);
-                        }
-                    }
-                }
+                return db.TryGet(family, key.Span, defaultReadOptions, out value);
             }
 
             ColumnFamilyHandle PopulateLocalCache(UInt160 contractHash)
