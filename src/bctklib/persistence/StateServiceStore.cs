@@ -13,9 +13,9 @@ using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class StateServiceStore : IReadOnlyStore
+    public partial class StateServiceStore : IReadOnlyStore, IDisposable
     {
-        interface ICache
+        interface ICache : IDisposable
         {
             bool TryGet(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[] value);
             IEnumerable<(byte[] key, byte[] value)> Seek(UInt160 contractHash, ReadOnlyMemory<byte> prefix, SeekDirection direction);
@@ -35,7 +35,6 @@ namespace Neo.BlockchainToolkit.Persistence
             : this(new Uri(uri), rootHash, cachePath)
         {
         }
-
 
         public StateServiceStore(Uri uri, uint index, string? cachePath = null)
             : this(new SyncRpcClient(uri), index, cachePath)
@@ -67,6 +66,12 @@ namespace Neo.BlockchainToolkit.Persistence
                 .Where(kvp => kvp.key.AsSpan().StartsWith(prefix.Span))
                 .Select(kvp => new StorageItem(kvp.value).GetInteroperable<ContractState>())
                 .ToImmutableDictionary(c => c.Id, c => (c.Hash, c.Manifest));
+        }
+
+        public void Dispose()
+        {
+            rpcClient.Dispose();
+            cache.Dispose();
         }
 
         public RpcVersion GetVersion()

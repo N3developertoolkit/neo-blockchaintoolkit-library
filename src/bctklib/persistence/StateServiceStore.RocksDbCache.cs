@@ -43,6 +43,11 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
+            public void Dispose()
+            {
+                db.Dispose();
+            }
+
             public IEnumerable<(byte[] key, byte[] value)> Seek(UInt160 contractHash, ReadOnlyMemory<byte> prefix, SeekDirection direction)
             {
                 var family = PopulateLocalCache(contractHash);

@@ -20,6 +20,10 @@ namespace Neo.BlockchainToolkit.Persistence
                 this.funcEnumStates = funcEnumStates;
             }
 
+            public void Dispose()
+            {
+            }
+
             public IEnumerable<(byte[] key, byte[] value)> Seek(UInt160 contractHash, ReadOnlyMemory<byte> prefix, SeekDirection direction)
             {
                 var comparer = direction == SeekDirection.Forward
