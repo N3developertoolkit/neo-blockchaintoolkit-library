@@ -13,7 +13,7 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [3.0.10] - 2021-10-11
+## [3.0.12] - 2021-10-12
 
 Thanks to @merl111 for his contribution (#41) in this release
 
@@ -24,8 +24,13 @@ Thanks to @merl111 for his contribution (#41) in this release
 
 ### Changes
 
-* Update Neo dependency to 3.0.3
 * Persistence Refactoring (#44)
+* Update dependencies 
+  * MessagePack to 2.3.85
+  * Neo to 3.0.3
+  * OneOf to 3.0.201
+  * rocksdb to 6.22.1.20635
+  * System.IO.Abstractions to 13.2.47
 
 ## [3.0.3] - 2021-08-06
 
