@@ -12,24 +12,30 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly IStorageProvider? storageProvider;
         readonly IDisposable? checkpointCleanup;
         readonly Lazy<IStore> defaultStore;
+        readonly bool disposeStorageProvider;
+
         ImmutableDictionary<string, IStore> stores = ImmutableDictionary<string, IStore>.Empty;
 
-        public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, IDisposable? checkpointCleanup = null)
-            : this((IStorageProvider?)rocksDbStorageProvider, checkpointCleanup)
+        public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, bool disposeStorageProvider = true, IDisposable? checkpointCleanup = null)
+            : this((IStorageProvider?)rocksDbStorageProvider, disposeStorageProvider, checkpointCleanup)
         {
         }
 
-        public CheckpointStorageProvider(IStorageProvider? storageProvider, IDisposable? checkpointCleanup = null)
+        public CheckpointStorageProvider(IStorageProvider? storageProvider, bool disposeStorageProvider = true, IDisposable? checkpointCleanup = null)
         {
             this.storageProvider = storageProvider;
             this.checkpointCleanup = checkpointCleanup;
+            this.disposeStorageProvider = disposeStorageProvider;
 
             defaultStore = new Lazy<IStore>(() => new MemoryTrackingStore(GetStorageProviderStore(null)));
         }
 
         public void Dispose()
         {
-            (storageProvider as IDisposable)?.Dispose();
+            if (disposeStorageProvider)
+            {
+                (storageProvider as IDisposable)?.Dispose();
+            }
             checkpointCleanup?.Dispose();
         }
 
