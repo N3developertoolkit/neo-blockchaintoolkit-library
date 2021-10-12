@@ -34,7 +34,7 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         private string GetContractName(UInt160 scriptId)
         {
-            return ImmutableInterlocked.GetOrAdd(ref contractNameMap, scriptId, 
+            return ImmutableInterlocked.GetOrAdd(ref contractNameMap, scriptId,
                 k => NativeContract.ContractManagement.GetContract(Snapshot, k)?.Manifest.Name ?? string.Empty);
         }
 

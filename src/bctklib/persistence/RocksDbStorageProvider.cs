@@ -38,8 +38,8 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public IStore GetStore(string? path)
         {
-            return TryGetStore(path, out var store) 
-                ? store 
+            return TryGetStore(path, out var store)
+                ? store
                 : throw new InvalidOperationException("invalid store path");
         }
 
