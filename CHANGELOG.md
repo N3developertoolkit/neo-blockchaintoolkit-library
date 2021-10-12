@@ -20,12 +20,12 @@ Thanks to @merl111 for his contribution (#41) in this release
 ### Added
 
 * static function to create a dummy block for testing (#41) 
-* StateServiceStore (#45) 
+* StateServiceStore (#45, #46, #48)
 
 ### Changes
 
 * Persistence Refactoring (#44)
-* Update dependencies 
+* Update dependencies (#47)
   * MessagePack to 2.3.85
   * Neo to 3.0.3
   * OneOf to 3.0.201
