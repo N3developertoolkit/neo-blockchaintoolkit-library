@@ -1,9 +1,10 @@
 using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Diagnostics;
 using System.IO;
 using System.Text;
+using MessagePack;
+using MessagePack.Formatters;
 using Neo.IO.Json;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
@@ -75,45 +76,32 @@ namespace Neo.BlockchainToolkit.Persistence
                 return UInt256.Parse(json.AsString());
             }
 
+            static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter = 
+                MessagePackSerializerOptions.Standard.Resolver.GetFormatter<byte[]?>();
+
             public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
                 var familyName = $"{nameof(GetState)}{rootHash}{scriptHash}";
                 var family = db.GetOrCreateColumnFamily(familyName);
-                var value = db.Get(key.Span, family);
+                var cachedState = db.Get(key.Span, family);
 
-                JObject jsonValue;
-                if (value != null)
+                if (cachedState != null)
                 {
-                    jsonValue = JObject.Parse(value);
+                    var reader = new MessagePackReader(cachedState);
+                    return byteArrayFormatter.Deserialize(ref reader, MessagePackSerializerOptions.Standard);
                 }
                 else
                 {
-                    try
-                    {
-                        jsonValue = rpcClient.RpcSend("getstate",
-                            rootHash.ToString(),
-                            scriptHash.ToString(),
-                            Convert.ToBase64String(key.Span));
-                    }
-                    catch (RpcException ex)
-                    {
-                        if (ex.HResult == RpcClientExtensions.COR_E_KEYNOTFOUND)
-                        {
-                            jsonValue = JObject.Null;
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
-                    var jsonBytes = jsonValue == null
-                        ? Neo.Utility.StrictUTF8.GetBytes("null")
-                        : jsonValue.ToByteArray(false);
-                    db.Put(key.Span, jsonBytes, family);
-                }
+                    var state = rpcClient.GetState(rootHash, scriptHash, key.Span);
 
-                return jsonValue == null || jsonValue == JObject.Null ? null 
-                    : Convert.FromBase64String(jsonValue.AsString());
+                    var buffer = new ArrayBufferWriter<byte>();
+                    var writer = new MessagePackWriter(buffer);
+                    writer.Write(state);
+                    writer.Flush();
+                    db.Put(key.Span, buffer.WrittenSpan, family);
+
+                    return state;
+                }
             }
 
             public RpcStateRoot GetStateRoot(uint index)

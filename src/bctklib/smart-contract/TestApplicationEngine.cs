@@ -82,17 +82,17 @@ namespace Neo.BlockchainToolkit.SmartContract
             Witnesses = Array.Empty<Witness>(),
         };
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings) 
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings)
             : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry) 
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry)
             : this(TriggerType.Application, CreateTestTransaction(signer, witnessScope), snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, Transaction transaction) 
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, Transaction transaction)
             : this(TriggerType.Application, transaction, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }

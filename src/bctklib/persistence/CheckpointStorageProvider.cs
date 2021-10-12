@@ -36,7 +36,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public IStore GetStore(string? storeName)
         {
             if (storeName == null) return defaultStore.Value;
-            return ImmutableInterlocked.GetOrAdd(ref stores, storeName, 
+            return ImmutableInterlocked.GetOrAdd(ref stores, storeName,
                 key => new MemoryTrackingStore(GetStorageProviderStore(key)));
         }
 
@@ -47,7 +47,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 roStore = storageProvider?.GetStore(path);
             }
-            catch {}
+            catch { }
 
             return roStore ?? NullStore.Instance;
         }
