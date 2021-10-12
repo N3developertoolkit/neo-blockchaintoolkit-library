@@ -48,7 +48,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             key = key == null ? Array.Empty<byte>() : key.AsSpan().ToArray();
             var _value = value.Match<OneOf<ReadOnlyMemory<byte>, None>>(
-                v => v == null ? default(ReadOnlyMemory<byte>) : v.AsSpan().ToArray(), 
+                v => v == null ? default(ReadOnlyMemory<byte>) : v.AsSpan().ToArray(),
                 n => n);
 
             var priorCollection = Volatile.Read(ref trackingMap);
