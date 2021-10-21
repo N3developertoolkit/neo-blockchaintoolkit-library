@@ -192,10 +192,14 @@ namespace Neo.BlockchainToolkit
                 };
             }
 
-            if (TryParseHexString(value, out var byteArray))
+            if (value.StartsWith("0x"))
             {
-                return new ContractParameter(ContractParameterType.ByteArray) { Value = byteArray };
+                if (TryParseHexString(value, out var byteArray))
+                {
+                    return new ContractParameter(ContractParameterType.ByteArray) { Value = byteArray };
+                }
             }
+
 
             return new ContractParameter(ContractParameterType.String) { Value = value };
 
@@ -212,24 +216,23 @@ namespace Neo.BlockchainToolkit
                     return false;
                 }
             }
+        }
 
-            static bool TryParseHexString(string hexString, [MaybeNullWhen(false)] out byte[] array)
+        static bool TryParseHexString(string hexString, [MaybeNullWhen(false)] out byte[] array)
+        {
+            try
             {
-                try
-                {
-                    if (hexString.Length > 2 && hexString.StartsWith("0x"))
-                    {
-                        array = hexString[2..].HexToBytes();
-                        return true;
-                    }
-                }
-                catch (FormatException)
-                {
-                }
-
-                array = default!;
-                return false;
+                array = hexString.StartsWith("0x")
+                    ? hexString[2..].HexToBytes()
+                    : hexString.HexToBytes();
+                return true;
             }
+            catch (FormatException)
+            {
+            }
+
+            array = default!;
+            return false;
         }
 
         public bool TryLoadScriptHash(string text, [MaybeNullWhen(false)] out UInt160 value)
@@ -260,23 +263,19 @@ namespace Neo.BlockchainToolkit
 
         internal ContractParameter ParseObjectParameter(JObject json)
         {
-            var type = Enum.Parse<ContractParameterType>(
-                json.Value<string>("type") ?? throw new JsonException("missing type field"));
+            var type = Enum.Parse<ContractParameterType>(json.Value<string>("type") ?? throw new JsonException("missing type field"));
             var valueProp = json["value"] ?? throw new JsonException("missing value field");
 
             object value = type switch
             {
-                ContractParameterType.Signature => valueProp.Value<string>().HexToBytes(),
-                ContractParameterType.ByteArray => valueProp.Value<string>().HexToBytes(),
+                ContractParameterType.Signature or ContractParameterType.ByteArray => ParseBinary(valueProp),
                 ContractParameterType.Boolean => valueProp.Value<bool>(),
                 ContractParameterType.Integer => BigInteger.Parse(valueProp.Value<string>() ?? ""),
                 ContractParameterType.Hash160 => UInt160.Parse(valueProp.Value<string>()),
                 ContractParameterType.Hash256 => UInt256.Parse(valueProp.Value<string>()),
                 ContractParameterType.PublicKey => ECPoint.Parse(valueProp.Value<string>(), ECCurve.Secp256r1),
                 ContractParameterType.String => valueProp.Value<string>() ?? throw new JsonException(),
-                ContractParameterType.Array => valueProp
-                    .Select(e => ParseParameter(e))
-                    .ToList(),
+                ContractParameterType.Array => valueProp.Select(ParseParameter).ToList(),
                 ContractParameterType.Map => valueProp.Select(ParseMapElement).ToList(),
                 _ => throw new ArgumentException($"invalid type {type}", nameof(json)),
             };
@@ -285,8 +284,28 @@ namespace Neo.BlockchainToolkit
 
             KeyValuePair<ContractParameter, ContractParameter> ParseMapElement(JToken json)
                 => KeyValuePair.Create(
-                    ParseParameter(json["key"] ?? throw new JsonException()),
-                    ParseParameter(json["value"] ?? throw new JsonException()));
+                    ParseParameter(json["key"] ?? throw new JsonException("missing key property")),
+                    ParseParameter(json["value"] ?? throw new JsonException("missing value property")));
+
+            static byte[] ParseBinary(JToken json)
+            {
+                var value = json.Value<string>();
+
+                if (TryParseHexString(value, out var buffer))
+                {
+                    return buffer;
+                }
+
+                try
+                {
+                    return Convert.FromBase64String(value);
+                }
+                catch (FormatException)
+                {
+                }
+
+                throw new ArgumentException($"ParseBinary could not parse {value}", nameof(json));
+            }
         }
     }
 }
