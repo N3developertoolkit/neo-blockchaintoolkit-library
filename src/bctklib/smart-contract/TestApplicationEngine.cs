@@ -1,14 +1,13 @@
 ﻿using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
-using System.Text;
-using Neo.Cryptography;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
+using Neo.VM;
+using OneOf;
 
 namespace Neo.BlockchainToolkit.SmartContract
 {
@@ -16,24 +15,19 @@ namespace Neo.BlockchainToolkit.SmartContract
 
     public partial class TestApplicationEngine : ApplicationEngine
     {
-        private readonly static IReadOnlyDictionary<uint, InteropDescriptor> overriddenServices;
+        readonly static IReadOnlyDictionary<uint, InteropDescriptor> overriddenServices;
 
         static TestApplicationEngine()
         {
             var builder = ImmutableDictionary.CreateBuilder<uint, InteropDescriptor>();
-
-            AddOverload(builder, "System.Runtime.CheckWitness", nameof(CheckWitnessOverride));
-
+            builder.Add(OverrideDescriptor(ApplicationEngine.System_Runtime_CheckWitness, nameof(CheckWitnessOverride)));
             overriddenServices = builder.ToImmutable();
 
-            static void AddOverload(ImmutableDictionary<uint, InteropDescriptor>.Builder builder, string sysCallName, string overloadedMethodName)
+            static KeyValuePair<uint, InteropDescriptor> OverrideDescriptor(InteropDescriptor descriptor, string overrideMethodName)
             {
-                var sysCallHash = BinaryPrimitives.ReadUInt32LittleEndian(Encoding.ASCII.GetBytes(sysCallName).Sha256());
-                var handler = typeof(TestApplicationEngine).GetMethod(overloadedMethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? throw new InvalidOperationException($"AddOverload failed to locate {overloadedMethodName} method");
-                var descriptor = ApplicationEngine.Services[sysCallHash] with { Handler = handler };
-
-                builder.Add(sysCallHash, descriptor);
+                var overrideMethodInfo = typeof(TestApplicationEngine).GetMethod(overrideMethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException($"{nameof(OverrideDescriptor)} failed to locate {overrideMethodName} method");
+                return KeyValuePair.Create(descriptor.Hash, descriptor with { Handler = overrideMethodInfo });
             }
         }
 
@@ -62,8 +56,6 @@ namespace Neo.BlockchainToolkit.SmartContract
             };
         }
 
-        private readonly WitnessChecker witnessChecker;
-
         public static Transaction CreateTestTransaction(UInt160 signerAccount, WitnessScope witnessScope = WitnessScope.CalledByEntry)
             => CreateTestTransaction(new Signer
             {
@@ -81,6 +73,14 @@ namespace Neo.BlockchainToolkit.SmartContract
             Attributes = Array.Empty<TransactionAttribute>(),
             Witnesses = Array.Empty<Witness>(),
         };
+
+        readonly Dictionary<UInt160, OneOf<ContractState, Script>> executedScripts = new();
+        readonly Dictionary<UInt160, Dictionary<int, int>> hitMaps = new();
+        readonly WitnessChecker witnessChecker;
+
+
+        public new event EventHandler<LogEventArgs>? Log;
+        public new event EventHandler<NotifyEventArgs>? Notify;
 
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings)
             : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
@@ -112,8 +112,41 @@ namespace Neo.BlockchainToolkit.SmartContract
             base.Dispose();
         }
 
-        public new event EventHandler<LogEventArgs>? Log;
-        public new event EventHandler<NotifyEventArgs>? Notify;
+        protected override void LoadContext(ExecutionContext context)
+        {
+            base.LoadContext(context);
+
+            var ecs = context.GetState<ExecutionContextState>();
+            if (ecs.ScriptHash == null) throw new InvalidOperationException("ExecutionContextState.ScriptHash is null");
+            if (!executedScripts.ContainsKey(ecs.ScriptHash))
+            {
+                if (ecs.Contract == null)
+                {
+                    executedScripts.Add(ecs.ScriptHash, context.Script);
+                }
+                else
+                {
+                    executedScripts.Add(ecs.ScriptHash, ecs.Contract);
+                }
+            }
+        }
+
+        protected override void PreExecuteInstruction()
+        {
+            if (CurrentContext == null) return;
+
+            var hash = CurrentContext.GetScriptHash() 
+                ?? throw new InvalidOperationException("CurrentContext.GetScriptHash returned null");
+
+            if (!hitMaps.TryGetValue(hash, out var hitMap))
+            {
+                hitMap = new Dictionary<int, int>();
+                hitMaps.Add(hash, hitMap);
+            }
+
+            var hitCount = hitMap.TryGetValue(CurrentContext.InstructionPointer, out var _hitCount) ? _hitCount : 0;
+            hitMap[CurrentContext.InstructionPointer] = hitCount + 1;
+        }
 
         private void OnLog(object? sender, LogEventArgs args)
         {
@@ -131,7 +164,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             }
         }
 
-        protected internal bool CheckWitnessOverride(byte[] hashOrPubkey) => witnessChecker.Invoke(hashOrPubkey);
+        bool CheckWitnessOverride(byte[] hashOrPubkey) => witnessChecker(hashOrPubkey);
 
         protected override void OnSysCall(uint methodHash)
         {

@@ -8,7 +8,7 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public class NullStore : IReadOnlyStore
     {
-        public static NullStore Instance = new NullStore();
+        public static readonly NullStore Instance = new NullStore();
 
         private NullStore() { }
 
