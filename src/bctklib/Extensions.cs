@@ -170,6 +170,10 @@ namespace Neo.BlockchainToolkit
             }
         }
 
+        public static bool IsBranchInstruction(this Instruction instruction) 
+            => instruction.OpCode >= OpCode.JMPIF
+                && instruction.OpCode <= OpCode.JMPLE_L;
+
         public static string GetOperandString(this Instruction instruction)
         {
             return string.Create<ReadOnlyMemory<byte>>(instruction.Operand.Length * 3 - 1,
