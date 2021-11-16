@@ -194,6 +194,8 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         protected override void PreExecuteInstruction()
         {
+            base.PreExecuteInstruction();
+
             if (CurrentContext == null) return;
             
             var hash = CurrentContext.GetScriptHash() 
@@ -226,6 +228,8 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         protected override void PostExecuteInstruction()
         {
+            base.PostExecuteInstruction();
+
             if (CurrentContext == null) return;
 
             if (branchInstructionInfo != null)
@@ -254,8 +258,6 @@ namespace Neo.BlockchainToolkit.SmartContract
 
                 branchMap[branchInstructionInfo.InstructionPointer] = branchHit;
             }
-
-            base.PostExecuteInstruction();
         }
 
         private void OnLog(object? sender, LogEventArgs args)
