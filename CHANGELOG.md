@@ -13,6 +13,16 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
+## [Unreleased]
+
+### Added
+* Instruction and branch execution tracking in `TestApplicationEngine` (#50)
+
+### Changes
+
+* Simplified service override code in `TestApplicationEngine` (#50)
+* Made `NullStore.Instance` readonly (#50)
+
 ## [3.0.12] - 2021-10-12
 
 Thanks to @merl111 for his contribution (#41) in this release
