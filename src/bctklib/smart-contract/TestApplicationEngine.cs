@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Reflection;
-using System.Text;
-using Neo.Cryptography;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
+using Neo.VM;
+using OneOf;
 
 namespace Neo.BlockchainToolkit.SmartContract
 {
@@ -16,24 +16,19 @@ namespace Neo.BlockchainToolkit.SmartContract
 
     public partial class TestApplicationEngine : ApplicationEngine
     {
-        private readonly static IReadOnlyDictionary<uint, InteropDescriptor> overriddenServices;
+        readonly static IReadOnlyDictionary<uint, InteropDescriptor> overriddenServices;
 
         static TestApplicationEngine()
         {
             var builder = ImmutableDictionary.CreateBuilder<uint, InteropDescriptor>();
-
-            AddOverload(builder, "System.Runtime.CheckWitness", nameof(CheckWitnessOverride));
-
+            builder.Add(OverrideDescriptor(ApplicationEngine.System_Runtime_CheckWitness, nameof(CheckWitnessOverride)));
             overriddenServices = builder.ToImmutable();
 
-            static void AddOverload(ImmutableDictionary<uint, InteropDescriptor>.Builder builder, string sysCallName, string overloadedMethodName)
+            static KeyValuePair<uint, InteropDescriptor> OverrideDescriptor(InteropDescriptor descriptor, string overrideMethodName)
             {
-                var sysCallHash = BinaryPrimitives.ReadUInt32LittleEndian(Encoding.ASCII.GetBytes(sysCallName).Sha256());
-                var handler = typeof(TestApplicationEngine).GetMethod(overloadedMethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                    ?? throw new InvalidOperationException($"AddOverload failed to locate {overloadedMethodName} method");
-                var descriptor = ApplicationEngine.Services[sysCallHash] with { Handler = handler };
-
-                builder.Add(sysCallHash, descriptor);
+                var overrideMethodInfo = typeof(TestApplicationEngine).GetMethod(overrideMethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    ?? throw new InvalidOperationException($"{nameof(OverrideDescriptor)} failed to locate {overrideMethodName} method");
+                return KeyValuePair.Create(descriptor.Hash, descriptor with { Handler = overrideMethodInfo });
             }
         }
 
@@ -62,8 +57,6 @@ namespace Neo.BlockchainToolkit.SmartContract
             };
         }
 
-        private readonly WitnessChecker witnessChecker;
-
         public static Transaction CreateTestTransaction(UInt160 signerAccount, WitnessScope witnessScope = WitnessScope.CalledByEntry)
             => CreateTestTransaction(new Signer
             {
@@ -81,6 +74,16 @@ namespace Neo.BlockchainToolkit.SmartContract
             Attributes = Array.Empty<TransactionAttribute>(),
             Witnesses = Array.Empty<Witness>(),
         };
+
+        readonly Dictionary<UInt160, OneOf<ContractState, Script>> executedScripts = new();
+        readonly Dictionary<UInt160, Dictionary<int, int>> hitMaps = new();
+        readonly Dictionary<UInt160, Dictionary<int, (int branchCount, int continueCount)>> branchMaps = new();
+        readonly WitnessChecker witnessChecker;
+
+        public IReadOnlyDictionary<UInt160, OneOf<ContractState, Script>> ExecutedScripts => executedScripts;
+
+        public new event EventHandler<LogEventArgs>? Log;
+        public new event EventHandler<NotifyEventArgs>? Notify;
 
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings)
             : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
@@ -112,8 +115,150 @@ namespace Neo.BlockchainToolkit.SmartContract
             base.Dispose();
         }
 
-        public new event EventHandler<LogEventArgs>? Log;
-        public new event EventHandler<NotifyEventArgs>? Notify;
+        public IReadOnlyDictionary<int, int> GetHitMap(UInt160 contractHash)
+        {
+            if (hitMaps.TryGetValue(contractHash, out var hitMap))
+            {
+                return hitMap;
+            }
+
+            return ImmutableDictionary<int, int>.Empty;
+        }
+
+        public IReadOnlyDictionary<int, (int branchCount, int continueCount)> GetBranchMap(UInt160 contractHash)
+        {
+            if (branchMaps.TryGetValue(contractHash, out var branchMap))
+            {
+                return branchMap;
+            }
+
+            return ImmutableDictionary<int, (int, int)>.Empty;
+        }
+
+        protected override void LoadContext(ExecutionContext context)
+        {
+            base.LoadContext(context);
+
+            var ecs = context.GetState<ExecutionContextState>();
+            if (ecs.ScriptHash == null) throw new InvalidOperationException("ExecutionContextState.ScriptHash is null");
+            if (!executedScripts.ContainsKey(ecs.ScriptHash))
+            {
+                if (ecs.Contract == null)
+                {
+                    executedScripts.Add(ecs.ScriptHash, context.Script);
+                }
+                else
+                {
+                    executedScripts.Add(ecs.ScriptHash, ecs.Contract);
+                }
+            }
+        }
+
+        static int CalculateBranchOffset(ExecutionContext context)
+        {
+            Debug.Assert(context.CurrentInstruction.IsBranchInstruction());
+
+            switch (context.CurrentInstruction.OpCode)
+            {
+                case OpCode.JMPIF_L:
+                case OpCode.JMPIFNOT_L:
+                case OpCode.JMPEQ_L:
+                case OpCode.JMPNE_L:
+                case OpCode.JMPGT_L:
+                case OpCode.JMPGE_L:
+                case OpCode.JMPLT_L:
+                case OpCode.JMPLE_L:
+                    return context.InstructionPointer + context.CurrentInstruction.TokenI32;
+                case OpCode.JMPIF:
+                case OpCode.JMPIFNOT:
+                case OpCode.JMPEQ:
+                case OpCode.JMPNE:
+                case OpCode.JMPGT:
+                case OpCode.JMPGE:
+                case OpCode.JMPLT:
+                case OpCode.JMPLE:
+                    return context.InstructionPointer + context.CurrentInstruction.TokenI8;
+                default:
+                    throw new InvalidOperationException($"CalculateBranchOffsets:GetOffset Unexpected OpCode {context.CurrentInstruction.OpCode}");
+            }
+        }
+
+        record BranchInstructionInfo
+        {
+            public UInt160 ContractHash { get; init; } = UInt160.Zero;
+            public int InstructionPointer { get; init; }
+            public int BranchOffset { get; init; }
+        }
+
+        BranchInstructionInfo? branchInstructionInfo = null;
+
+        protected override void PreExecuteInstruction()
+        {
+            base.PreExecuteInstruction();
+
+            if (CurrentContext == null) return;
+            
+            var hash = CurrentContext.GetScriptHash() 
+                ?? throw new InvalidOperationException("CurrentContext.GetScriptHash returned null");
+
+            if (CurrentContext.CurrentInstruction.IsBranchInstruction())
+            {
+                var branchOffset = CalculateBranchOffset(CurrentContext);
+                branchInstructionInfo = new BranchInstructionInfo()
+                {
+                    ContractHash = hash,
+                    InstructionPointer = CurrentContext.InstructionPointer,
+                    BranchOffset = branchOffset,
+                };
+            }
+            else
+            {
+                branchInstructionInfo = null;
+            }
+
+            if (!hitMaps.TryGetValue(hash, out var hitMap))
+            {
+                hitMap = new Dictionary<int, int>();
+                hitMaps.Add(hash, hitMap);
+            }
+
+            var hitCount = hitMap.TryGetValue(CurrentContext.InstructionPointer, out var _hitCount) ? _hitCount : 0;
+            hitMap[CurrentContext.InstructionPointer] = hitCount + 1;
+        }
+
+        protected override void PostExecuteInstruction()
+        {
+            base.PostExecuteInstruction();
+
+            if (CurrentContext == null) return;
+
+            if (branchInstructionInfo != null)
+            {
+                if (!branchMaps.TryGetValue(branchInstructionInfo.ContractHash, out var branchMap))
+                {
+                    branchMap = new Dictionary<int, (int, int)>();
+                    branchMaps.Add(branchInstructionInfo.ContractHash, branchMap);
+                }
+
+                var branchHit = branchMap.TryGetValue(branchInstructionInfo.InstructionPointer, out var _branchCount) 
+                    ? _branchCount : (branchCount: 0, continueCount: 0);
+
+                if (CurrentContext.InstructionPointer == branchInstructionInfo.BranchOffset)
+                {
+                    branchHit = (branchCount: branchHit.branchCount + 1, continueCount: branchHit.continueCount);
+                }
+                else if (CurrentContext.InstructionPointer == branchInstructionInfo.InstructionPointer)
+                {
+                    branchHit = (branchCount: branchHit.branchCount, continueCount: branchHit.continueCount + 1);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unexpected InstructionPointer {CurrentContext.InstructionPointer}");
+                }
+
+                branchMap[branchInstructionInfo.InstructionPointer] = branchHit;
+            }
+        }
 
         private void OnLog(object? sender, LogEventArgs args)
         {
@@ -131,7 +276,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             }
         }
 
-        protected internal bool CheckWitnessOverride(byte[] hashOrPubkey) => witnessChecker.Invoke(hashOrPubkey);
+        bool CheckWitnessOverride(byte[] hashOrPubkey) => witnessChecker(hashOrPubkey);
 
         protected override void OnSysCall(uint methodHash)
         {
