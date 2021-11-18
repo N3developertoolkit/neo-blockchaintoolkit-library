@@ -5,14 +5,14 @@ using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public class Checkpoint : ICheckpoint, IDisposable
+    public class CheckpointStore : ICheckpointStore, IDisposable
     {
         readonly RocksDbStore store;
         readonly string checkpointTempPath;
 
         public ProtocolSettings Settings { get; }
 
-        public Checkpoint(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
+        public CheckpointStore(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
         {
             checkpointTempPath = RocksDbUtility.GetTempPath();
             var metadata = RocksDbUtility.RestoreCheckpoint(checkpointPath, checkpointTempPath, network, addressVersion, scriptHash);

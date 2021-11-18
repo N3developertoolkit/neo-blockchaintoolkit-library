@@ -5,15 +5,15 @@ using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public class NullCheckpoint : ICheckpoint
+    public class NullCheckpointStore : ICheckpointStore
     {
         public ProtocolSettings Settings { get; }
 
-        public NullCheckpoint(ExpressChain? chain) : this(chain?.Network, chain?.AddressVersion)
+        public NullCheckpointStore(ExpressChain? chain) : this(chain?.Network, chain?.AddressVersion)
         {
         }
 
-        public NullCheckpoint(uint? network, byte? addressVersion)
+        public NullCheckpointStore(uint? network, byte? addressVersion)
         {
             this.Settings = ProtocolSettings.Default with
             {
