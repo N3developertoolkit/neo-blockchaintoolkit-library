@@ -17,7 +17,7 @@ namespace test.bctklib3
         static byte[] Bytes(int value) => BitConverter.GetBytes(value);
         static byte[] Bytes(string value) => UTF8.GetBytes(value);
 
-        static void DbTest(Action<string> test)
+        static void RunTestWithCleanup(Action<string> test)
         {
             var dbPath = RocksDbUtility.GetTempPath();
             try
@@ -55,7 +55,7 @@ namespace test.bctklib3
         [Fact]
         public void readonly_store_throws_on_write_operations()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 Populate(path);
 
@@ -72,7 +72,7 @@ namespace test.bctklib3
         [Fact]
         public void store_sharing()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 var key = Bytes(0);
                 var hello = Bytes("hello");
@@ -102,7 +102,7 @@ namespace test.bctklib3
         [Fact]
         public void can_get_value_from_store()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 var key = Bytes(0);
                 var hello = Bytes("hello");
@@ -116,9 +116,21 @@ namespace test.bctklib3
         }
 
         [Fact]
+        public void contains_false_for_missing_key()
+        {
+            RunTestWithCleanup(path =>
+            {
+                Populate(path);
+
+                using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+                store.Contains(Bytes("invalid-key")).Should().BeFalse();
+            });
+        }
+
+        [Fact]
         public void can_overwrite_existing_value()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 var key = Bytes(0);
                 var hello = Bytes("hello");
@@ -136,7 +148,7 @@ namespace test.bctklib3
         [Fact]
         public void can_delete_existing_value()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 var key = Bytes(0);
                 var hello = Bytes("hello");
@@ -153,7 +165,7 @@ namespace test.bctklib3
         [Fact]
         public void snapshot_doesnt_see_store_changes()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 var key = Bytes(0);
                 var hello = Bytes("hello");
@@ -172,7 +184,7 @@ namespace test.bctklib3
         [Fact]
         public void can_update_store_via_snapshot()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 var key = Bytes(0);
                 var hello = Bytes("hello");
@@ -190,21 +202,10 @@ namespace test.bctklib3
             });
         }
 
-        static IStore GetSeekStore()
-        {
-            var memoryStore = new MemoryStore();
-            memoryStore.PutSeekData((0,2), (1,2));
-
-            var store = new MemoryTrackingStore(memoryStore);
-            store.PutSeekData((0,2), (3,4));
-
-            return store;
-        }
-
         [Fact]
         public void can_seek_forward_no_prefix()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 using var store = GetSeekStore(path);
 
@@ -214,15 +215,15 @@ namespace test.bctklib3
             });
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/neo-project/neo/issues/2634")]
         public void can_seek_backwards_no_prefix()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 using var store = GetSeekStore(path);
 
-                var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward);
-                var expected = GetSeekData().Reverse();
+                var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward).ToArray();
+                var expected = GetSeekData().Reverse().ToArray();
                 actual.Should().BeEquivalentTo(expected);
             });
         }
@@ -230,7 +231,7 @@ namespace test.bctklib3
         [Fact]
         public void seek_forwards_with_prefix()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 using var store = GetSeekStore(path);
 
@@ -243,7 +244,7 @@ namespace test.bctklib3
         [Fact]
         public void seek_backwards_with_prefix()
         {
-            DbTest(path =>
+            RunTestWithCleanup(path =>
             {
                 using var store = GetSeekStore(path);
 

@@ -16,6 +16,7 @@ namespace test.bctklib3
 
         static byte[] Bytes(params byte[] values) => values;
         static byte[] Bytes(int value) => BitConverter.GetBytes(value);
+        static byte[] Bytes(string value) => UTF8.GetBytes(value);
 
         class NonDisposableStore : IReadOnlyStore
         {
@@ -71,6 +72,14 @@ namespace test.bctklib3
             var actual = trackingStore.TryGet(key);
 
             Assert.Equal(helloValue, actual);
+        }
+
+        [Fact]
+        public void contains_false_for_missing_key()
+        {
+            var memoryStore = new MemoryStore();
+            var trackingStore = new MemoryTrackingStore(memoryStore);
+            trackingStore.Contains(Bytes("invalid-key")).Should().BeFalse();
         }
 
         [Fact]
@@ -188,7 +197,7 @@ namespace test.bctklib3
             actual.Should().BeEquivalentTo(expected);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/neo-project/neo/issues/2634")]
         public void can_seek_backwards_no_prefix()
         {
             var store = GetSeekStore();
