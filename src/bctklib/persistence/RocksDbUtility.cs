@@ -40,20 +40,25 @@ namespace Neo.BlockchainToolkit.Persistence
 
         private static string GetAddressFilePath(string directory) => Path.Combine(directory, ADDRESS_FILENAME);
 
-        public static void CreateCheckpoint(RocksDb db, string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
+        public static string GetTempPath()
         {
-            if (File.Exists(checkPointFileName))
-            {
-                throw new ArgumentException("checkpoint file already exists", nameof(checkPointFileName));
-            }
-
             string tempPath;
             do
             {
                 tempPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             }
             while (Directory.Exists(tempPath));
+            return tempPath;
+        }
 
+        public static void CreateCheckpoint(RocksDb db, string checkPointFileName, uint network, byte addressVersion, UInt160 scriptHash)
+        {
+            if (File.Exists(checkPointFileName))
+            {
+                throw new ArgumentException("checkpoint file already exists", nameof(checkPointFileName));
+            }
+
+            var tempPath = GetTempPath();
             try
             {
                 {
@@ -64,7 +69,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 {
                     using var stream = File.OpenWrite(GetAddressFilePath(tempPath));
                     using var writer = new StreamWriter(stream);
-                    writer.WriteLine(magic);
+                    writer.WriteLine(network);
                     writer.WriteLine(addressVersion);
                     writer.WriteLine(scriptHash.ToAddress(addressVersion));
                 }
@@ -77,47 +82,41 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
+        public static (uint network, byte addressVersion, UInt160 scriptHash) RestoreCheckpoint(string checkPointArchive, string restorePath,
+            uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
         {
             var metadata = GetCheckpointMetadata(checkPointArchive);
-            if (magic != metadata.magic
-                || addressVersion != metadata.addressVersion
-                || scriptHash != metadata.scriptHash)
+            if (network.HasValue && network.Value != metadata.network)
+                throw new Exception($"checkpoint network ({metadata.network}) doesn't match ({network.Value})");
+            if (addressVersion.HasValue && addressVersion.Value != metadata.addressVersion)
+                throw new Exception($"checkpoint address version ({metadata.addressVersion}) doesn't match ({addressVersion.Value})");
+            if (scriptHash != null && scriptHash != metadata.scriptHash)
+                throw new Exception($"checkpoint script hash ({metadata.scriptHash}) doesn't match ({scriptHash})");
+            ExtractCheckpoint(checkPointArchive, restorePath);
+            return metadata;
+
+
+            static (uint network, byte addressVersion, UInt160 scriptHash) GetCheckpointMetadata(string checkPointArchive)
             {
-                throw new Exception("Invalid Checkpoint");
+                using var archive = ZipFile.OpenRead(checkPointArchive);
+                var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new InvalidOperationException("Checkpoint missing " + ADDRESS_FILENAME + " file");
+                using var addressStream = addressEntry.Open();
+                using var addressReader = new StreamReader(addressStream);
+                var network = uint.Parse(addressReader.ReadLine() ?? string.Empty);
+                var addressVersion = byte.Parse(addressReader.ReadLine() ?? string.Empty);
+                var scriptHash = (addressReader.ReadLine() ?? string.Empty).ToScriptHash(addressVersion);
+
+                return (network, addressVersion, scriptHash);
             }
 
-            ExtractCheckpoint(checkPointArchive, restorePath);
-            return (metadata.magic, metadata.addressVersion);
-        }
-
-        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath)
-        {
-            var metadata = GetCheckpointMetadata(checkPointArchive);
-            ExtractCheckpoint(checkPointArchive, restorePath);
-            return (metadata.magic, metadata.addressVersion);
-        }
-
-        static (uint magic, byte addressVersion, UInt160 scriptHash) GetCheckpointMetadata(string checkPointArchive)
-        {
-            using var archive = ZipFile.OpenRead(checkPointArchive);
-            var addressEntry = archive.GetEntry(ADDRESS_FILENAME) ?? throw new InvalidOperationException("Checkpoint missing " + ADDRESS_FILENAME + " file");
-            using var addressStream = addressEntry.Open();
-            using var addressReader = new StreamReader(addressStream);
-            var magic = uint.Parse(addressReader.ReadLine() ?? string.Empty);
-            var addressVersion = byte.Parse(addressReader.ReadLine() ?? string.Empty);
-            var scriptHash = (addressReader.ReadLine() ?? string.Empty).ToScriptHash(addressVersion);
-
-            return (magic, addressVersion, scriptHash);
-        }
-
-        static void ExtractCheckpoint(string checkPointArchive, string restorePath)
-        {
-            ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
-            var addressFile = GetAddressFilePath(restorePath);
-            if (File.Exists(addressFile))
+            static void ExtractCheckpoint(string checkPointArchive, string restorePath)
             {
-                File.Delete(addressFile);
+                ZipFile.ExtractToDirectory(checkPointArchive, restorePath);
+                var addressFile = GetAddressFilePath(restorePath);
+                if (File.Exists(addressFile))
+                {
+                    File.Delete(addressFile);
+                }
             }
         }
     }

@@ -38,7 +38,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static int GetHashCode(ReadOnlySpan<byte> span)
         {
-            var hash = default(HashCode);
+            HashCode hash = default;
             for (int i = 0; i < span.Length; i++)
             {
                 hash.Add(i);

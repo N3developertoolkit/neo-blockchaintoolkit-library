@@ -1,34 +1,46 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using Neo.BlockchainToolkit.Models;
 using Neo.Persistence;
+using Neo.Plugins;
 using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class RocksDbStorageProvider : IDisposableStorageProvider
+    public partial class RocksDbStorageProvider : IStorageProvider, IDisposable
     {
         static readonly ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
 
         readonly RocksDb db;
         readonly bool readOnly;
 
-        RocksDbStorageProvider(RocksDb db, bool readOnly)
+        internal RocksDbStorageProvider(RocksDb db, bool readOnly)
         {
             this.db = db;
             this.readOnly = readOnly;
         }
 
-        public static RocksDbStorageProvider Open(string path)
+        public static IStorageProvider Open(string path)
         {
             var db = RocksDbUtility.OpenDb(path);
             return new RocksDbStorageProvider(db, readOnly: false);
         }
 
-        public static RocksDbStorageProvider OpenReadOnly(string path)
+        public static IStorageProvider OpenForDiscard(string path)
         {
-            var db = RocksDbUtility.OpenReadOnlyDb(path);
-            return new RocksDbStorageProvider(db, readOnly: true);
+            if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+            {
+                try
+                {
+                    var db = RocksDbUtility.OpenReadOnlyDb(path);
+                    var storageProvider = new RocksDbStorageProvider(db, readOnly: true);
+                    return new CheckpointStorageProvider(string.Empty, storageProvider);
+                }
+                catch { }
+            }
+
+            return new CheckpointStorageProvider(string.Empty, null);
         }
 
         public void Dispose()
@@ -38,34 +50,20 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public IStore GetStore(string? path)
         {
-            return TryGetStore(path, out var store)
-                ? store
-                : throw new InvalidOperationException("invalid store path");
-        }
+            if (path == null) 
+                return new RocksDbStore(db, db.GetDefaultColumnFamily(), readOnly, shared: true);
 
-        public bool TryGetStore(string? path, [NotNullWhen(true)] out IStore? store)
-        {
-            if (path == null)
-            {
-                store = new RocksDbStore(db, db.GetDefaultColumnFamily(), readOnly, shared: true);
-                return true;
-            }
+            if (db.TryGetColumnFamily(path, out var columnFamily)) 
+                return new RocksDbStore(db, columnFamily, readOnly, shared: true);
 
-            if (db.TryGetColumnFamily(path, out var columnFamily))
-            {
-                store = new RocksDbStore(db, columnFamily, readOnly, shared: true);
-                return true;
-            }
 
             if (!readOnly)
             {
                 columnFamily = db.CreateColumnFamily(defaultColumnFamilyOptions, path);
-                store = new RocksDbStore(db, columnFamily, readOnly, shared: true);
-                return true;
+                return new RocksDbStore(db, columnFamily, readOnly, shared: true);
             }
 
-            store = null;
-            return false;
+            throw new InvalidOperationException("invalid store path");
         }
 
         public void CreateCheckpoint(string checkPointFileName, ProtocolSettings settings, UInt160 scriptHash)
@@ -74,25 +72,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public void CreateCheckpoint(string checkPointFileName, ExpressChain chain, UInt160 scriptHash)
             => CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
 
-        public void CreateCheckpoint(string checkPointFileName, uint magic, byte addressVersion, UInt160 scriptHash)
-        {
-            RocksDbUtility.CreateCheckpoint(db, checkPointFileName, magic, addressVersion, scriptHash);
-        }
-
-        [Obsolete("use " + nameof(RocksDbUtility) + "." + nameof(RocksDbUtility.RestoreCheckpoint) + " instead")]
-        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, ProtocolSettings settings, UInt160 scriptHash)
-            => RestoreCheckpoint(checkPointArchive, restorePath, settings.Network, settings.AddressVersion, scriptHash);
-
-        [Obsolete("use " + nameof(RocksDbUtility) + "." + nameof(RocksDbUtility.RestoreCheckpoint) + " instead")]
-        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath, uint magic, byte addressVersion, UInt160 scriptHash)
-        {
-            return RocksDbUtility.RestoreCheckpoint(checkPointArchive, restorePath, magic, addressVersion, scriptHash);
-        }
-
-        [Obsolete("use " + nameof(RocksDbUtility) + "." + nameof(RocksDbUtility.RestoreCheckpoint) + " instead")]
-        public static (uint magic, byte addressVersion) RestoreCheckpoint(string checkPointArchive, string restorePath)
-        {
-            return RocksDbUtility.RestoreCheckpoint(checkPointArchive, restorePath);
-        }
+        public void CreateCheckpoint(string checkPointFileName, uint network, byte addressVersion, UInt160 scriptHash) 
+            => RocksDbUtility.CreateCheckpoint(db, checkPointFileName, network, addressVersion, scriptHash);
     }
 }

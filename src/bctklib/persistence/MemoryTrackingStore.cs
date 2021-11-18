@@ -23,6 +23,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Dispose()
         {
+            (store as IDisposable)?.Dispose();
         }
 
         public ISnapshot GetSnapshot() => new Snapshot(store, trackingMap, this.CommitSnapshot);

@@ -88,6 +88,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public ISnapshot GetSnapshot()
         {
             if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (readOnly) throw new InvalidOperationException("read only");
             return new Snapshot(db, columnFamily);
         }
     }

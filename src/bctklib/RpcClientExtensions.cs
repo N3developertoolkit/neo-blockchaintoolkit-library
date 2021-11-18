@@ -1,9 +1,8 @@
 using System;
-using Neo.IO.Json;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 
-namespace Neo.BlockchainToolkit.Persistence
+namespace Neo.BlockchainToolkit
 {
     static class RpcClientExtensions
     {

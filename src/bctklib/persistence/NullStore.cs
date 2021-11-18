@@ -10,7 +10,7 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         public static readonly NullStore Instance = new NullStore();
 
-        private NullStore() { }
+        NullStore() { }
 
         public bool Contains(byte[]? key) => false;
         public byte[]? TryGet(byte[]? key) => null;
