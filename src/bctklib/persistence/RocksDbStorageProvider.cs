@@ -21,7 +21,7 @@ namespace Neo.BlockchainToolkit.Persistence
             this.readOnly = readOnly;
         }
 
-        public static IStorageProvider Open(string path)
+        public static RocksDbStorageProvider Open(string path)
         {
             var db = RocksDbUtility.OpenDb(path);
             return new RocksDbStorageProvider(db, readOnly: false);

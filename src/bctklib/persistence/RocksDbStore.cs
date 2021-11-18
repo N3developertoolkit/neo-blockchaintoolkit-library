@@ -16,12 +16,12 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly WriteOptions writeOptions = new WriteOptions();
         readonly WriteOptions writeSyncOptions = new WriteOptions().SetSync(true);
 
-        public RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false)
+        internal RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false)
             : this(db, GetColumnFamilyHandle(db, columnFamilyName), readOnly, false)
         {
         }
 
-        public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false)
+        internal RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false)
             : this(db, columnFamily, readOnly, false)
         {
         }
