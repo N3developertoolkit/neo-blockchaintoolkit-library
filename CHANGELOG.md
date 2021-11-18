@@ -17,11 +17,24 @@ may not exactly match a publicly released version.
 
 ### Added
 * Instruction and branch execution tracking in `TestApplicationEngine` (#50)
+* `ICheckpointStore`, `CheckpointStore` and `NullCheckpointStore`
+* `RocksDbUtility.GetTempPath`
+* `IStore.EnsureLedgerInitialized` extension method
+* `RocksDbStorageProvider.OpenForDiscard` static method
+
+### Removed
+* `IDisposableStorageProvider` interface
+* Obsolete `RocksDbStorageProvider.RestoreCheckpoint` methods
+* public `RocksDbStore` constructors
 
 ### Changes
 
 * Simplified service override code in `TestApplicationEngine` (#50)
 * Made `NullStore.Instance` readonly (#50)
+* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable`
+* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider`
+* Replaced `CheckpointStorageProvider` public constructor with static `Open` method
+* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional
 
 ## [3.0.12] - 2021-10-12
 
