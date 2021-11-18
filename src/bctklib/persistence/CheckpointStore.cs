@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Neo.BlockchainToolkit.Models;
 using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Persistence
@@ -11,6 +12,11 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly string checkpointTempPath;
 
         public ProtocolSettings Settings { get; }
+
+        public CheckpointStore(string checkpointPath, ExpressChain? chain = null, UInt160? scriptHash = null)
+            : this(checkpointPath, chain?.Network, chain?.AddressVersion, scriptHash)
+        {
+        }
 
         public CheckpointStore(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
         {

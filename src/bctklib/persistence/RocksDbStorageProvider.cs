@@ -35,12 +35,12 @@ namespace Neo.BlockchainToolkit.Persistence
                 {
                     var db = RocksDbUtility.OpenReadOnlyDb(path);
                     var storageProvider = new RocksDbStorageProvider(db, readOnly: true);
-                    return new CheckpointStorageProvider(string.Empty, storageProvider);
+                    return new CheckpointStorageProvider(storageProvider);
                 }
                 catch { }
             }
 
-            return new CheckpointStorageProvider(string.Empty, null);
+            return new CheckpointStorageProvider(null);
         }
 
         public void Dispose()

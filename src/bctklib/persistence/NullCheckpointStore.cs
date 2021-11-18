@@ -9,11 +9,12 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         public ProtocolSettings Settings { get; }
 
-        public NullCheckpointStore(ExpressChain? chain) : this(chain?.Network, chain?.AddressVersion)
+        public NullCheckpointStore(ExpressChain? chain)
+            : this(chain?.Network, chain?.AddressVersion)
         {
         }
 
-        public NullCheckpointStore(uint? network, byte? addressVersion)
+        public NullCheckpointStore(uint? network = null, byte? addressVersion = null)
         {
             this.Settings = ProtocolSettings.Default with
             {

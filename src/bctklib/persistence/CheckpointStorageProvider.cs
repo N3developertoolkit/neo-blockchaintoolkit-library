@@ -8,16 +8,16 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class CheckpointStorageProvider : IStorageProvider, IDisposable
     {
-        readonly RocksDbStorageProvider? underlyingStorageProvider;
+        readonly IStorageProvider? underlyingStorageProvider;
         readonly string checkpointTempPath;
         readonly Lazy<IStore> defaultStore;
         ImmutableDictionary<string, IStore> stores = ImmutableDictionary<string, IStore>.Empty;
 
-        internal CheckpointStorageProvider(string checkpointTempPath, RocksDbStorageProvider? underlyingStorageProvider)
+        internal CheckpointStorageProvider(IStorageProvider? underlyingStorageProvider, string checkpointTempPath = "")
         {
             this.checkpointTempPath = checkpointTempPath;
             this.underlyingStorageProvider = underlyingStorageProvider;
-            defaultStore = new Lazy<IStore>(() => new MemoryTrackingStore(GetUnderlyingReadOnlyStore(null)));
+            defaultStore = new Lazy<IStore>(() => new MemoryTrackingStore(GetUnderlyingStore(null)));
         }
 
         public static CheckpointStorageProvider Open(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
@@ -27,12 +27,12 @@ namespace Neo.BlockchainToolkit.Persistence
 
             var db = RocksDbUtility.OpenReadOnlyDb(checkpointTempPath);
             var rocksDbStorageProvider = new RocksDbStorageProvider(db, readOnly: true);
-            return new CheckpointStorageProvider(checkpointTempPath, rocksDbStorageProvider);
+            return new CheckpointStorageProvider(rocksDbStorageProvider, checkpointTempPath);
         }
 
         public void Dispose()
         {
-            underlyingStorageProvider?.Dispose();
+            (underlyingStorageProvider as IDisposable)?.Dispose();
 
             if (!string.IsNullOrEmpty(checkpointTempPath)
                 && Directory.Exists(checkpointTempPath))
@@ -45,10 +45,10 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             if (path == null) return defaultStore.Value;
             return ImmutableInterlocked.GetOrAdd(ref stores, path,
-                key => new MemoryTrackingStore(GetUnderlyingReadOnlyStore(key)));
+                key => new MemoryTrackingStore(GetUnderlyingStore(key)));
         }
 
-        IReadOnlyStore GetUnderlyingReadOnlyStore(string? path)
+        IReadOnlyStore GetUnderlyingStore(string? path)
         {
             IReadOnlyStore? roStore = null;
             try
