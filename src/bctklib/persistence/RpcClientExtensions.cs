@@ -2,7 +2,7 @@ using System;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 
-namespace Neo.BlockchainToolkit
+namespace Neo.BlockchainToolkit.Persistence
 {
     static class RpcClientExtensions
     {
