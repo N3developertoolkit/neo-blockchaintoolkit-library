@@ -17,24 +17,24 @@ may not exactly match a publicly released version.
 
 ### Added
 * Instruction and branch execution tracking in `TestApplicationEngine` (#50)
-* `ICheckpointStore`, `CheckpointStore` and `NullCheckpointStore`
-* `RocksDbUtility.GetTempPath`
-* `IStore.EnsureLedgerInitialized` extension method
-* `RocksDbStorageProvider.OpenForDiscard` static method
+* `ICheckpointStore`, `CheckpointStore` and `NullCheckpointStore` (#51)
+* `RocksDbUtility.GetTempPath` (#51)
+* `IStore.EnsureLedgerInitialized` extension method (#51)
+* `RocksDbStorageProvider.OpenForDiscard` static method (#51)
 
 ### Removed
-* `IDisposableStorageProvider` interface
-* Obsolete `RocksDbStorageProvider.RestoreCheckpoint` methods
-* public `RocksDbStore` constructors
+* `IDisposableStorageProvider` interface (#51)
+* Obsolete `RocksDbStorageProvider.RestoreCheckpoint` methods (#51)
+* Public `RocksDbStore` constructors (#51)
 
 ### Changes
 
 * Simplified service override code in `TestApplicationEngine` (#50)
 * Made `NullStore.Instance` readonly (#50)
-* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable`
-* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider`
-* Replaced `CheckpointStorageProvider` public constructor with static `Open` method
-* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional
+* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable` (#51)
+* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider` (#51)
+* Replaced `CheckpointStorageProvider` public constructor with static `Open` method (#51)
+* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional (#51)
 
 ## [3.0.12] - 2021-10-12
 
