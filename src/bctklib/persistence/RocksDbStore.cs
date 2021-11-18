@@ -48,46 +48,46 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public byte[]? TryGet(byte[]? key)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             return db.Get(key ?? Array.Empty<byte>(), columnFamily, readOptions);
         }
 
         public bool Contains(byte[]? key)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             return TryGet(key) != null;
         }
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             return db.Seek(columnFamily, key, direction, readOptions);
         }
 
         public void Put(byte[]? key, byte[] value)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, columnFamily, writeOptions);
         }
 
         public void PutSync(byte[]? key, byte[] value)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, columnFamily, writeSyncOptions);
         }
 
         public void Delete(byte[]? key)
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
             db.Remove(key ?? Array.Empty<byte>(), columnFamily, writeOptions);
         }
 
         public ISnapshot GetSnapshot()
         {
-            if (disposed) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
             return new Snapshot(db, columnFamily);
         }

@@ -56,7 +56,6 @@ namespace Neo.BlockchainToolkit.Persistence
             if (db.TryGetColumnFamily(path, out var columnFamily)) 
                 return new RocksDbStore(db, columnFamily, readOnly, shared: true);
 
-
             if (!readOnly)
             {
                 columnFamily = db.CreateColumnFamily(defaultColumnFamilyOptions, path);

@@ -20,7 +20,7 @@ namespace test.bctklib3
 
             using var rpcClient = new TestableRpcClient(() => Convert.ToBase64String(expected));
 
-            var tempPath = Utility.GetTempPath();
+            var tempPath = RocksDbUtility.GetTempPath();
             using var _ = Utility.GetDeleteDirectoryDisposable(tempPath);
             using var client = new StateServiceStore.RocksDbCacheClient(rpcClient, tempPath);
 
@@ -37,7 +37,7 @@ namespace test.bctklib3
 
             using var rpcClient = new TestableRpcClient(() => throw new RpcException(-2146232969, "The given key was not present in the dictionary."));
 
-            var tempPath = Utility.GetTempPath();
+            var tempPath = RocksDbUtility.GetTempPath();
             using var _ = Utility.GetDeleteDirectoryDisposable(tempPath);
             using var client = new StateServiceStore.RocksDbCacheClient(rpcClient, tempPath);
 

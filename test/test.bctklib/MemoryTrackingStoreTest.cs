@@ -1,22 +1,69 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using FluentAssertions;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
 using Xunit;
+using static System.Text.Encoding;
 
 namespace test.bctklib3
 {
     public class MemoryTrackingStoreTest
     {
-        static readonly byte[] helloValue = Encoding.UTF8.GetBytes("Hello");
-        static readonly byte[] worldValue = Encoding.UTF8.GetBytes("World");
+        static readonly byte[] helloValue = UTF8.GetBytes("Hello");
+        static readonly byte[] worldValue = UTF8.GetBytes("World");
+
+        static byte[] Bytes(params byte[] values) => values;
+        static byte[] Bytes(int value) => BitConverter.GetBytes(value);
+
+        class NonDisposableStore : IReadOnlyStore
+        {
+            byte[] IReadOnlyStore.TryGet(byte[] key) => throw new NotImplementedException();
+            bool IReadOnlyStore.Contains(byte[] key) => throw new NotImplementedException();
+            IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[] key, SeekDirection direction)
+                => throw new NotImplementedException();
+        }
+
+        class DisposableStore : IReadOnlyStore, IDisposable
+        {
+            public bool Disposed { get; private set; } = false;
+
+            public void Dispose()
+            {
+                Disposed = true;
+            }
+
+            byte[] IReadOnlyStore.TryGet(byte[] key) => throw new NotImplementedException();
+            bool IReadOnlyStore.Contains(byte[] key) => throw new NotImplementedException();
+            IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[] key, SeekDirection direction)
+                => throw new NotImplementedException();
+        }
+
+        [Fact]
+        public void disposes_underlying_store_if_disposable()
+        {
+            var underStore = new DisposableStore();
+            using (var store = new MemoryTrackingStore(underStore))
+            {
+            }
+            underStore.Disposed.Should().BeTrue();
+        }
+
+        
+        [Fact]
+        public void doesnt_disposes_underlying_store_if_not_disposable()
+        {
+            var underStore = new NonDisposableStore();
+            using (var store = new MemoryTrackingStore(underStore))
+            {
+            }
+        }
 
         [Fact]
         public void can_get_value_from_underlying_store()
         {
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             var memoryStore = new MemoryStore();
             memoryStore.Put(key, helloValue);
 
@@ -29,7 +76,7 @@ namespace test.bctklib3
         [Fact]
         public void can_overwrite_existing_value()
         {
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             var memoryStore = new MemoryStore();
             memoryStore.Put(key, helloValue);
 
@@ -43,7 +90,7 @@ namespace test.bctklib3
         [Fact]
         public void can_delete_existing_value()
         {
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             var memoryStore = new MemoryStore();
             memoryStore.Put(key, helloValue);
 
@@ -57,7 +104,7 @@ namespace test.bctklib3
         [Fact]
         public void can_put_new_value()
         {
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             var store = new MemoryTrackingStore(NullStore.Instance);
             store.Put(key, helloValue);
             var actual = store.TryGet(key);
@@ -70,7 +117,7 @@ namespace test.bctklib3
             var store = new MemoryTrackingStore(NullStore.Instance);
             using var snapshot = store.GetSnapshot();
 
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             store.Put(key, helloValue);
 
             Assert.Null(snapshot.TryGet(key));
@@ -83,7 +130,7 @@ namespace test.bctklib3
             var store = new MemoryTrackingStore(NullStore.Instance);
             using var snapshot = store.GetSnapshot();
 
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             snapshot.Put(key, helloValue);
 
             Assert.Null(store.TryGet(key));
@@ -95,7 +142,7 @@ namespace test.bctklib3
         public void can_delete_via_snapshot()
         {
             var store = new MemoryTrackingStore(NullStore.Instance);
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             store.Put(key, helloValue);
 
             using var snapshot = store.GetSnapshot();
@@ -110,56 +157,35 @@ namespace test.bctklib3
         public void update_key_array_doesnt_affect_store()
         {
             var store = new MemoryTrackingStore(NullStore.Instance);
-            var key = new byte[] { 0x00 };
+            var key = Bytes(0);
             store.Put(key, helloValue);
 
             key[0] = 0xff;
-            Assert.Equal(helloValue, store.TryGet(new byte[] { 0x00 }));
-            Assert.Null(store.TryGet(new byte[] { 0xff }));
+            Assert.Equal(helloValue, store.TryGet(Bytes(0)));
+            Assert.Null(store.TryGet(key));
         }
 
         static IStore GetSeekStore()
         {
             var memoryStore = new MemoryStore();
-            memoryStore.Put(new byte[] { 0x00, 0x01 }, BitConverter.GetBytes(1));
-            memoryStore.Put(new byte[] { 0x00, 0x02 }, BitConverter.GetBytes(2));
-            memoryStore.Put(new byte[] { 0x01, 0x01 }, BitConverter.GetBytes(11));
-            memoryStore.Put(new byte[] { 0x01, 0x02 }, BitConverter.GetBytes(12));
-            memoryStore.Put(new byte[] { 0x02, 0x01 }, BitConverter.GetBytes(21));
-            memoryStore.Put(new byte[] { 0x02, 0x02 }, BitConverter.GetBytes(22));
+            memoryStore.PutSeekData((0,2), (1,2));
 
             var store = new MemoryTrackingStore(memoryStore);
-            store.Put(new byte[] { 0x00, 0x03 }, BitConverter.GetBytes(3));
-            store.Put(new byte[] { 0x00, 0x04 }, BitConverter.GetBytes(4));
-            store.Put(new byte[] { 0x01, 0x03 }, BitConverter.GetBytes(13));
-            store.Put(new byte[] { 0x01, 0x04 }, BitConverter.GetBytes(14));
-            store.Put(new byte[] { 0x02, 0x03 }, BitConverter.GetBytes(23));
-            store.Put(new byte[] { 0x02, 0x04 }, BitConverter.GetBytes(24));
+            store.PutSeekData((0,2), (3,4));
 
             return store;
         }
 
-        static IEnumerable<(byte[], byte[])> GetSeekExpected()
-        {
-            for (byte i = 0; i <= 2; i++)
-            {
-                for (byte j = 1; j <= 4; j++)
-                {
-                    var k = new byte[] { i, j };
-                    var v = i * 10 + j;
-                    yield return (k, BitConverter.GetBytes(v));
-                }
-            }
-        }
+        static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0,2), (1,4));
 
         [Fact]
         public void can_seek_forward_no_prefix()
         {
             var store = GetSeekStore();
 
-            var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward).ToArray();
-            var expected = GetSeekExpected().ToArray();
-            Assert.Equal(expected, actual);
+            var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward);
+            var expected = GetSeekData();
+            actual.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
@@ -167,9 +193,9 @@ namespace test.bctklib3
         {
             var store = GetSeekStore();
 
-            var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Backward).ToArray();
-            var expected = GetSeekExpected().Reverse().ToArray();
-            Assert.Equal(expected, actual);
+            var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Backward);
+            var expected = GetSeekData().Reverse();
+            actual.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
@@ -177,9 +203,9 @@ namespace test.bctklib3
         {
             var store = GetSeekStore();
 
-            var actual = store.Seek(new byte[] { 0x01 }, SeekDirection.Forward).ToArray();
-            var expected = GetSeekExpected().Where(kvp => kvp.Item1[0] >= 0x01).ToArray();
-            Assert.Equal(expected, actual);
+            var actual = store.Seek(Bytes(1), SeekDirection.Forward);
+            var expected = GetSeekData().Where(kvp => kvp.Item1[0] >= 0x01);
+            actual.Should().BeEquivalentTo(expected);
         }
 
         [Fact]
@@ -187,9 +213,9 @@ namespace test.bctklib3
         {
             var store = GetSeekStore();
 
-            var actual = store.Seek(new byte[] { 0x02 }, SeekDirection.Backward).ToArray();
-            var expected = GetSeekExpected().Where(kvp => kvp.Item1[0] <= 0x01).Reverse().ToArray();
-            Assert.Equal(expected, actual);
+            var actual = store.Seek(Bytes(0x02), SeekDirection.Backward);
+            var expected = GetSeekData().Where(kvp => kvp.Item1[0] <= 0x01).Reverse();
+            actual.Should().BeEquivalentTo(expected);
         }
     }
 }
