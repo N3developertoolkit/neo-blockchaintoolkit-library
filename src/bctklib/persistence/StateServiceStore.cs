@@ -119,6 +119,14 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction)
         {
+            // See note in Extensions.Seek(RocksDb, ColumnFamilyHandle, ReadOnlySpan<byte>, SeekDirection, ReadOptions?)
+            // regarding this InvalidOperationException 
+
+            if (key.Length == 0 && direction == SeekDirection.Backward)
+            {
+                throw new InvalidOperationException("https://github.com/neo-project/neo/issues/2634");
+            }
+            
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
             if (contractId < 0)
             {
