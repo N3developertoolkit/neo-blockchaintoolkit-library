@@ -12,7 +12,7 @@ using Newtonsoft.Json.Linq;
 using Xunit;
 
 #pragma warning disable VSTHRD200
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class DebugInfoTest
     {

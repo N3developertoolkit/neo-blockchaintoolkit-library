@@ -197,8 +197,8 @@ namespace Neo.BlockchainToolkit.SmartContract
             base.PreExecuteInstruction();
 
             if (CurrentContext == null) return;
-            
-            var hash = CurrentContext.GetScriptHash() 
+
+            var hash = CurrentContext.GetScriptHash()
                 ?? throw new InvalidOperationException("CurrentContext.GetScriptHash returned null");
 
             if (CurrentContext.CurrentInstruction.IsBranchInstruction())
@@ -240,7 +240,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                     branchMaps.Add(branchInstructionInfo.ContractHash, branchMap);
                 }
 
-                var branchHit = branchMap.TryGetValue(branchInstructionInfo.InstructionPointer, out var _branchCount) 
+                var branchHit = branchMap.TryGetValue(branchInstructionInfo.InstructionPointer, out var _branchCount)
                     ? _branchCount : (branchCount: 0, continueCount: 0);
 
                 if (CurrentContext.InstructionPointer == branchInstructionInfo.BranchOffset)

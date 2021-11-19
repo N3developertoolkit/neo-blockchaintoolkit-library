@@ -1,57 +1,59 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using Neo.Persistence;
 using Neo.Plugins;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class CheckpointStorageProvider : IDisposableStorageProvider
+    public partial class CheckpointStorageProvider : IStorageProvider, IDisposable
     {
-        readonly IStorageProvider? storageProvider;
-        readonly IDisposable? checkpointCleanup;
+        readonly IStorageProvider? underlyingStorageProvider;
+        readonly string checkpointTempPath;
         readonly Lazy<IStore> defaultStore;
-        readonly bool disposeStorageProvider;
-
         ImmutableDictionary<string, IStore> stores = ImmutableDictionary<string, IStore>.Empty;
 
-        public CheckpointStorageProvider(RocksDbStorageProvider? rocksDbStorageProvider, bool disposeStorageProvider = true, IDisposable? checkpointCleanup = null)
-            : this((IStorageProvider?)rocksDbStorageProvider, disposeStorageProvider, checkpointCleanup)
+        internal CheckpointStorageProvider(IStorageProvider? underlyingStorageProvider, string checkpointTempPath = "")
         {
+            this.checkpointTempPath = checkpointTempPath;
+            this.underlyingStorageProvider = underlyingStorageProvider;
+            defaultStore = new Lazy<IStore>(() => new MemoryTrackingStore(GetUnderlyingStore(null)));
         }
 
-        public CheckpointStorageProvider(IStorageProvider? storageProvider, bool disposeStorageProvider = true, IDisposable? checkpointCleanup = null)
+        public static CheckpointStorageProvider Open(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
         {
-            this.storageProvider = storageProvider;
-            this.checkpointCleanup = checkpointCleanup;
-            this.disposeStorageProvider = disposeStorageProvider;
+            var checkpointTempPath = RocksDbUtility.GetTempPath();
+            var metadata = RocksDbUtility.RestoreCheckpoint(checkpointPath, checkpointTempPath, network, addressVersion, scriptHash);
 
-            defaultStore = new Lazy<IStore>(() => new MemoryTrackingStore(GetStorageProviderStore(null)));
+            var db = RocksDbUtility.OpenReadOnlyDb(checkpointTempPath);
+            var rocksDbStorageProvider = new RocksDbStorageProvider(db, readOnly: true);
+            return new CheckpointStorageProvider(rocksDbStorageProvider, checkpointTempPath);
         }
 
         public void Dispose()
         {
-            if (disposeStorageProvider)
+            (underlyingStorageProvider as IDisposable)?.Dispose();
+
+            if (!string.IsNullOrEmpty(checkpointTempPath)
+                && Directory.Exists(checkpointTempPath))
             {
-                (storageProvider as IDisposable)?.Dispose();
+                Directory.Delete(checkpointTempPath, true);
             }
-            checkpointCleanup?.Dispose();
         }
 
-        public IStore GetStore(string? storeName)
+        public IStore GetStore(string? path)
         {
-            if (storeName == null) return defaultStore.Value;
-            return ImmutableInterlocked.GetOrAdd(ref stores, storeName,
-                key => new MemoryTrackingStore(GetStorageProviderStore(key)));
+            if (path == null) return defaultStore.Value;
+            return ImmutableInterlocked.GetOrAdd(ref stores, path,
+                key => new MemoryTrackingStore(GetUnderlyingStore(key)));
         }
 
-        IReadOnlyStore GetStorageProviderStore(string? path)
+        IReadOnlyStore GetUnderlyingStore(string? path)
         {
             IReadOnlyStore? roStore = null;
             try
             {
-                roStore = storageProvider?.GetStore(path);
+                roStore = underlyingStorageProvider?.GetStore(path);
             }
             catch { }
 

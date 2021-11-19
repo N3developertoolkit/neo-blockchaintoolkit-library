@@ -1,5 +1,4 @@
 using System;
-using Neo.IO.Json;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 

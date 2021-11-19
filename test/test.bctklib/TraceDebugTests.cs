@@ -14,7 +14,7 @@ using Neo.VM;
 using Nerdbank.Streams;
 using Xunit;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class TraceDebugTests
     {

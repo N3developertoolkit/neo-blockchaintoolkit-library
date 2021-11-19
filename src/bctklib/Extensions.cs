@@ -7,10 +7,10 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using Neo.BlockchainToolkit.Models;
-using Neo.Cryptography.ECC;
+using Neo.Persistence;
 using Neo.SmartContract;
+using Neo.SmartContract.Native;
 using Neo.VM;
-using Neo.Wallets;
 using Newtonsoft.Json;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
@@ -18,26 +18,6 @@ namespace Neo.BlockchainToolkit
 {
     public static class Extensions
     {
-        public static ProtocolSettings GetProtocolSettings(this ExpressChain? chain, uint secondsPerBlock = 0)
-        {
-            return chain == null
-                ? ProtocolSettings.Default
-                : ProtocolSettings.Default with
-                {
-                    Network = chain.Network,
-                    AddressVersion = chain.AddressVersion,
-                    MillisecondsPerBlock = secondsPerBlock == 0 ? 15000 : secondsPerBlock * 1000,
-                    ValidatorsCount = chain.ConsensusNodes.Count,
-                    StandbyCommittee = chain.ConsensusNodes.Select(GetPublicKey).ToArray(),
-                    SeedList = chain.ConsensusNodes
-                        .Select(n => $"{System.Net.IPAddress.Loopback}:{n.TcpPort}")
-                        .ToArray(),
-                };
-
-            static ECPoint GetPublicKey(ExpressConsensusNode node)
-                => new KeyPair(node.Wallet.Accounts.Select(a => a.PrivateKey).Distinct().Single().HexToBytes()).PublicKey;
-        }
-
         public static ExpressChain LoadChain(this IFileSystem fileSystem, string path)
         {
             var serializer = new JsonSerializer();
@@ -94,50 +74,6 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        public static ExpressWallet GetWallet(this ExpressChain chain, string name)
-            => TryGetWallet(chain, name, out var wallet)
-                ? wallet
-                : throw new Exception($"wallet {name} not found");
-
-        public static bool TryGetWallet(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWallet? wallet)
-        {
-            for (int i = 0; i < chain.Wallets.Count; i++)
-            {
-                if (string.Equals(name, chain.Wallets[i].Name, StringComparison.OrdinalIgnoreCase))
-                {
-                    wallet = chain.Wallets[i];
-                    return true;
-                }
-            }
-
-            wallet = null;
-            return false;
-        }
-
-        public static ExpressWalletAccount GetDefaultAccount(this ExpressChain chain, string name)
-            => TryGetDefaultAccount(chain, name, out var account)
-                ? account
-                : throw new Exception($"default account for {name} wallet not found");
-
-        public static UInt160 GetDefaultAccountScriptHash(this ExpressChain chain, string name)
-            => TryGetDefaultAccount(chain, name, out var account)
-                ? account.ToScriptHash(chain.AddressVersion)
-                : throw new Exception($"default account for {name} wallet not found");
-
-        public static bool TryGetDefaultAccount(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWalletAccount? account)
-        {
-            if (chain.TryGetWallet(name, out var wallet) && wallet.DefaultAccount != null)
-            {
-                account = wallet.DefaultAccount;
-                return true;
-            }
-
-            account = null;
-            return false;
-        }
-        public static UInt160 ToScriptHash(this ExpressWalletAccount account, byte addressVersion)
-            => account.ScriptHash.ToScriptHash(addressVersion);
-
         public static string GetInstructionAddressPadding(this Script script)
         {
             var digitCount = EnumerateInstructions(script).Last().address switch
@@ -170,7 +106,7 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        public static bool IsBranchInstruction(this Instruction instruction) 
+        public static bool IsBranchInstruction(this Instruction instruction)
             => instruction.OpCode >= OpCode.JMPIF
                 && instruction.OpCode <= OpCode.JMPLE_L;
 
@@ -257,6 +193,42 @@ namespace Neo.BlockchainToolkit
             }
 
             string OffsetComment(int offset) => $"pos: {ip + offset}, offset: {offset}";
+        }
+
+        // replicated logic from Blockchain.OnInitialized + Blockchain.Persist
+        public static void EnsureLedgerInitialized(this IStore store, ProtocolSettings settings)
+        {
+            using var snapshot = new SnapshotCache(store.GetSnapshot());
+            if (LedgerInitialized(snapshot)) return;
+
+            var block = NeoSystem.CreateGenesisBlock(settings);
+            if (block.Transactions.Length != 0) throw new Exception("Unexpected Transactions in genesis block");
+
+            using (var engine = ApplicationEngine.Create(TriggerType.OnPersist, null, snapshot, block, settings, 0))
+            {
+                using var sb = new ScriptBuilder();
+                sb.EmitSysCall(ApplicationEngine.System_Contract_NativeOnPersist);
+                engine.LoadScript(sb.ToArray());
+                if (engine.Execute() != VMState.HALT) throw new InvalidOperationException("NativeOnPersist operation failed", engine.FaultException);
+            }
+
+            using (var engine = ApplicationEngine.Create(TriggerType.PostPersist, null, snapshot, block, settings, 0))
+            {
+                using var sb = new ScriptBuilder();
+                sb.EmitSysCall(ApplicationEngine.System_Contract_NativePostPersist);
+                engine.LoadScript(sb.ToArray());
+                if (engine.Execute() != VMState.HALT) throw new InvalidOperationException("NativePostPersist operation failed", engine.FaultException);
+            }
+
+            snapshot.Commit();
+
+            // replicated logic from LedgerContract.Initialized
+            static bool LedgerInitialized(DataCache snapshot)
+            {
+                const byte Prefix_Block = 5;
+                var key = new KeyBuilder(NativeContract.Ledger.Id, Prefix_Block).ToArray();
+                return snapshot.Find(key).Any();
+            }
         }
     }
 }

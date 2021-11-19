@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using Neo;
+using System.Threading;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 
@@ -64,6 +63,44 @@ namespace Neo.BlockchainToolkit.Persistence
                 var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
                 var hash = ReadOnlyMemoryComparer.GetHashCode(key.Span);
                 return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
+            }
+
+            class LockingDictionary<TKey, TValue> where TKey : notnull
+            {
+                readonly Dictionary<TKey, TValue> cache = new();
+                readonly ReaderWriterLockSlim cacheLock = new();
+
+                public TValue GetOrAdd(in TKey key, Func<TKey, TValue> factory)
+                {
+                    cacheLock.EnterUpgradeableReadLock();
+                    try
+                    {
+                        if (cache.TryGetValue(key, out var value)) return value;
+
+                        value = factory(key);
+                        cacheLock.EnterWriteLock();
+                        try
+                        {
+                            if (cache.TryGetValue(key, out var _value))
+                            {
+                                value = _value;
+                            }
+                            else
+                            {
+                                cache.Add(key, value);
+                            }
+                            return value;
+                        }
+                        finally
+                        {
+                            cacheLock.ExitWriteLock();
+                        }
+                    }
+                    finally
+                    {
+                        cacheLock.ExitUpgradeableReadLock();
+                    }
+                }
             }
         }
     }

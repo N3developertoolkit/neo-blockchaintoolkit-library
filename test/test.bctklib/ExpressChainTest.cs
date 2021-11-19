@@ -7,7 +7,7 @@ using Neo.BlockchainToolkit;
 using Neo.BlockchainToolkit.Models;
 using Xunit;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class ExpressChainTest
     {
