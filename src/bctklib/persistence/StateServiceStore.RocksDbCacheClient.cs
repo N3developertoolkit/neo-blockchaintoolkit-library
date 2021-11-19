@@ -76,7 +76,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 return UInt256.Parse(json.AsString());
             }
 
-            static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter = 
+            static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter =
                 MessagePackSerializerOptions.Standard.Resolver.GetFormatter<byte[]?>();
 
             public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)

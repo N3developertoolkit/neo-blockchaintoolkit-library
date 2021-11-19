@@ -19,5 +19,5 @@ namespace Neo.BlockchainToolkit.Persistence
             => (key.Length == 0 && direction == SeekDirection.Backward)
                 ? throw new InvalidOperationException("https://github.com/neo-project/neo/issues/2634")
                 : Enumerable.Empty<(byte[], byte[]?)>();
-     }
+    }
 }

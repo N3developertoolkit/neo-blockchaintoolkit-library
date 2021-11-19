@@ -22,8 +22,8 @@ namespace test.bctklib
             {
                 using var db = RocksDbUtility.OpenDb(dbPath);
                 using var store = new RocksDbStore(db);
-                store.PutSeekData((0,2), (1,4));
-                
+                store.PutSeekData((0, 2), (1, 4));
+
                 CheckpointPath = RocksDbUtility.GetTempPath();
                 RocksDbUtility.CreateCheckpoint(db, CheckpointPath, Network, AddressVersion, ScriptHash);
             }
@@ -38,6 +38,6 @@ namespace test.bctklib
             if (File.Exists(CheckpointPath)) File.Delete(CheckpointPath);
         }
 
-        public static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0,2), (1,4));
+        public static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0, 2), (1, 4));
     }
 }

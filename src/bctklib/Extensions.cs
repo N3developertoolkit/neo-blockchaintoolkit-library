@@ -106,7 +106,7 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        public static bool IsBranchInstruction(this Instruction instruction) 
+        public static bool IsBranchInstruction(this Instruction instruction)
             => instruction.OpCode >= OpCode.JMPIF
                 && instruction.OpCode <= OpCode.JMPLE_L;
 

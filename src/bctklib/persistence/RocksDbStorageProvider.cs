@@ -50,10 +50,10 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public IStore GetStore(string? path)
         {
-            if (path == null) 
+            if (path == null)
                 return new RocksDbStore(db, db.GetDefaultColumnFamily(), readOnly, shared: true);
 
-            if (db.TryGetColumnFamily(path, out var columnFamily)) 
+            if (db.TryGetColumnFamily(path, out var columnFamily))
                 return new RocksDbStore(db, columnFamily, readOnly, shared: true);
 
             if (!readOnly)
@@ -71,7 +71,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public void CreateCheckpoint(string checkPointFileName, ExpressChain chain, UInt160 scriptHash)
             => CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
 
-        public void CreateCheckpoint(string checkPointFileName, uint network, byte addressVersion, UInt160 scriptHash) 
+        public void CreateCheckpoint(string checkPointFileName, uint network, byte addressVersion, UInt160 scriptHash)
             => RocksDbUtility.CreateCheckpoint(db, checkPointFileName, network, addressVersion, scriptHash);
     }
 }

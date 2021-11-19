@@ -42,15 +42,15 @@ namespace test.bctklib
             }
         }
 
-        static IStore GetSeekStore(string path) 
+        static IStore GetSeekStore(string path)
         {
             Populate(path);
             var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-            store.PutSeekData((0,2), (1,4));
+            store.PutSeekData((0, 2), (1, 4));
             return store;
         }
 
-        static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0,2), (1,4));
+        static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0, 2), (1, 4));
 
         [Fact]
         public void readonly_store_throws_on_write_operations()

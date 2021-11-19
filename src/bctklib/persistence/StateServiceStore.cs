@@ -126,7 +126,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 throw new InvalidOperationException("https://github.com/neo-project/neo/issues/2634");
             }
-            
+
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
             if (contractId < 0)
             {

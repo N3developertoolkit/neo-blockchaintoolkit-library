@@ -51,7 +51,7 @@ namespace test.bctklib
             underStore.Disposed.Should().BeTrue();
         }
 
-        
+
         [Fact]
         public void doesnt_disposes_underlying_store_if_not_disposable()
         {
@@ -177,15 +177,15 @@ namespace test.bctklib
         static IStore GetSeekStore()
         {
             var memoryStore = new MemoryStore();
-            memoryStore.PutSeekData((0,2), (1,2));
+            memoryStore.PutSeekData((0, 2), (1, 2));
 
             var store = new MemoryTrackingStore(memoryStore);
-            store.PutSeekData((0,2), (3,4));
+            store.PutSeekData((0, 2), (3, 4));
 
             return store;
         }
 
-        static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0,2), (1,4));
+        static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0, 2), (1, 4));
 
         [Fact]
         public void can_seek_forward_no_prefix()
