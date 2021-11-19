@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Neo.IO.Json;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     class TestableRpcClient : Neo.Network.RPC.RpcClient
     {

@@ -12,7 +12,7 @@ using Newtonsoft.Json.Linq;
 using Xunit;
 
 #pragma warning disable VSTHRD200
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class DebugInfoTest
     {
@@ -269,7 +269,7 @@ namespace test.bctklib3
         {
             var assembly = typeof(DebugInfoTest).Assembly;
             using var resource = assembly.GetManifestResourceStream(name)
-                ?? assembly.GetManifestResourceStream($"test.bctklib3._testFiles.{name}")
+                ?? assembly.GetManifestResourceStream($"test.bctklib._testFiles.{name}")
                 ?? throw new FileNotFoundException();
             using var streamReader = new System.IO.StreamReader(resource);
             return streamReader.ReadToEnd();

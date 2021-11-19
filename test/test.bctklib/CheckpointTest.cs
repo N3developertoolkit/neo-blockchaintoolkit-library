@@ -7,7 +7,7 @@ using Neo.Persistence;
 using Xunit;
 using static System.Text.Encoding;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class CheckpointTest : IClassFixture<CheckpointFixture>
     {

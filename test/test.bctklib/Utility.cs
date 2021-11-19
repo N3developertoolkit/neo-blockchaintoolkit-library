@@ -4,7 +4,7 @@ using System.IO;
 using Neo.Persistence;
 using Nito.Disposables;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     static class Utility
     {

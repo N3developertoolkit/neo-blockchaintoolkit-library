@@ -6,7 +6,7 @@ using Neo;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Cryptography;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class CheckpointFixture : IDisposable
     {

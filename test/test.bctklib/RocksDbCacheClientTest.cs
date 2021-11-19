@@ -6,7 +6,7 @@ using Neo.Network.RPC;
 using RocksDbSharp;
 using Xunit;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class RocksDbCacheClientTest
     {

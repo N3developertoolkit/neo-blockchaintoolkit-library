@@ -6,7 +6,7 @@ using Neo.IO.Json;
 using Neo.Network.RPC;
 using Xunit;
 
-namespace test.bctklib3
+namespace test.bctklib
 {
     public class RpcClientExtensionsTest
     {
