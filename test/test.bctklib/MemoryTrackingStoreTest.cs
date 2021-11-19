@@ -14,7 +14,6 @@ namespace test.bctklib
         static readonly byte[] helloValue = UTF8.GetBytes("Hello");
         static readonly byte[] worldValue = UTF8.GetBytes("World");
 
-        static byte[] Bytes(params byte[] values) => values;
         static byte[] Bytes(int value) => BitConverter.GetBytes(value);
         static byte[] Bytes(string value) => UTF8.GetBytes(value);
 

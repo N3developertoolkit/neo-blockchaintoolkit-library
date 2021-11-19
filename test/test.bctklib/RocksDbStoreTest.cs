@@ -13,7 +13,6 @@ namespace test.bctklib
 {
     public class RocksDbStoreTest
     {
-        static byte[] Bytes(params byte[] values) => values;
         static byte[] Bytes(int value) => BitConverter.GetBytes(value);
         static byte[] Bytes(string value) => UTF8.GetBytes(value);
 

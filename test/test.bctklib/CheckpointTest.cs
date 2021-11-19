@@ -17,10 +17,8 @@ namespace test.bctklib
             this.fixture = fixture;
         }
 
-        static byte[] Bytes(params byte[] values) => values;
         static byte[] Bytes(int value) => BitConverter.GetBytes(value);
         static byte[] Bytes(string value) => UTF8.GetBytes(value);
-
 
         [Fact]
         public void checkpoint_cleans_up_on_dispose()
@@ -37,6 +35,14 @@ namespace test.bctklib
             using var store = new CheckpointStore(fixture.CheckpointPath);
             store.Settings.AddressVersion.Should().Be(fixture.AddressVersion);
             store.Settings.Network.Should().Be(fixture.Network);
+        }
+
+        [Fact]
+        public void CheckpointStore_throws_on_incorrect_metadata()
+        {
+            Assert.Throws<Exception>(() => new CheckpointStore(fixture.CheckpointPath, network: 0));
+            Assert.Throws<Exception>(() => new CheckpointStore(fixture.CheckpointPath, addressVersion: 0));
+            Assert.Throws<Exception>(() => new CheckpointStore(fixture.CheckpointPath, scriptHash: Neo.UInt160.Zero));
         }
 
         [Fact]
