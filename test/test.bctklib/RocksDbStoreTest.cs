@@ -214,16 +214,15 @@ namespace test.bctklib
             });
         }
 
-        [Fact(Skip = "https://github.com/neo-project/neo/issues/2634")]
+        [Fact]
         public void can_seek_backwards_no_prefix()
         {
             RunTestWithCleanup(path =>
             {
                 using var store = GetSeekStore(path);
 
-                var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward).ToArray();
-                var expected = GetSeekData().Reverse().ToArray();
-                actual.Should().BeEquivalentTo(expected);
+                var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Backward).ToArray();
+                actual.Should().BeEmpty();
             });
         }
 

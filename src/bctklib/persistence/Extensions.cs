@@ -25,15 +25,10 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static IEnumerable<(byte[] key, byte[] value)> Seek(this RocksDb db, ColumnFamilyHandle columnFamily, ReadOnlySpan<byte> prefix, SeekDirection direction, ReadOptions? readOptions)
         {
-            // Note, behavior of IReadOnlyStore.Seek method is inconsistent when key is empty and SeekDirection is backwards.
-            // MemoryStore returns all items in reverse order while LevelDbStore and RocksDbStore return an empty enumerable.
-            // This inconsistency is tracked by https://github.com/neo-project/neo/issues/2634.
-            // Luckily, the combination of empty key + backwards seek isn't used anywhere in the neo code base as of v3.0.3
-            // For now, explicitly throw in this situation rather than choosing one inconsistent behavior over the other
 
             if (prefix.Length == 0 && direction == SeekDirection.Backward)
             {
-                throw new InvalidOperationException("https://github.com/neo-project/neo/issues/2634");
+                return Enumerable.Empty<(byte[] key, byte[] value)>();
             }
 
             var iterator = db.NewIterator(columnFamily, readOptions);
@@ -93,12 +88,9 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             key ??= Array.Empty<byte>();
 
-            // See note above in Seek(RocksDb, ColumnFamilyHandle, ReadOnlySpan<byte>, SeekDirection, ReadOptions?)
-            // regarding this InvalidOperationException 
-
             if (key.Length == 0 && direction == SeekDirection.Backward)
             {
-                throw new InvalidOperationException("https://github.com/neo-project/neo/issues/2634");
+                return Enumerable.Empty<(byte[] key, byte[] value)>();
             }
 
             var comparer = direction == SeekDirection.Forward
