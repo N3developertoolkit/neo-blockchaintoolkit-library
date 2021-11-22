@@ -25,12 +25,6 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static IEnumerable<(byte[] key, byte[] value)> Seek(this RocksDb db, ColumnFamilyHandle columnFamily, ReadOnlySpan<byte> prefix, SeekDirection direction, ReadOptions? readOptions)
         {
-
-            if (prefix.Length == 0 && direction == SeekDirection.Backward)
-            {
-                return Enumerable.Empty<(byte[] key, byte[] value)>();
-            }
-
             var iterator = db.NewIterator(columnFamily, readOptions);
 
             if (direction == SeekDirection.Forward)
