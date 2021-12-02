@@ -124,7 +124,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             if (key.Length == 0 && direction == SeekDirection.Backward)
             {
-                throw new InvalidOperationException("https://github.com/neo-project/neo/issues/2634");
+                return Enumerable.Empty<(byte[] key, byte[] value)>();
             }
 
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));

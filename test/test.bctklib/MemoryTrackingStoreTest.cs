@@ -196,14 +196,13 @@ namespace test.bctklib
             actual.Should().BeEquivalentTo(expected);
         }
 
-        [Fact(Skip = "https://github.com/neo-project/neo/issues/2634")]
+        [Fact]
         public void can_seek_backwards_no_prefix()
         {
             var store = GetSeekStore();
 
             var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Backward);
-            var expected = GetSeekData().Reverse();
-            actual.Should().BeEquivalentTo(expected);
+            actual.Should().BeEmpty();
         }
 
         [Fact]
