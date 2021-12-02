@@ -19,17 +19,27 @@
     <RepositoryUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</RepositoryUrl>
     <RootNamespace>Neo.BlockchainToolkit</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <NeoModulesVersion>3.1.0</NeoModulesVersion>
+    <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath>
+    <NeoModulesVersion>local</NeoModulesVersion>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(CI)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
+
   <ItemGroup>
     <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="test.bctklib" />
   </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="InternalsVisibleTo.MSBuild" Version="1.0.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -37,10 +47,22 @@
     </PackageReference>
     <PackageReference Include="MessagePack" Version="2.3.85" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
-    <PackageReference Include="Neo.Network.RPC.RpcClient" Version="3.0.3" />
     <PackageReference Include="Nerdbank.Streams" Version="2.8.46" />
     <PackageReference Include="OneOf" Version="3.0.201" />
     <PackageReference Include="rocksdb" Version="6.22.1.20635" />
     <PackageReference Include="System.IO.Abstractions" Version="13.2.47" />
   </ItemGroup>
+
+  <Choose>
+    <When Condition=" '$(NeoModulesVersion)' == 'local'">
+      <ItemGroup>
+        <ProjectReference Include="..\..\..\..\official\3neo-monorepo\modules\src\RpcClient\RpcClient.csproj" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoModulesVersion)" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
 </Project>
