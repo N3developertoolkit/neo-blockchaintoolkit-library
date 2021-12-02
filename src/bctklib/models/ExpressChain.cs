@@ -10,10 +10,11 @@ namespace Neo.BlockchainToolkit.Models
         private readonly static ImmutableHashSet<uint> KNOWN_NETWORK_NUMBERS = ImmutableHashSet.Create<uint>(
             /* Neo 2 MainNet */ 7630401,
             /* Neo 2 TestNet */ 1953787457,
-            /* Neo 3 MainNet */ 5195086,
-            /* Neo 3 TestNet */ 1951352142,
+            /* Neo 3 MainNet */ 860833102,
+            /* Neo 3 TestNet */ 877933390,
+            /* Neo 3 RC3 TestNet */ 844378958,
             /* Neo 3 RC1 TestNet */ 827601742,
-            /* Neo 3 RC2 TestNet */ 844378958);
+            /* Neo 3 Preview5 TestNet */ 894448462);
 
         public static uint GenerateNetworkValue()
         {
