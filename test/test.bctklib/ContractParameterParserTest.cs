@@ -161,6 +161,17 @@ namespace test.bctklib
             param.Value.Should().Be(hashString);
         }
 
+        [Fact]
+        public void TestParseStringParameter_hexstring()
+        {
+            const string hexstring = "0xbcbbcd38fb0c097be28e6aef0177f5d65534eb3b";
+            var expected = Convert.FromHexString(hexstring.AsSpan()[2..]);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
+            var param = parser.ParseStringParameter(hexstring);
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(expected);
+        }
+
         static string FakeRootPath()
         {
             return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
