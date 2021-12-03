@@ -24,8 +24,8 @@
 
   <PropertyGroup>
     <NeoModulesVersion>3.1.0</NeoModulesVersion>
-    <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath>
-    <NeoModulesVersion>local</NeoModulesVersion>
+    <!-- <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath> -->
+    <!-- <NeoModulesVersion>local</NeoModulesVersion> -->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CI)' == 'true'">
