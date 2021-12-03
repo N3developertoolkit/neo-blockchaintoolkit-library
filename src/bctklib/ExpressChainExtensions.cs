@@ -2,13 +2,14 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Neo.BlockchainToolkit.Models;
+using Neo.BlockchainToolkit.SmartContract;
 using Neo.Cryptography.ECC;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.Wallets;
 
-namespace Neo.BlockchainToolkit.SmartContract
+namespace Neo.BlockchainToolkit
 {
     public static class ExpressChainExtensions
     {
