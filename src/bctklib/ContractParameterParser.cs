@@ -285,7 +285,7 @@ namespace Neo.BlockchainToolkit
             {
                 var value = json.Value<string>();
 
-                Span<byte> span = stackalloc byte[value.Length() / 4 * 3];
+                Span<byte> span = stackalloc byte[value.Length / 4 * 3];
                 if (Convert.TryFromBase64String(value, span, out var written))
                 {
                     return span.Slice(0, written).ToArray();
