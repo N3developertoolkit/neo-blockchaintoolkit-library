@@ -296,7 +296,7 @@ namespace Neo.BlockchainToolkit
                     return byteArray;
                 }
 
-                throw new ArgumentException($"ParseBinary could not parse {value}", nameof(json));
+                throw new ArgumentException($"ContractParameterParser could not parse \"{value}\" as binary", nameof(json));
             }
         }
     }
