@@ -1,4 +1,5 @@
 using MessagePack.Formatters;
+using MessagePack.Formatters.Neo.BlockchainToolkit;
 using MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug;
 
 namespace MessagePack.Resolvers

@@ -1,7 +1,7 @@
 using System.Buffers;
 using Neo.SmartContract;
 
-namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
+namespace MessagePack.Formatters.Neo.BlockchainToolkit
 {
     public class StorageItemFormatter : IMessagePackFormatter<StorageItem>
     {
