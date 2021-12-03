@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
@@ -18,6 +19,17 @@ namespace Neo.BlockchainToolkit
 {
     public static class Extensions
     {
+        public static int CalculateBase64Length(this string @this)
+        {
+            var length = @this.Length;
+            if (length == 0) return 0;
+            Debug.Assert(length >= 4);
+            var padding = @this[^1] == '='
+                ? @this[^2] == '=' ? 2 : 1
+                : 0;
+            return (3 * (length / 4)) - padding;
+        }
+
         public static ExpressChain LoadChain(this IFileSystem fileSystem, string path)
         {
             var serializer = new JsonSerializer();
@@ -43,7 +55,7 @@ namespace Neo.BlockchainToolkit
             throw new Exception($"{fileName} Neo-Express file not found");
         }
 
-        public static bool TryFindChain(this IFileSystem fileSystem, [NotNullWhen(true)] out ExpressChain? chain, string fileName = Constants.DEFAULT_EXPRESS_FILENAME, string? searchFolder = null)
+        public static bool TryFindChain(this IFileSystem fileSystem, [MaybeNullWhen(false)] out ExpressChain chain, string fileName = Constants.DEFAULT_EXPRESS_FILENAME, string? searchFolder = null)
         {
             searchFolder ??= fileSystem.Directory.GetCurrentDirectory();
             while (searchFolder != null)

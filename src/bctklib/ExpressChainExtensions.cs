@@ -37,7 +37,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                 ? wallet
                 : throw new Exception($"wallet {name} not found");
 
-        public static bool TryGetWallet(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWallet? wallet)
+        public static bool TryGetWallet(this ExpressChain chain, string name, [MaybeNullWhen(false)] out ExpressWallet wallet)
         {
             for (int i = 0; i < chain.Wallets.Count; i++)
             {
@@ -62,7 +62,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                 ? account.ToScriptHash(chain.AddressVersion)
                 : throw new Exception($"default account for {name} wallet not found");
 
-        public static bool TryGetDefaultAccount(this ExpressChain chain, string name, [NotNullWhen(true)] out ExpressWalletAccount? account)
+        public static bool TryGetDefaultAccount(this ExpressChain chain, string name, [MaybeNullWhen(false)] out ExpressWalletAccount account)
         {
             if (chain.TryGetWallet(name, out var wallet) && wallet.DefaultAccount != null)
             {
@@ -73,6 +73,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             account = null;
             return false;
         }
+
         public static UInt160 ToScriptHash(this ExpressWalletAccount account, byte addressVersion)
             => account.ScriptHash.ToScriptHash(addressVersion);
 
