@@ -1,6 +1,6 @@
 using Neo.VM;
 
-namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
+namespace MessagePack.Formatters.Neo.BlockchainToolkit
 {
     public class ScriptFormatter : IMessagePackFormatter<Script>
     {

@@ -43,7 +43,7 @@ namespace Neo.BlockchainToolkit
             throw new Exception($"{fileName} Neo-Express file not found");
         }
 
-        public static bool TryFindChain(this IFileSystem fileSystem, [NotNullWhen(true)] out ExpressChain? chain, string fileName = Constants.DEFAULT_EXPRESS_FILENAME, string? searchFolder = null)
+        public static bool TryFindChain(this IFileSystem fileSystem, [MaybeNullWhen(false)] out ExpressChain chain, string fileName = Constants.DEFAULT_EXPRESS_FILENAME, string? searchFolder = null)
         {
             searchFolder ??= fileSystem.Directory.GetCurrentDirectory();
             while (searchFolder != null)

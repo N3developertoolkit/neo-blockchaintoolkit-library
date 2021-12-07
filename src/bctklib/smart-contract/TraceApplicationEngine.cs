@@ -15,8 +15,9 @@ namespace Neo.BlockchainToolkit.SmartContract
         ImmutableDictionary<UInt160, string> contractNameMap = ImmutableDictionary<UInt160, string>.Empty;
 
         public TraceApplicationEngine(ITraceDebugSink traceDebugSink, TriggerType trigger, IVerifiable container,
-                                      DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas)
-            : base(trigger, container, snapshot, persistingBlock, settings, gas)
+                                      DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas,
+                                      Diagnostic? diagnostic = null)
+            : base(trigger, container, snapshot, persistingBlock, settings, gas, diagnostic)
         {
             this.traceDebugSink = traceDebugSink;
 

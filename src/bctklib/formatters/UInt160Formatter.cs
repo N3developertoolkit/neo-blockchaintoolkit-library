@@ -3,7 +3,7 @@ using System.Buffers;
 using Neo;
 using Neo.IO;
 
-namespace MessagePack.Formatters.Neo.BlockchainToolkit.TraceDebug
+namespace MessagePack.Formatters.Neo.BlockchainToolkit
 {
     public class UInt160Formatter : IMessagePackFormatter<UInt160>
     {

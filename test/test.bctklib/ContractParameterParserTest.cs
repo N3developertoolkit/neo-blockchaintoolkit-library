@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
@@ -7,6 +8,7 @@ using FluentAssertions;
 using Neo;
 using Neo.BlockchainToolkit;
 using Neo.SmartContract;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 
@@ -15,6 +17,40 @@ namespace test.bctklib
     public class ContractParameterParserTest
     {
         readonly byte DEFAULT_ADDRESS_VERSION = Neo.ProtocolSettings.Default.AddressVersion;
+
+        [Fact]
+        public void ParseObjectParameter_bytearray_base64()
+        {
+            var value = "9WPqQLwoPU0OBcSOowWz8qBzQO8=";
+            var expected = Convert.FromBase64String(value);
+            var json = new JObject()
+            {
+                ["type"] = "ByteArray",
+                ["value"] = value
+            };
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
+            var param = parser.ParseObjectParameter(json);
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeOfType<byte[]>();
+            ((byte[])param.Value).AsSpan().SequenceEqual(expected).Should().BeTrue();
+        }
+
+        [Fact]
+        public void ParseObjectParameter_bytearray_hex()
+        {
+            var value = "0xbcbbcd38fb0c097be28e6aef0177f5d65534eb3b";
+            var expected = Convert.FromHexString(value.Substring(2));
+            var json = new JObject()
+            {
+                ["type"] = "ByteArray",
+                ["value"] = value
+            };
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
+            var param = parser.ParseObjectParameter(json);
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeOfType<byte[]>();
+            ((byte[])param.Value).AsSpan().SequenceEqual(expected).Should().BeTrue();
+        }
 
         [Fact]
         public void TestParseStringParameter_string()
@@ -123,6 +159,17 @@ namespace test.bctklib
             var param = parser.ParseStringParameter(hashString);
             param.Type.Should().Be(ContractParameterType.String);
             param.Value.Should().Be(hashString);
+        }
+
+        [Fact]
+        public void TestParseStringParameter_hexstring()
+        {
+            const string hexstring = "0xbcbbcd38fb0c097be28e6aef0177f5d65534eb3b";
+            var expected = Convert.FromHexString(hexstring.AsSpan()[2..]);
+            var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
+            var param = parser.ParseStringParameter(hexstring);
+            param.Type.Should().Be(ContractParameterType.ByteArray);
+            param.Value.Should().BeEquivalentTo(expected);
         }
 
         static string FakeRootPath()
