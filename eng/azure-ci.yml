@@ -2,7 +2,7 @@ variables:
   isMasterBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isReleaseBranch: $[startsWith(variables['Build.SourceBranch'], 'refs/heads/release/')]
   azureArtifactsBranch: $[or(eq(variables.isMasterBranch, true), eq(variables.isReleaseBranch, true))]
-  dotNetSdkVersion: '5.0.x'
+  dotNetSdkVersion: '6.0.x'
 
 
 trigger:
