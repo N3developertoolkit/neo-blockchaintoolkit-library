@@ -30,6 +30,10 @@ This library contains two `Neo.Persistence.IStore` implementations:
   implementation and stores all changes in memory. This enables test/debug runs to
   use live data without persisting further changes.
 
+* **StateServiceStore**: This implementation sits on top of a [StateService node](https://github.com/neo-project/neo-modules/tree/master/src/StateService)
+  running with `FullState: true`. This enables code to use live data from a public Neo
+  blockchain network such as MainNet or TestNet.
+
 ## Trace Models
 
 This library contains the model classes that read/write Time Travel Debugging (TTD) traces.
@@ -37,3 +41,13 @@ TTD traces are encoded using [MessagePack](https://msgpack.org/). These model cl
 use the [MessagePack](https://github.com/neuecc/MessagePack-CSharp) managed library.
 In addition to the trace model classes, this library includes message pack formatters for
 Neo types that are serialized in TTD traces as well as a MessagePack resolver.
+
+# Application Engines
+
+This library contains two `Neo.SmartContract.ApplicationEngine` subclasses:
+
+* **TestApplicationEngine**: This implementation is used across test scenarios. It supports
+  overriding the CheckWitness service and collecting code coverage information
+* **TraceApplicationEngine**: This implementation writes trace information to a provided
+  ITraceDebugSink. The Trace Model classes (described above) include an implementation of
+  ITraceDebugSink that writes trace messages to a file in MessagePack format. 

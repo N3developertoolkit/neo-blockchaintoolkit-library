@@ -15,12 +15,22 @@ may not exactly match a publicly released version.
 
 ## [Unreleased]
 
+### Changed
+* Update to Neo 3.1.0, target framework net6.0 and language version 10 (#55)
+* Update KNOWN_NETWORK_NUMBERS (#55)
+* Update dependencies 
+* Moved general Neo MessagePack formatters to MessagePack.Formatters.Neo.BlockchainToolkit (#55)
+
 ### Added
 * Instruction and branch execution tracking in `TestApplicationEngine` (#50)
 * `ICheckpointStore`, `CheckpointStore` and `NullCheckpointStore` (#51)
 * `RocksDbUtility.GetTempPath` (#51)
 * `IStore.EnsureLedgerInitialized` extension method (#51)
 * `RocksDbStorageProvider.OpenForDiscard` static method (#51)
+* Added Base64 encoding support for ContractParameterParser.ParseObjectParameter (#55)
+* Add UInt256 MessagePack Formatter (#55)
+* Added Diagnostic parameter to TraceApplicationEngine ctor (#55)
+* Always initialize Diagnostic field in TestApplicationEngine (#55)
 
 ### Removed
 * `IDisposableStorageProvider` interface (#51)
