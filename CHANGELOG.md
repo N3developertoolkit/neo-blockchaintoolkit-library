@@ -19,6 +19,12 @@ may not exactly match a publicly released version.
 * Update to Neo 3.1.0, target framework net6.0 and C# language version 10 (#55)
 * Update KNOWN_NETWORK_NUMBERS (#55)
 * Moved general Neo MessagePack formatters to MessagePack.Formatters.Neo.BlockchainToolkit namespace (#55)
+* Simplified service override code in `TestApplicationEngine` (#50)
+* Made `NullStore.Instance` readonly (#50)
+* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable` (#51)
+* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider` (#51)
+* Replaced `CheckpointStorageProvider` public constructor with static `Open` method (#51)
+* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional (#51)
 
 ### Added
 * Instruction and branch execution tracking in `TestApplicationEngine` (#50)
@@ -34,14 +40,6 @@ may not exactly match a publicly released version.
 * Obsolete `RocksDbStorageProvider.RestoreCheckpoint` methods (#51)
 * Public `RocksDbStore` constructors (#51)
 
-### Changes
-
-* Simplified service override code in `TestApplicationEngine` (#50)
-* Made `NullStore.Instance` readonly (#50)
-* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable` (#51)
-* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider` (#51)
-* Replaced `CheckpointStorageProvider` public constructor with static `Open` method (#51)
-* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional (#51)
 
 ## [3.0.12] - 2021-10-12
 
