@@ -13,13 +13,18 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [Unreleased]
+## [3.1.21] - 2021-12-08
 
 ### Changed
-* Update to Neo 3.1.0, target framework net6.0 and language version 10 (#55)
+* Update to Neo 3.1.0, target framework net6.0 and C# language version 10 (#55)
 * Update KNOWN_NETWORK_NUMBERS (#55)
-* Update dependencies 
-* Moved general Neo MessagePack formatters to MessagePack.Formatters.Neo.BlockchainToolkit (#55)
+* Moved general Neo MessagePack formatters to MessagePack.Formatters.Neo.BlockchainToolkit namespace (#55)
+* Simplified service override code in `TestApplicationEngine` (#50)
+* Made `NullStore.Instance` readonly (#50)
+* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable` (#51)
+* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider` (#51)
+* Replaced `CheckpointStorageProvider` public constructor with static `Open` method (#51)
+* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional (#51)
 
 ### Added
 * Instruction and branch execution tracking in `TestApplicationEngine` (#50)
@@ -29,22 +34,12 @@ may not exactly match a publicly released version.
 * `RocksDbStorageProvider.OpenForDiscard` static method (#51)
 * Added Base64 encoding support for ContractParameterParser.ParseObjectParameter (#55)
 * Add UInt256 MessagePack Formatter (#55)
-* Added Diagnostic parameter to TraceApplicationEngine ctor (#55)
-* Always initialize Diagnostic field in TestApplicationEngine (#55)
 
 ### Removed
 * `IDisposableStorageProvider` interface (#51)
 * Obsolete `RocksDbStorageProvider.RestoreCheckpoint` methods (#51)
 * Public `RocksDbStore` constructors (#51)
 
-### Changes
-
-* Simplified service override code in `TestApplicationEngine` (#50)
-* Made `NullStore.Instance` readonly (#50)
-* `MemoryTrackingStore`disposes underlying `IReadOnlyStore`, if underlying store is `IDisposable` (#51)
-* Replaced `checkpointCleanup` disposable with checkpoint folder cleanup in `CheckpointStorageProvider` (#51)
-* Replaced `CheckpointStorageProvider` public constructor with static `Open` method (#51)
-* Made metadata parameters to `RocksDbUtility.RestoreCheckpoint` optional (#51)
 
 ## [3.0.12] - 2021-10-12
 
