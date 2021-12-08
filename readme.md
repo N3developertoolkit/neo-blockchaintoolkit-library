@@ -42,7 +42,7 @@ use the [MessagePack](https://github.com/neuecc/MessagePack-CSharp) managed libr
 In addition to the trace model classes, this library includes message pack formatters for
 Neo types that are serialized in TTD traces as well as a MessagePack resolver.
 
-# Application Engines
+## Application Engines
 
 This library contains two `Neo.SmartContract.ApplicationEngine` subclasses:
 

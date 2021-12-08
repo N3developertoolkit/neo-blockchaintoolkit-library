@@ -13,13 +13,12 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [Unreleased]
+## [3.1.21] - 2021-12-08
 
 ### Changed
-* Update to Neo 3.1.0, target framework net6.0 and language version 10 (#55)
+* Update to Neo 3.1.0, target framework net6.0 and C# language version 10 (#55)
 * Update KNOWN_NETWORK_NUMBERS (#55)
-* Update dependencies 
-* Moved general Neo MessagePack formatters to MessagePack.Formatters.Neo.BlockchainToolkit (#55)
+* Moved general Neo MessagePack formatters to MessagePack.Formatters.Neo.BlockchainToolkit namespace (#55)
 
 ### Added
 * Instruction and branch execution tracking in `TestApplicationEngine` (#50)
@@ -29,8 +28,6 @@ may not exactly match a publicly released version.
 * `RocksDbStorageProvider.OpenForDiscard` static method (#51)
 * Added Base64 encoding support for ContractParameterParser.ParseObjectParameter (#55)
 * Add UInt256 MessagePack Formatter (#55)
-* Added Diagnostic parameter to TraceApplicationEngine ctor (#55)
-* Always initialize Diagnostic field in TestApplicationEngine (#55)
 
 ### Removed
 * `IDisposableStorageProvider` interface (#51)
