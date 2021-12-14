@@ -29,12 +29,12 @@ namespace Neo.BlockchainToolkit.Persistence
 
             if (direction == SeekDirection.Forward)
             {
-                Seek(iterator, prefix);
+                iterator.Seek(prefix);
                 return SeekInternal(iterator, iterator.Next);
             }
             else
             {
-                SeekForPrev(iterator, prefix);
+                iterator.SeekForPrev(prefix);
                 return SeekInternal(iterator, iterator.Prev);
             }
 
@@ -47,22 +47,6 @@ namespace Neo.BlockchainToolkit.Persistence
                         yield return (iterator.Key(), iterator.Value());
                         nextAction();
                     }
-                }
-            }
-
-            unsafe static Iterator Seek(Iterator @this, ReadOnlySpan<byte> prefix)
-            {
-                fixed (byte* prefixPtr = prefix)
-                {
-                    return @this.Seek(prefixPtr, (ulong)prefix.Length);
-                }
-            }
-
-            unsafe static Iterator SeekForPrev(Iterator @this, ReadOnlySpan<byte> prefix)
-            {
-                fixed (byte* prefixPtr = prefix)
-                {
-                    return @this.SeekForPrev(prefixPtr, (ulong)prefix.Length);
                 }
             }
         }
