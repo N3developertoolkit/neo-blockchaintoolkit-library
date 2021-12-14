@@ -59,6 +59,11 @@ namespace Neo.BlockchainToolkit.Persistence
             this.index = index;
             this.rootHash = this.cachingClient.GetStateRoot(index).RootHash;
 
+            // IReadOnlyStore key parameters identifies contracts by their internal 32 bit signed integer
+            // ID while the State Service identifies contracts by their UInt160 contract hash. So we 
+            // build a dictionary mapping internal contract IDs to the manifest (including the contract
+            // hash) so we can construct the correct state service calls.
+
             using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
             memoryOwner.Memory.Span[0] = 0x08; // ContractManagement.Prefix_Contract == 8
             var prefix = memoryOwner.Memory.Slice(0, 1);
@@ -87,18 +92,24 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
 
+            // Since blocks and transactions are immutable and already available via other JSON-RPC
+            // methods, the state service does not store ledger contract data. For the StateServiceStore,
+            // we need to translate TryGet calls into equivalent non-state service calls.
+
             if (contractId == NativeContract.Ledger.Id)
             {
-                // TODO: integrate this into the cache
                 return key[4] switch
                 {
                     Ledger_Prefix_CurrentBlock => GetLedgerCurrentBlock(cachingClient, index),
-                    Ledger_Prefix_BlockHash => cachingClient.GetLedgerStorage(key.AsMemory(4)),
-                    Ledger_Prefix_Block => cachingClient.GetLedgerStorage(key.AsMemory(4)),
-                    Ledger_Prefix_Transaction => cachingClient.GetLedgerStorage(key.AsMemory(4)),
+                    Ledger_Prefix_BlockHash 
+                        or Ledger_Prefix_Block 
+                        or Ledger_Prefix_Transaction => cachingClient.GetLedgerStorage(key.AsMemory(4)),
                     _ => throw new NotSupportedException()
                 };
             }
+
+            // for all other contracts, we simply need to translate the contract ID into the contract
+            // hash and call the State Service GetState method.
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
@@ -119,9 +130,6 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction)
         {
-            // See note in Extensions.Seek(RocksDb, ColumnFamilyHandle, ReadOnlySpan<byte>, SeekDirection, ReadOptions?)
-            // regarding this InvalidOperationException 
-
             if (key.Length == 0 && direction == SeekDirection.Backward)
             {
                 return Enumerable.Empty<(byte[] key, byte[] value)>();
@@ -130,12 +138,13 @@ namespace Neo.BlockchainToolkit.Persistence
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
             if (contractId < 0)
             {
+                // Because the state service does not store ledger contract data, the seek method cannot
+                // be implemented efficiently for the ledger contract. Luckily, the Ledger contract only
+                // uses Seek in Initialized to check for the existence of any value with the Prefix_Block
+                // prefix. For this one scenario, return a single empty value so the .Any() method returns true
+
                 if (contractId == NativeContract.Ledger.Id)
                 {
-                    // The only place the native Ledger contract uses seek is in the Initialized
-                    // method, and it's only checking for the existence of any value with  
-                    // Prefix_Block value. So return a single empty value in this case so the .Any()
-                    // method returns true
 
                     if (key[4] == Ledger_Prefix_Block)
                     {
@@ -143,41 +152,57 @@ namespace Neo.BlockchainToolkit.Persistence
                         return Enumerable.Repeat((key, Array.Empty<byte>()), 1);
                     }
 
-                    throw new NotSupportedException("Native Ledger contract does not support Seek");
+                    throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method for native Ledger contract");
                 }
 
-                if (contractId == NativeContract.NEO.Id)
-                {
-                    if (key[4] == NeoToken_Prefix_VoterRewardPerCommittee)
-                    {
-                        // VoterRewardPerCommittee keys are searched by voter ECPoint (33 bytes long)
-                        // so use 1 byte VoterRewardPerCommittee prefix + 33 bytes voter ECPoint for seek
+                // There are several places in the neo code base that search backwards between a range
+                // byte array keys. In these cases, the Seek key parameter represents the *end* of the 
+                // range being searched. The FindStates State Service method doesn't support seeking 
+                // backwards like this, so for these cases we need to determine the case specific prefix,
+                // use State Service to retrieve all the values with this prefix and then reverse their 
+                // order in memory before passing back to the Seek call site.
 
-                        if (key.Length < 38) throw new InvalidOperationException("Invalid NeoToken VoterRewardPerCommittee key");
-                        return Seek(NativeContract.NEO.Hash, contractId, key.AsMemory(4, 34), direction);
+                if (direction == SeekDirection.Backward)
+                {
+                    if (contractId == NativeContract.NEO.Id)
+                    {
+                        // NEO contract VoterRewardPerCommittee keys are searched by voter ECPoint (33 bytes long).
+                        // For this case, use 1 byte VoterRewardPerCommittee prefix plus 33 bytes voter ECPoint for seek operation prefix
+
+                        if (key[4] == NeoToken_Prefix_VoterRewardPerCommittee)
+                        {
+
+                            if (key.Length < 38) throw new InvalidOperationException("Invalid NeoToken VoterRewardPerCommittee key");
+                            return Seek(NativeContract.NEO.Hash, contractId, key.AsMemory(4, 34), direction);
+                        }
+
+                        // NEO contract GasPerBlock keys are searched using the GasPerBlock prefix.
+                        // For this case, use 1 byte GasPerBlock prefix as the seek operation prefix.
+
+                        if (key[4] == NeoToken_Prefix_GasPerBlock)
+                        {
+                            return Seek(NativeContract.NEO.Hash, contractId, key.AsMemory(4, 1), direction);
+                        }
                     }
 
-                    if (key[4] == NeoToken_Prefix_GasPerBlock)
+                    // RoleManagement contract Role keys are searched using the Role prefix.
+                    // For this case, use 1 byte Role prefix as the seek operation prefix.
+
+                    if (contractId == NativeContract.RoleManagement.Id
+                        && Enum.IsDefined<Role>((Role)key[4]))
                     {
-                        // GasPerBlock keys are only searched via the GasPerBlock prefix
-
-                        return Seek(NativeContract.NEO.Hash, contractId, key.AsMemory(4, 1), direction);
+                        return Seek(NativeContract.RoleManagement.Hash, contractId, key.AsMemory(4, 1), direction);
                     }
-                }
 
-                if (contractId == NativeContract.RoleManagement.Id)
-                {
-                    // RoleManagement keys are only searched by Role prefix
+                    // If the backwards seek call does not match one of the three cases specified above,
+                    // it is not supported by the StateServiceStore
 
-                    Debug.Assert(Enum.IsDefined<Role>((Role)key[4]));
-                    return Seek(NativeContract.NEO.Hash, contractId, key.AsMemory(4, 1), direction);
+                    throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method with backwards direction parameter.");
                 }
             }
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                // remaining native contract search + all VM storage search treat the key as a prefix
-
                 return Seek(contract.hash, contractId, key.AsMemory(4), direction);
             }
 
