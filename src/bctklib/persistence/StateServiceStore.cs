@@ -101,8 +101,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 return key[4] switch
                 {
                     Ledger_Prefix_CurrentBlock => GetLedgerCurrentBlock(cachingClient, index),
-                    Ledger_Prefix_BlockHash 
-                        or Ledger_Prefix_Block 
+                    Ledger_Prefix_BlockHash
+                        or Ledger_Prefix_Block
                         or Ledger_Prefix_Transaction => cachingClient.GetLedgerStorage(key.AsMemory(4)),
                     _ => throw new NotSupportedException()
                 };
