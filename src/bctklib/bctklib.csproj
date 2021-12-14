@@ -1,6 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>neo-bctklib</AssemblyName>
     <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
