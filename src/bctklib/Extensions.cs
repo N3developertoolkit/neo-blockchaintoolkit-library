@@ -135,8 +135,10 @@ namespace Neo.BlockchainToolkit
         static readonly Lazy<IReadOnlyDictionary<uint, string>> sysCallNames = new Lazy<IReadOnlyDictionary<uint, string>>(
             () => ApplicationEngine.Services.ToImmutableDictionary(kvp => kvp.Value.Hash, kvp => kvp.Value.Name));
 
-        public static string GetComment(this Instruction instruction, int ip)
+        public static string GetComment(this Instruction instruction, int ip, MethodToken[]? tokens = null)
         {
+            tokens ??= Array.Empty<MethodToken>();
+
             switch (instruction.OpCode)
             {
                 case OpCode.PUSHINT8:
@@ -162,8 +164,18 @@ namespace Neo.BlockchainToolkit
                     }
                 case OpCode.SYSCALL:
                     return sysCallNames.Value.TryGetValue(instruction.TokenU32, out var name)
-                        ? name
+                        ? $"{name} SysCall"
                         : $"Unknown SysCall {instruction.TokenU32}";
+                case OpCode.CALLT:
+                    {
+                        int index = instruction.TokenU16;
+                        if (index >= tokens.Length)
+                            return $"Unknown token {instruction.TokenU16}";
+                        var token = tokens[index];
+                        var contract = NativeContract.Contracts.SingleOrDefault(c => c.Hash == token.Hash);
+                        var tokenName = contract is null ? $"{token.Hash}" : contract.Name;
+                        return $"{tokenName}.{token.Method} token call";
+                    }
                 case OpCode.INITSLOT:
                     return $"{instruction.TokenU8} local variables, {instruction.TokenU8_1} arguments";
                 case OpCode.JMP_L:
