@@ -102,6 +102,137 @@ namespace Neo.BlockchainToolkit
                 _ => new[] { ParseParameter(json) }
             };
 
+        public static ContractParameter ConvertStackItem(Neo.VM.Types.StackItem item)
+        {
+            return item switch {
+                // Neo.VM.Types.Struct value handled by Array branch
+                Neo.VM.Types.Array value => new ContractParameter()
+                {
+                    Type = ContractParameterType.Array,
+                    Value = value.Select(ConvertStackItem).ToList()
+                },
+                Neo.VM.Types.Boolean value => new ContractParameter()
+                {
+                    Type = ContractParameterType.Boolean,
+                    Value = value.GetBoolean()
+                },
+                Neo.VM.Types.Buffer value => new ContractParameter()
+                {
+                    Type = ContractParameterType.ByteArray,
+                    Value = value.InnerBuffer
+                },
+                Neo.VM.Types.ByteString value => new ContractParameter()
+                {
+                    Type = ContractParameterType.ByteArray,
+                    Value = value.GetSpan().ToArray()
+                },
+                Neo.VM.Types.Integer value => new ContractParameter()
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = value.GetInteger()
+                },
+                Neo.VM.Types.Map value => new ContractParameter()
+                {
+                    Type = ContractParameterType.Map,
+                    Value = value.Select(kvp => KeyValuePair.Create(ConvertStackItem(kvp.Key), ConvertStackItem(kvp.Value))).ToList()
+                },
+                Neo.VM.Types.Null value => new ContractParameter
+                {
+                    Type = ContractParameterType.Any,
+                    Value = null
+                },
+                Neo.VM.Types.InteropInterface _ => throw new NotSupportedException("InteropInterface instances cannot be converted into a ContractParameter"),
+                Neo.VM.Types.Pointer _ => throw new NotSupportedException("Pointer instances cannot be converted into a ContractParameter"),
+                _ => throw new ArgumentException($"Unknown Stack Item Type {item.GetType().Name}", nameof(item)),
+            };
+        }
+
+        // logic for ConvertObject borrowed from Neo.VM.Helper.EmitPush(ScriptBuilder, object)
+        // but extended to support converting more types to ContractParameter (StackItem types in particular)
+        public static ContractParameter ConvertObject(object? obj)
+        {
+            return obj switch {
+                ContractParameter value => value,
+                Neo.VM.Types.StackItem value => ConvertStackItem(value),
+                bool value => new ContractParameter()
+                {
+                    Type = ContractParameterType.Boolean,
+                    Value = value
+                },
+                byte[] value => new ContractParameter()
+                {
+                    Type = ContractParameterType.ByteArray,
+                    Value = value,
+                },
+                string value => new ContractParameter
+                {
+                    Type = ContractParameterType.String,
+                    Value = value,
+                },
+                BigInteger value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = value,
+                },
+                sbyte value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                byte value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                short value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                ushort value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                int value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                uint value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                long value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                ulong value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = new BigInteger(value),
+                },
+                Enum value => new ContractParameter
+                {
+                    Type = ContractParameterType.Integer,
+                    Value = BigInteger.Parse(value.ToString("d")),
+                },
+                ISerializable value => new ContractParameter
+                {
+                    Type = ContractParameterType.ByteArray,
+                    Value = value.ToArray(),
+                },
+                null => new ContractParameter
+                {
+                    Type = ContractParameterType.Any,
+                    Value = null
+                },
+                _ => throw new ArgumentException($"Unconvertible parameter type {obj.GetType().Name}", nameof(obj)),
+            };
+        }
+
         public ContractParameter ParseParameter(JToken? json)
         {
             if (json == null)
