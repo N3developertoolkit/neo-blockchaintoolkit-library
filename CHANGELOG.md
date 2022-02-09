@@ -13,6 +13,12 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
+## [Unreleased]
+
+### Added
+* ContractParameterParser.ConvertObject and ContractParameterParser.ConvertStackItem static methods (#56)
+* Added method token support for CALLT opCode in Extensions.GetComment (#57)
+
 ## [3.1.27] - 2021-12-14
 
 ### Changed
