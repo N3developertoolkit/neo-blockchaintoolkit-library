@@ -40,16 +40,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="InternalsVisibleTo.MSBuild" Version="1.0.4">
+    <PackageReference Include="InternalsVisibleTo.MSBuild" Version="1.0.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="MessagePack" Version="2.3.85" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
-    <PackageReference Include="Nerdbank.Streams" Version="2.8.54" />
-    <PackageReference Include="OneOf" Version="3.0.205" />
-    <PackageReference Include="rocksdb" Version="6.26.1.24143" />
-    <PackageReference Include="System.IO.Abstractions" Version="14.0.13" />
+    <PackageReference Include="Nerdbank.Streams" Version="2.8.57" />
+    <PackageReference Include="OneOf" Version="3.0.211" />
+    <PackageReference Include="rocksdb" Version="6.28.2.25302" />
+    <PackageReference Include="System.IO.Abstractions" Version="16.1.10" />
   </ItemGroup>
 
   <Choose>
