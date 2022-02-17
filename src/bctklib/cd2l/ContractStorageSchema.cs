@@ -18,7 +18,7 @@ namespace Neo.BlockchainToolkit
 
         public static ContractStorageSchema Parse(JObject json)
         {
-            var structs = StructDef.ParseStructDefs(json);
+            var structs = StructDef.Parse(json);
             var storages = StorageDef.Parse(json, structs);
             
             return new ContractStorageSchema(structs.ToArray(), storages.ToArray());

@@ -136,6 +136,85 @@ namespace test.bctklib
             storageDefs.Should().HaveCount(6);
         }
 
+        [Fact]
+        public void test_contract_schema_parse()
+        {
+            var json = JObject.FromObject(new
+            {
+                @struct = new
+                {
+                    SomeTest = new[]
+                    {
+                        new { name = "foo", type = "Hash160" },
+                        new { name = "ts", type = "TokenState" }
+                    },
+                    TokenState = new[]
+                    {
+                        new { name = "Owner", type = "Hash160" },
+                        new { name = "Name", type = "String" },
+                        new { name = "Description", type = "String" },
+                        new { name = "Image", type = "String" },
+                    },
+                },
+                storage = new
+                {
+                    TotalSupply = new
+                    {
+                        key = new JArray(0),
+                        value = "Integer"
+                    },
+                    Balance = new
+                    {
+                        key = new JArray(1, JObject.FromObject(new
+                        {
+                            name = "owner",
+                            type = "Hash160"
+                        })),
+                        value = "Integer"
+                    },
+                    TokenId = new
+                    {
+                        key = new JArray(2),
+                        value = "Integer"
+                    },
+                    Token = new
+                    {
+                        key = new JArray(3, JObject.FromObject(new
+                        {
+                            name = "tokenId",
+                            type = "Hash256"
+                        })),
+                        value = "TokenState",
+                    },
+                    AccountToken = new
+                    {
+                        key = new JArray(
+                            4,
+                            JObject.FromObject(new
+                            {
+                                name = "owner",
+                                type = "Hash160"
+                            }),
+                            JObject.FromObject(new
+                            {
+                                name = "tokenId",
+                                type = "Hash256"
+                            })),
+                        value = "Integer",
+                    },
+                    ContractOwner = new
+                    {
+                        key = new JArray(0xff),
+                        value = "Hash160",
+                    }
+                }
+            });
+
+            var schema = ContractStorageSchema.Parse(json);
+            schema.StructDefs.Should().HaveCount(2);
+            schema.StorageDefs.Should().HaveCount(6);
+        }
+
         static FieldType Field(Neo.SmartContract.ContractParameterType param) => FieldType.FromT0(param);
     }
 }
