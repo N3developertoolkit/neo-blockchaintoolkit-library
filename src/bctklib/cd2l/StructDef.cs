@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text.Json;
 using Neo.SmartContract;
+using Newtonsoft.Json.Linq;
 using OneOf;
 
-namespace Neo.BlockchainToolkit.ContractDataDef
+namespace Neo.BlockchainToolkit
 {
     using FieldDef = OneOf<ContractParameterType, StructDef>;
     using UnboundFieldDef = OneOf<ContractParameterType, string>;
@@ -47,7 +46,7 @@ namespace Neo.BlockchainToolkit.ContractDataDef
             return true;
         }
 
-        public override bool Equals([NotNullWhen(true)] object? obj)
+        public override bool Equals(object? obj)
         {
             return obj is StructDef value && Equals(value);
         }
@@ -75,38 +74,45 @@ namespace Neo.BlockchainToolkit.ContractDataDef
             return !left.Equals(right);
         }
 
-        internal static IEnumerable<UnboundStructDef> ParseStructProp(JsonElement json)
+        internal static IEnumerable<StructDef> Parse(JObject json)
         {
-            if (json.TryGetProperty("struct", out var structProp))
+            if (json.TryGetValue("struct", out var structToken))
             {
-                if (structProp.ValueKind != JsonValueKind.Object) throw new Exception();
-                return structProp.EnumerateObject().Select(ParseStructDef);
+                if (structToken.Type != JTokenType.Object) throw new Exception();
+                return ParseStructDefs((JObject)structToken);
             }
             else
             {
-                return Enumerable.Empty<UnboundStructDef>();
+                return Enumerable.Empty<StructDef>();
             }
         }
 
-        internal static UnboundStructDef ParseStructDef(JsonProperty prop)
+        internal static IEnumerable<StructDef> ParseStructDefs(JObject json)
         {
-            if (prop.Value.ValueKind != JsonValueKind.Array) throw new Exception();
-
-            var fields = prop.Value.EnumerateArray().Select(j =>
-            {
-                var name = j.GetProperty("name").GetString() ?? throw new Exception();
-                var typeStr = j.GetProperty("type").GetString() ?? throw new Exception();
-                var type = Enum.TryParse<ContractParameterType>(typeStr, true, out var _type)
-                    ? UnboundFieldDef.FromT0(_type)
-                    : UnboundFieldDef.FromT1(typeStr);
-
-                return (name, type);
-            });
-
-            return new UnboundStructDef(prop.Name, fields.ToArray());
+            var unboundStructs = ((IDictionary<string, JToken?>)json).Select(ParseStructDef);
+            return BindStructDefs(unboundStructs);
         }
 
-        internal static IEnumerable<StructDef> BindStructs(IEnumerable<UnboundStructDef> unboundStructs)
+        internal static UnboundStructDef ParseStructDef(KeyValuePair<string, JToken?> kvp)
+        {
+            var (name, fieldsToken) = kvp;
+            if (fieldsToken is null || fieldsToken.Type != JTokenType.Array) throw new Exception();
+            var fieldsArray = (JArray)fieldsToken;
+
+            List<(string name, UnboundFieldDef type)> fields = new(fieldsArray.Count);
+            for (int i = 0; i < fieldsArray.Count; i++)
+            {
+                var fieldName = fieldsArray[i].Value<string>("name") ?? throw new Exception();
+                var fieldTypeStr = fieldsArray[i].Value<string>("type") ?? throw new Exception();
+                var fieldType = Enum.TryParse<ContractParameterType>(fieldTypeStr, true, out var paramType)
+                    ? UnboundFieldDef.FromT0(paramType)
+                    : UnboundFieldDef.FromT1(fieldTypeStr);
+                fields.Add((fieldName, fieldType));
+            }
+            return new UnboundStructDef(name, fields);
+        }
+
+        internal static IEnumerable<StructDef> BindStructDefs(IEnumerable<UnboundStructDef> unboundStructs)
         {
             var unboundStructMap = unboundStructs.ToDictionary(s => s.Name);
 

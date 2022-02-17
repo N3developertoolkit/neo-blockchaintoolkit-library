@@ -1,14 +1,13 @@
-using System.Text.Json;
-using Neo.BlockchainToolkit;
-using Xunit;
+using System;
 using System.Linq;
 using FluentAssertions;
-using OneOf;
+using Neo.BlockchainToolkit;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Xunit;
 
-using FieldType = OneOf.OneOf<Neo.SmartContract.ContractParameterType, Neo.BlockchainToolkit.ContractDataDef.StructDef>;
+using FieldType = OneOf.OneOf<Neo.SmartContract.ContractParameterType, Neo.BlockchainToolkit.StructDef>;
 using ContractParameterType = Neo.SmartContract.ContractParameterType;
-using System;
-using Neo.BlockchainToolkit.ContractDataDef;
 
 namespace test.bctklib
 {
@@ -17,7 +16,7 @@ namespace test.bctklib
         [Fact]
         public void test_ParseStructs()
         {
-            using var doc = ToJsonDoc(new
+            var json = JObject.FromObject(new
             {
                 SomeTest = new[]
                 {
@@ -33,8 +32,7 @@ namespace test.bctklib
                 },
             });
 
-            var us = StructDef.ParseStructProp(doc.RootElement);
-            var bs = StructDef.BindStructs(us);
+            var structs = StructDef.ParseStructDefs(json);
 
             var expect1 = new StructDef("TokenState", new[] {
                     ("Owner", Field(ContractParameterType.Hash160)),
@@ -48,14 +46,14 @@ namespace test.bctklib
                     ("ts", FieldType.FromT1(expect1)),
                 });
 
-            bs.Should().HaveCount(2)
-                .And.Contain(new [] { expect1, expect2 });
+            structs.Should().HaveCount(2)
+                .And.Contain(new[] { expect1, expect2 });
         }
 
         [Fact]
         public void test_invalid_type_throws()
         {
-            using var doc = ToJsonDoc(new
+            var json = JObject.FromObject(new
             {
                 SomeTest = new[]
                 {
@@ -64,16 +62,80 @@ namespace test.bctklib
                 },
             });
 
-            var us = StructDef.ParseStructProp(doc.RootElement);
-            Assert.Throws<Exception>(() => StructDef.BindStructs(us));
+            Assert.Throws<Exception>(() => StructDef.ParseStructDefs(json));
+        }
+
+        [Fact]
+        public void test_parse_storage()
+        {
+            var tokenStateDef = new StructDef("TokenState", new[] {
+                ("Owner", Field(ContractParameterType.Hash160)),
+                ("Name", Field(ContractParameterType.String)),
+                ("Description", Field(ContractParameterType.String)),
+                ("Image", Field(ContractParameterType.String)),
+            });
+
+            var structMap = new[] { tokenStateDef }.ToDictionary(s => s.Name);
+
+            var json = JObject.FromObject(
+                new
+                {
+                    TotalSupply = new
+                    {
+                        key = new JArray(0),
+                        value = "Integer"
+                    },
+                    Balance = new
+                    {
+                        key = new JArray(1, JObject.FromObject(new
+                        {
+                            name = "owner",
+                            type = "Hash160"
+                        })),
+                        value = "Integer"
+                    },
+                    TokenId = new
+                    {
+                        key = new JArray(2),
+                        value = "Integer"
+                    },
+                    Token = new
+                    {
+                        key = new JArray(3, JObject.FromObject(new
+                        {
+                            name = "tokenId",
+                            type = "Hash256"
+                        })),
+                        value = "TokenState",
+                    },
+                    AccountToken = new
+                    {
+                        key = new JArray(
+                        4,
+                        JObject.FromObject(new
+                        {
+                            name = "owner",
+                            type = "Hash160"
+                        }),
+                        JObject.FromObject(new
+                        {
+                            name = "tokenId",
+                            type = "Hash256"
+                        })
+                    ),
+                        value = "Integer",
+                    },
+                    ContractOwner = new
+                    {
+                        key = new JArray(0xff),
+                        value = "Hash160",
+                    }
+                });
+
+            var storageDefs = StorageDef.ParseStorageDefs(json, structMap);
+            storageDefs.Should().HaveCount(6);
         }
 
         static FieldType Field(Neo.SmartContract.ContractParameterType param) => FieldType.FromT0(param);
-
-        static JsonDocument ToJsonDoc(object @struct)
-        {
-            var json = JsonSerializer.Serialize(new { @struct });
-            return JsonDocument.Parse(json);
-        }
     }
 }
