@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Neo.BlockchainToolkit.Models;
@@ -51,6 +52,23 @@ namespace Neo.BlockchainToolkit
 
             wallet = null;
             return false;
+        }
+
+        public static Contract CreateGenesisContract(this ExpressChain chain) => chain.ConsensusNodes.CreateGenesisContract();
+
+        public static Contract CreateGenesisContract(this IReadOnlyList<ExpressConsensusNode> nodes)
+        {
+            if (nodes.Count <= 0) throw new ArgumentException("Invalid consensus node list", nameof(nodes));
+
+            var keys = new ECPoint[nodes.Count];
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                var account = nodes[i].Wallet.DefaultAccount ?? 
+                    throw new ArgumentException($"{nodes[i].Wallet.Name} consensus node wallet is missing a default account", nameof(nodes));
+                keys[i] = new KeyPair(account.PrivateKey.HexToBytes()).PublicKey;
+            }
+
+            return Contract.CreateMultiSigContract((keys.Length * 2 / 3) + 1, keys);
         }
 
         public static ExpressWalletAccount GetDefaultAccount(this ExpressChain chain, string name)
