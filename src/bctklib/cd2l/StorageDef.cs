@@ -8,18 +8,21 @@ using OneOf;
 namespace Neo.BlockchainToolkit
 {
     using StorageValueTypeDef = OneOf<ContractParameterType, StructDef>;
-    using KeySegment = OneOf<byte, (string name, ContractParameterType type)>;
 
     public readonly struct StorageDef : IEquatable<StorageDef>
     {
+        public readonly record struct KeySegment(string Name, ContractParameterType Type);
+
         public readonly string Name = string.Empty;
-        public readonly IReadOnlyList<KeySegment> Key = Array.Empty<KeySegment>();
+        public readonly ReadOnlyMemory<byte> KeyPrefix;
+        public readonly IReadOnlyList<KeySegment> KeySegments = Array.Empty<KeySegment>();
         public readonly StorageValueTypeDef Value;
 
-        public StorageDef(string name, IReadOnlyList<OneOf<byte, (string name, ContractParameterType type)>> key, StorageValueTypeDef value)
+        public StorageDef(string name, ReadOnlyMemory<byte> keyPrefix, IReadOnlyList<KeySegment> keySegments, StorageValueTypeDef value)
         {
             Name = name;
-            Key = key;
+            KeyPrefix = keyPrefix;
+            KeySegments = keySegments;
             Value = value;
         }
 
@@ -27,10 +30,11 @@ namespace Neo.BlockchainToolkit
         {
             if (Name != other.Name) return false;
             if (!Value.Equals(other.Value)) return false;
-            if (Key.Count != other.Key.Count) return false;
-            for (int i = 0; i < Key.Count; i++)
+            if (!KeyPrefix.Span.SequenceEqual(other.KeyPrefix.Span)) return false;
+            if (KeySegments.Count != other.KeySegments.Count) return false;
+            for (int i = 0; i < KeySegments.Count; i++)
             {
-               if (!Key[i].Equals(other.Key[i])) return false;
+                if (!KeySegments[i].Equals(other.KeySegments[i])) return false;
             }
             return true;
         }
@@ -45,20 +49,18 @@ namespace Neo.BlockchainToolkit
             HashCode hash = default;
             hash.Add(Name);
             hash.Add(Value);
-            hash.Add(Key.Count);
-            for (int i = 0; i < Key.Count; i++)
+            hash.Add(KeyPrefix);
+            for (int i = 0; i < KeySegments.Count; i++)
             {
-                hash.Add(Key[i]);
+                hash.Add(KeySegments[i]);
             }
             return hash.ToHashCode();
         }
 
-        internal static IEnumerable<StorageDef> Parse(JObject json, IEnumerable<StructDef> structs)
-        {
-            return Parse(json, structs.ToDictionary(s => s.Name));
-        }
+        internal static IEnumerable<StorageDef> Parse(JObject json, IReadOnlyList<StructDef> structs)
+            => Parse(json, structs.ToDictionary(s => s.Name));
 
-        internal static IEnumerable<StorageDef> Parse(JObject json, IDictionary<string, StructDef> structMap)
+        internal static IEnumerable<StorageDef> Parse(JObject json, IReadOnlyDictionary<string, StructDef> structMap)
         {
             if (json.TryGetValue("storage", out var storageToken))
             {
@@ -71,16 +73,19 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        internal static IEnumerable<StorageDef> ParseStorageDefs(JObject json, IDictionary<string, StructDef> structMap)
+        internal static IEnumerable<StorageDef> ParseStorageDefs(JObject json, IReadOnlyDictionary<string, StructDef> structMap)
         {
             return ((IDictionary<string, JToken?>)json).Select(kvp => ParseStorageDef(kvp, structMap));
         }
 
-
-        internal static StorageDef ParseStorageDef(KeyValuePair<string, JToken?> kvp, IDictionary<string, StructDef> structMap)
+        internal static StorageDef ParseStorageDef(KeyValuePair<string, JToken?> kvp, IReadOnlyDictionary<string, StructDef> structMap)
         {
             var (name, storageToken) = kvp;
             if (storageToken is null || storageToken.Type != JTokenType.Object) throw new Exception();
+
+            var keyToken = storageToken.SelectToken("key");
+            var prefix = ParseKeyPrefix(keyToken);
+            var segments = ParseKeySegments(keyToken);
 
             var valueStr = storageToken.Value<string>("value") ?? throw new Exception();
             var value = Enum.TryParse<ContractParameterType>(valueStr, out var _value)
@@ -89,40 +94,57 @@ namespace Neo.BlockchainToolkit
                     ? StorageValueTypeDef.FromT1(value_)
                     : throw new Exception();
 
-            var keyToken = storageToken["key"];
-            if (keyToken is null || keyToken.Type != JTokenType.Array) throw new Exception();
 
-            var keyArray = (JArray)keyToken;
-            List<KeySegment> keySegments = new(keyArray.Count);
-            for (int i = 0; i < keyArray.Count; i++)
+            return new StorageDef(name, prefix, segments, value);
+        }
+
+        internal static ReadOnlyMemory<byte> ParseKeyPrefix(JToken? keyToken)
+        {
+            var prefixToken = keyToken?.SelectToken("prefix") ?? throw new Exception();
+            if (prefixToken.Type == JTokenType.String)
             {
-                var keySegment = keyArray[i];
-                if (keySegment is null) throw new Exception();
-
-                if (keySegment.Type == JTokenType.Integer)
-                {
-                    keySegments.Add(keySegment.Value<byte>());
-                }
-                else if (keySegment.Type == JTokenType.Object)
-                {
-                    var segmentName = keySegment.Value<string>("name") ?? throw new Exception();
-                    var segmentTypeStr = keySegment.Value<string>("type") ?? throw new Exception();
-                    var segmentType = Enum.Parse<ContractParameterType>(segmentTypeStr);
-
-                    var isValid = segmentType switch {
-                        ContractParameterType.Boolean => true,
-                        ContractParameterType.Hash160 => true,
-                        ContractParameterType.Hash256 => true,
-                        _ => false,
-                    };
-                    if (!isValid) throw new Exception();
-
-                    keySegments.Add((segmentName, segmentType));
-                }
-                else throw new Exception();
+                var prefixString = prefixToken.Value<string>() ?? throw new Exception();
+                return Neo.Utility.StrictUTF8.GetBytes(prefixString);
             }
 
-            return new StorageDef(name, keySegments, value);
+            if (prefixToken.Type == JTokenType.Integer)
+            { 
+                return new[] { (byte)prefixToken };
+            }
+
+            if (prefixToken.Type == JTokenType.Array)
+            {
+                return prefixToken.Select(j => (byte)j).ToArray();
+            }
+
+            throw new Exception();
+        }
+
+        internal static KeySegment ParseKeySegment(JToken segmentToken)
+        {
+            if (segmentToken.Type != JTokenType.Object) throw new Exception();
+
+            var segmentName = segmentToken.Value<string>("name") ?? throw new Exception();
+            var segmentType = Enum.Parse<ContractParameterType>(segmentToken.Value<string>("type") ?? throw new Exception());
+            return new KeySegment(segmentName, segmentType);
+        }
+
+        internal static IReadOnlyList<KeySegment> ParseKeySegments(JToken? keyToken)
+        {
+            var segmentsToken = keyToken?.SelectToken("segments");
+            if (segmentsToken is null) return Array.Empty<KeySegment>();
+
+            if (segmentsToken.Type == JTokenType.Array)
+            {
+                return segmentsToken.Select(ParseKeySegment).ToArray();
+            }
+
+            if (segmentsToken.Type == JTokenType.Object)
+            {
+                return new[] { ParseKeySegment(segmentsToken) };
+            }
+
+            throw new Exception();
         }
     }
 }
