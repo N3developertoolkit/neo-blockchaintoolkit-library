@@ -7,11 +7,11 @@ using OneOf;
 
 namespace Neo.BlockchainToolkit
 {
-    using StorageValueTypeDef = OneOf<ContractParameterType, StructDef>;
+    using StorageValueTypeDef = OneOf<PrimitiveStorageType, StructDef>;
 
     public readonly struct StorageDef : IEquatable<StorageDef>
     {
-        public readonly record struct KeySegment(string Name, ContractParameterType Type);
+        public readonly record struct KeySegment(string Name, PrimitiveStorageType Type);
 
         public readonly string Name = string.Empty;
         public readonly ReadOnlyMemory<byte> KeyPrefix;
@@ -88,7 +88,7 @@ namespace Neo.BlockchainToolkit
             var segments = ParseKeySegments(keyToken);
 
             var valueStr = storageToken.Value<string>("value") ?? throw new Exception();
-            var value = Enum.TryParse<ContractParameterType>(valueStr, out var _value)
+            var value = Enum.TryParse<PrimitiveStorageType>(valueStr, out var _value)
                 ? StorageValueTypeDef.FromT0(_value)
                 : structMap.TryGetValue(valueStr, out var value_)
                     ? StorageValueTypeDef.FromT1(value_)
@@ -125,7 +125,7 @@ namespace Neo.BlockchainToolkit
             if (segmentToken.Type != JTokenType.Object) throw new Exception();
 
             var segmentName = segmentToken.Value<string>("name") ?? throw new Exception();
-            var segmentType = Enum.Parse<ContractParameterType>(segmentToken.Value<string>("type") ?? throw new Exception());
+            var segmentType = Enum.Parse<PrimitiveStorageType>(segmentToken.Value<string>("type") ?? throw new Exception());
             return new KeySegment(segmentName, segmentType);
         }
 

@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Neo.SmartContract;
 using Newtonsoft.Json.Linq;
 using OneOf;
 
 namespace Neo.BlockchainToolkit
 {
-    using FieldDef = OneOf<ContractParameterType, StructDef>;
-    using UnboundFieldDef = OneOf<ContractParameterType, string>;
+    using FieldDef = OneOf<PrimitiveStorageType, StructDef>;
+    using UnboundFieldDef = OneOf<PrimitiveStorageType, string>;
 
     internal record UnboundStructDef(string Name, IReadOnlyList<(string name, UnboundFieldDef type)> Fields);
 
@@ -104,7 +103,7 @@ namespace Neo.BlockchainToolkit
             {
                 var fieldName = fieldsArray[i].Value<string>("name") ?? throw new Exception();
                 var fieldTypeStr = fieldsArray[i].Value<string>("type") ?? throw new Exception();
-                var fieldType = Enum.TryParse<ContractParameterType>(fieldTypeStr, true, out var paramType)
+                var fieldType = Enum.TryParse<PrimitiveStorageType>(fieldTypeStr, true, out var paramType)
                     ? UnboundFieldDef.FromT0(paramType)
                     : UnboundFieldDef.FromT1(fieldTypeStr);
                 fields.Add((fieldName, fieldType));
