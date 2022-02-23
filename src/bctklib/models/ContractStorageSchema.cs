@@ -3,12 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-namespace Neo.BlockchainToolkit
+namespace Neo.BlockchainToolkit.Models
 {
-    public record ContractStorageSchema
+    public readonly record struct ContractStorageSchema
     {
-        public IReadOnlyList<StructDef> StructDefs { get; init; } = Array.Empty<StructDef>();
-        public IReadOnlyList<StorageDef> StorageDefs { get; init; } = Array.Empty<StorageDef>();
+        public readonly IReadOnlyList<StructDef> StructDefs;
+        public readonly IReadOnlyList<StorageDef> StorageDefs;
+
+        public ContractStorageSchema(IReadOnlyList<StructDef> structDefs, IReadOnlyList<StorageDef> storageDefs)
+        {
+            StructDefs = structDefs;
+            StorageDefs = storageDefs;
+        }
 
         public static ContractStorageSchema Parse(Neo.IO.Json.JObject json)
         {
@@ -25,11 +31,7 @@ namespace Neo.BlockchainToolkit
             var structs = StructDef.Parse(json).ToArray();
             var storages = StorageDef.Parse(json, structs).ToArray();
             
-            return new ContractStorageSchema
-            {
-                StructDefs = structs,
-                StorageDefs = storages,
-            };
+            return new ContractStorageSchema(structs, storages);
         }
     }
 }
