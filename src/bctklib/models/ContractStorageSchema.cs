@@ -5,16 +5,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    public readonly record struct ContractStorageSchema
+    public record ContractStorageSchema
     {
-        public readonly IReadOnlyList<StructDef> StructDefs;
-        public readonly IReadOnlyList<StorageDef> StorageDefs;
-
-        public ContractStorageSchema(IReadOnlyList<StructDef> structDefs, IReadOnlyList<StorageDef> storageDefs)
-        {
-            StructDefs = structDefs;
-            StorageDefs = storageDefs;
-        }
+        public IReadOnlyList<StructDef> StructDefs { get; init; } = Array.Empty<StructDef>();
+        public IReadOnlyList<StorageDef> StorageDefs { get; init; } = Array.Empty<StorageDef>();
 
         public static ContractStorageSchema Parse(Neo.IO.Json.JObject json)
         {
@@ -31,7 +25,11 @@ namespace Neo.BlockchainToolkit.Models
             var structs = StructDef.Parse(json).ToArray();
             var storages = StorageDef.Parse(json, structs).ToArray();
             
-            return new ContractStorageSchema(structs, storages);
+            return new ContractStorageSchema
+            {
+                StructDefs = structs,
+                StorageDefs = storages,
+            };
         }
     }
 }
