@@ -67,7 +67,7 @@ namespace test.bctklib
         public void test_key_prefix_single_byte()
         {
             var keyJson = new JObject(new JProperty("prefix", 42));
-            var prefix = StorageDef.ParseKeyPrefix(keyJson);
+            var prefix = ContractStorageSchema.ParseKeyPrefix(keyJson);
             prefix.Span.SequenceEqual(new byte[] { 42 }).Should().BeTrue();
         }
 
@@ -75,21 +75,21 @@ namespace test.bctklib
         public void test_key_prefix_invalid_single_byte()
         {
             var keyJson = new JObject(new JProperty("prefix", 1000));
-            Assert.Throws<OverflowException>(() => StorageDef.ParseKeyPrefix(keyJson));
+            Assert.Throws<OverflowException>(() => ContractStorageSchema.ParseKeyPrefix(keyJson));
         }
 
         [Fact]
         public void test_key_prefix_invalid_byte_in_array()
         {
             var keyJson = new JObject(new JProperty("prefix", new JArray(42, 1000, 48)));
-            Assert.Throws<OverflowException>(() => StorageDef.ParseKeyPrefix(keyJson));
+            Assert.Throws<OverflowException>(() => ContractStorageSchema.ParseKeyPrefix(keyJson));
         }
 
         [Fact]
         public void test_key_prefix_byte_array()
         {
             var keyJson = new JObject(new JProperty("prefix", new JArray(42, 48)));
-            var prefix = StorageDef.ParseKeyPrefix(keyJson);
+            var prefix = ContractStorageSchema.ParseKeyPrefix(keyJson);
             prefix.Span.SequenceEqual(new byte[] { 42, 48 }).Should().BeTrue();
         }
 
@@ -97,7 +97,7 @@ namespace test.bctklib
         public void test_key_prefix_string()
         {
             var keyJson = new JObject(new JProperty("prefix", "test"));
-            var prefix = StorageDef.ParseKeyPrefix(keyJson);
+            var prefix = ContractStorageSchema.ParseKeyPrefix(keyJson);
             prefix.Span.SequenceEqual(new byte[] { 0x74, 0x65, 0x73, 0x74 }).Should().BeTrue();
         }
 
