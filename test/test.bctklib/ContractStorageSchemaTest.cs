@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using Neo.BlockchainToolkit;
@@ -9,7 +10,7 @@ using Xunit;
 
 namespace test.bctklib
 {
-    public class ContractDataDefParserTest
+    public class ContractStorageSchemaTest
     {
         // [Fact]
         // public void test_ParseStructs()
@@ -64,6 +65,15 @@ namespace test.bctklib
         // }
 
         [Fact]
+        public void test_nft_schema()
+        {
+            var json = Utility.GetResourceJson("nft-schema.json");
+            var schema = ContractStorageSchema.Parse((JObject)json);
+            schema.StructDefs.Should().HaveCount(1);
+            schema.StorageDefs.Should().HaveCount(6);
+        }
+
+        [Fact]
         public void test_key_prefix_single_byte()
         {
             var keyJson = new JObject(new JProperty("prefix", 42));
@@ -99,6 +109,57 @@ namespace test.bctklib
             var keyJson = new JObject(new JProperty("prefix", "test"));
             var prefix = ContractStorageSchema.ParseKeyPrefix(keyJson);
             prefix.Span.SequenceEqual(new byte[] { 0x74, 0x65, 0x73, 0x74 }).Should().BeTrue();
+        }
+
+        [Fact]
+        public void test_parse_map_primitives()
+        {
+            var text = "Map<Address, Integer>";
+            var map = new Dictionary<string, StructContractType>();
+            ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
+
+            var expected = new MapContractType(PrimitiveType.Address, new PrimitiveContractType(PrimitiveType.Integer));
+            actual.Should()
+                .NotBeNull()
+                .And.BeOfType<MapContractType>()
+                .And.Be(expected);
+        }
+
+        [Fact]
+        public void test_parse_map_primitives_nested()
+        {
+            var text = "Map<Address, Map<Hash160, Integer>>";
+            var map = new Dictionary<string, StructContractType>();
+            ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
+
+            var expected = new MapContractType(PrimitiveType.Address, 
+                new MapContractType(PrimitiveType.Hash160, 
+                    new PrimitiveContractType(PrimitiveType.Integer)));
+            actual.Should()
+                .NotBeNull()
+                .And.BeOfType<MapContractType>()
+                .And.Be(expected);
+        }
+
+        [Fact]
+        public void test_parse_map_struct()
+        {
+            var @struct = new StructContractType("testStruct", new (string, ContractType)[]
+            {
+                ("field1", new PrimitiveContractType(PrimitiveType.Boolean)),
+                ("field2", new PrimitiveContractType(PrimitiveType.Integer))
+            });
+
+            var text = "Map<Address,testStruct>";
+            var map = new Dictionary<string, StructContractType>();
+            map.Add(@struct.Name, @struct);
+            ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
+
+            var expected = new MapContractType(PrimitiveType.Address, @struct);
+            actual.Should()
+                .NotBeNull()
+                .And.BeOfType<MapContractType>()
+                .And.Be(expected);
         }
 
         // [Fact]

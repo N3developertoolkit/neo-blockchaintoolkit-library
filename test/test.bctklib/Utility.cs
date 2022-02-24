@@ -1,13 +1,39 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Neo.Persistence;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Nito.Disposables;
 
 namespace test.bctklib
 {
     static class Utility
     {
+        public static Stream GetResourceStream(string name)
+        {
+            var assembly = typeof(DebugInfoTest).Assembly;
+            var resourceName = assembly.GetManifestResourceNames().SingleOrDefault(n => n.EndsWith(name, StringComparison.OrdinalIgnoreCase))
+                ?? throw new FileNotFoundException();
+            return assembly.GetManifestResourceStream(resourceName) ?? throw new FileNotFoundException();
+        }
+
+        public static JToken GetResourceJson(string name)
+        {
+            using var resource = GetResourceStream(name);
+            using var streamReader = new System.IO.StreamReader(resource);
+            using var jsonReader = new JsonTextReader(streamReader);
+            return JToken.ReadFrom(jsonReader);
+        }
+
+        public static string GetResource(string name)
+        {
+            using var resource = GetResourceStream(name);
+            using var streamReader = new System.IO.StreamReader(resource);
+            return streamReader.ReadToEnd();
+        }
+
         public static IDisposable GetDeleteDirectoryDisposable(string path)
         {
             return AnonymousDisposable.Create(() =>

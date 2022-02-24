@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -8,19 +9,13 @@ namespace Neo.BlockchainToolkit.Models
 {
     public readonly record struct ContractStorageSchema
     {
-        public readonly IReadOnlyList<StructContractType> StructDefs;
-        public readonly IReadOnlyList<StorageDef> StorageDefs;
+        public IReadOnlyList<StorageDef> StorageDefs { get; init; } = Array.Empty<StorageDef>();
+        public IReadOnlyList<StructContractType> StructDefs { get; init; } = Array.Empty<StructContractType>();
 
-        public ContractStorageSchema()
+        public ContractStorageSchema(IReadOnlyList<StorageDef> storageDefs, IReadOnlyList<StructContractType> structDefs)
         {
-            StructDefs = Array.Empty<StructContractType>();
-            StorageDefs = Array.Empty<StorageDef>();
-        }
-
-        public ContractStorageSchema(IReadOnlyList<StructContractType> structDefs, IReadOnlyList<StorageDef> storageDefs)
-        {
-            StructDefs = structDefs;
             StorageDefs = storageDefs;
+            StructDefs = structDefs;
         }
 
         public static ContractStorageSchema Parse(Neo.IO.Json.JObject json)
@@ -30,59 +25,21 @@ namespace Neo.BlockchainToolkit.Models
 
         public static ContractStorageSchema Parse(JToken json)
         {
-            if (json is JObject jObject)
-            {
-                var structs = ParseStructProperty(jObject).ToArray();
-                var storages = ParseStorageProperty(jObject, structs).ToArray();
-                
-                return new ContractStorageSchema(structs, storages);
-            }
-            else
-            {
-                throw new JsonException($"Invalid schema json type {json.Type}");
-            }
-        }
-
-        internal static IEnumerable<StructContractType> ParseStructProperty(JObject json)
-        {
-            if (json.TryGetValue("struct", out var structToken))
-            {
-                if (structToken is JObject structJson)
-                {
-                    var unboundStructs = ((IDictionary<string, JToken?>)structJson).Select(ParseStructDef);
-                    return BindStructDefs(unboundStructs);
-                }
-                else
-                {
-                    throw new JsonException($"Invalid struct JSON type {structToken.Type}");
-                }
-            }
-            else
-            {
-                return Enumerable.Empty<StructContractType>();
-            }
-        }
-
-        internal static IEnumerable<StorageDef> ParseStorageProperty(JObject json, IReadOnlyList<StructContractType> structs)
-        {
+            var unboundStructs = GetProperty(json, "struct").Select(ParseStructDef);
+            var structs = BindStructDefs(unboundStructs);
             var structMap = structs.ToDictionary(s => s.Name);
+            var storages = GetProperty(json, "storage").Select(kvp => ParseStorageDef(kvp, structMap));
 
-            if (json.TryGetValue("storage", out var storageToken))
+            return new ContractStorageSchema
             {
-                if (storageToken is JObject storageJson)
-                {
-                    return ((IDictionary<string, JToken?>)storageJson).Select(kvp => ParseStorageDef(kvp, structMap));
-                }
-                else
-                {
-                    throw new JsonException($"Invalid storage JSON type {storageToken.Type}");
-                }
-            }
-            else
-            {
-                return Enumerable.Empty<StorageDef>();
-            }
+                StorageDefs = storages.ToArray(),
+                StructDefs = structs.ToArray(),
+            };
         }
+
+        static IEnumerable<KeyValuePair<string, JToken?>> GetProperty(JToken json, string name)
+            => json[name] as IEnumerable<KeyValuePair<string, JToken?>>
+                ?? Enumerable.Empty<KeyValuePair<string, JToken?>>();
 
         internal static (string name, IReadOnlyList<(string name, string type)> fields) ParseStructDef(KeyValuePair<string, JToken?> kvp)
         {
@@ -106,6 +63,45 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
+        internal static bool TryParseContractType(string @string, IReadOnlyDictionary<string, StructContractType> structs, [MaybeNullWhen(false)] out ContractType type)
+        {
+            if (Enum.TryParse<PrimitiveType>(@string, out var primitive))
+            {
+                type = new PrimitiveContractType(primitive);
+                return true;
+            }
+
+            if (structs.TryGetValue(@string, out var @struct))
+            {
+                type = @struct;
+                return true;
+            }
+
+            if (@string.StartsWith("Map<"))
+            {
+                var buffer = @string.AsMemory(4);
+                var commaIndex = buffer.Span.IndexOf(',');
+                var lastAngleIndex = buffer.Span.LastIndexOf('>');
+                if (commaIndex != -1 
+                    && lastAngleIndex != -1 
+                    && commaIndex < lastAngleIndex
+                    && Enum.TryParse<PrimitiveType>(buffer.Span.Slice(0, commaIndex).Trim(), out var keyType))
+                {
+
+                    int length = lastAngleIndex - (commaIndex + 1);
+                    var valueString = new string(buffer.Slice(commaIndex + 1, length).Span.Trim());
+                    if (TryParseContractType(valueString, structs, out var valueType))
+                    {
+                        type = new MapContractType(keyType, valueType);
+                        return true;
+                    }
+                }
+            }
+
+            type = default;
+            return false;
+        }
+
         internal static IEnumerable<StructContractType> BindStructDefs(IEnumerable<(string name, IReadOnlyList<(string name, string type)> fields)> unboundStructs)
         {
             var unboundStructMap = unboundStructs.ToDictionary(s => s.name);
@@ -123,13 +119,9 @@ namespace Neo.BlockchainToolkit.Models
                     List<(string name, ContractType type)> fields = new(@struct.fields.Count);
                     foreach (var (fieldName, fieldType) in @struct.fields)
                     {
-                        if (Enum.TryParse<PrimitiveType>(fieldType, out var primitive))
+                        if (TryParseContractType(fieldType, boundStructMap, out var contractType))
                         {
-                            fields.Add((fieldName, new PrimitiveContractType(primitive)));
-                        }
-                        else if (boundStructMap.TryGetValue(fieldType, out var structDef))
-                        {
-                            fields.Add((fieldName, structDef));
+                            fields.Add((fieldName, contractType));
                         }
                         else
                         {
