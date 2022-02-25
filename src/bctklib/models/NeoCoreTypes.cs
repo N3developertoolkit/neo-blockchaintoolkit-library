@@ -4,7 +4,7 @@ namespace Neo.BlockchainToolkit.Models
 {
     public static class NeoCoreTypes
     {
-        public static StructContractType Transaction => transaction.Value; 
+        public static StructContractType Transaction => transaction.Value;
         static readonly Lazy<StructContractType> transaction = new(
             () => new StructContractType(
                 nameof(Transaction),
@@ -37,5 +37,5 @@ namespace Neo.BlockchainToolkit.Models
                     (nameof(Neo.SmartContract.Native.TrimmedBlock.Header.NextConsensus), PrimitiveContractType.Address),
                     (nameof(Neo.SmartContract.Native.TrimmedBlock.Hashes.Length), PrimitiveContractType.Integer),
                 }));
-   }
+    }
 }

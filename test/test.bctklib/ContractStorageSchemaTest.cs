@@ -132,8 +132,8 @@ namespace test.bctklib
             var map = new Dictionary<string, StructContractType>();
             ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
 
-            var expected = new MapContractType(PrimitiveType.Address, 
-                new MapContractType(PrimitiveType.Hash160, 
+            var expected = new MapContractType(PrimitiveType.Address,
+                new MapContractType(PrimitiveType.Hash160,
                     new PrimitiveContractType(PrimitiveType.Integer)));
             actual.Should()
                 .NotBeNull()

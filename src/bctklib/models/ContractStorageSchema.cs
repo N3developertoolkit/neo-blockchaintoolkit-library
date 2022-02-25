@@ -82,8 +82,8 @@ namespace Neo.BlockchainToolkit.Models
                 var buffer = @string.AsMemory(4);
                 var commaIndex = buffer.Span.IndexOf(',');
                 var lastAngleIndex = buffer.Span.LastIndexOf('>');
-                if (commaIndex != -1 
-                    && lastAngleIndex != -1 
+                if (commaIndex != -1
+                    && lastAngleIndex != -1
                     && commaIndex < lastAngleIndex
                     && Enum.TryParse<PrimitiveType>(buffer.Span.Slice(0, commaIndex).Trim(), out var keyType))
                 {
@@ -128,7 +128,7 @@ namespace Neo.BlockchainToolkit.Models
                             break;
                         }
                     }
-                    
+
                     // if all the fields are bound, bind the struct def
                     if (fields.Count == @struct.fields.Count)
                     {

@@ -63,7 +63,7 @@ namespace Neo.BlockchainToolkit
             var keys = new ECPoint[nodes.Count];
             for (int i = 0; i < nodes.Count; i++)
             {
-                var account = nodes[i].Wallet.DefaultAccount ?? 
+                var account = nodes[i].Wallet.DefaultAccount ??
                     throw new ArgumentException($"{nodes[i].Wallet.Name} consensus node wallet is missing a default account", nameof(nodes));
                 keys[i] = new KeyPair(account.PrivateKey.HexToBytes()).PublicKey;
             }
