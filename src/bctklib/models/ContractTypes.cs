@@ -17,7 +17,18 @@ namespace Neo.BlockchainToolkit.Models
 
     public abstract record ContractType();
 
-    public record PrimitiveContractType(PrimitiveType Type) : ContractType;
+    public record PrimitiveContractType(PrimitiveType Type) : ContractType
+    {
+        public readonly static PrimitiveContractType Address = new PrimitiveContractType(PrimitiveType.Address);
+        public readonly static PrimitiveContractType Boolean = new PrimitiveContractType(PrimitiveType.Boolean);
+        public readonly static PrimitiveContractType ByteArray = new PrimitiveContractType(PrimitiveType.ByteArray);
+        public readonly static PrimitiveContractType Hash160 = new PrimitiveContractType(PrimitiveType.Hash160);
+        public readonly static PrimitiveContractType Hash256 = new PrimitiveContractType(PrimitiveType.Hash256);
+        public readonly static PrimitiveContractType Integer = new PrimitiveContractType(PrimitiveType.Integer);
+        public readonly static PrimitiveContractType PublicKey = new PrimitiveContractType(PrimitiveType.PublicKey);
+        public readonly static PrimitiveContractType Signature = new PrimitiveContractType(PrimitiveType.Signature);
+        public readonly static PrimitiveContractType String = new PrimitiveContractType(PrimitiveType.String);
+    }
 
     public record StructContractType(string Name, IReadOnlyList<(string Name, ContractType Type)> Fields) : ContractType;
 
