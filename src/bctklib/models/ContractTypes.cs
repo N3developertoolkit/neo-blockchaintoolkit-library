@@ -32,9 +32,9 @@ namespace Neo.BlockchainToolkit.Models
 
     public record StructContractType(string Name, IReadOnlyList<(string Name, ContractType Type)> Fields) : ContractType;
 
-    public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
-
     // TODO: 
+
+    // public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
 
     // public record ArrayContractType(ContractType Type) : ContractType;
 

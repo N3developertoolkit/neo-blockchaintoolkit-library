@@ -111,56 +111,56 @@ namespace test.bctklib
             prefix.Span.SequenceEqual(new byte[] { 0x74, 0x65, 0x73, 0x74 }).Should().BeTrue();
         }
 
-        [Fact]
-        public void test_parse_map_primitives()
-        {
-            var text = "Map<Address, Integer>";
-            var map = new Dictionary<string, StructContractType>();
-            ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
+        // [Fact]
+        // public void test_parse_map_primitives()
+        // {
+        //     var text = "Map<Address, Integer>";
+        //     var map = new Dictionary<string, StructContractType>();
+        //     ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
 
-            var expected = new MapContractType(PrimitiveType.Address, new PrimitiveContractType(PrimitiveType.Integer));
-            actual.Should()
-                .NotBeNull()
-                .And.BeOfType<MapContractType>()
-                .And.Be(expected);
-        }
+        //     var expected = new MapContractType(PrimitiveType.Address, new PrimitiveContractType(PrimitiveType.Integer));
+        //     actual.Should()
+        //         .NotBeNull()
+        //         .And.BeOfType<MapContractType>()
+        //         .And.Be(expected);
+        // }
 
-        [Fact]
-        public void test_parse_map_primitives_nested()
-        {
-            var text = "Map<Address, Map<Hash160, Integer>>";
-            var map = new Dictionary<string, StructContractType>();
-            ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
+        // [Fact]
+        // public void test_parse_map_primitives_nested()
+        // {
+        //     var text = "Map<Address, Map<Hash160, Integer>>";
+        //     var map = new Dictionary<string, StructContractType>();
+        //     ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
 
-            var expected = new MapContractType(PrimitiveType.Address,
-                new MapContractType(PrimitiveType.Hash160,
-                    new PrimitiveContractType(PrimitiveType.Integer)));
-            actual.Should()
-                .NotBeNull()
-                .And.BeOfType<MapContractType>()
-                .And.Be(expected);
-        }
+        //     var expected = new MapContractType(PrimitiveType.Address,
+        //         new MapContractType(PrimitiveType.Hash160,
+        //             new PrimitiveContractType(PrimitiveType.Integer)));
+        //     actual.Should()
+        //         .NotBeNull()
+        //         .And.BeOfType<MapContractType>()
+        //         .And.Be(expected);
+        // }
 
-        [Fact]
-        public void test_parse_map_struct()
-        {
-            var @struct = new StructContractType("testStruct", new (string, ContractType)[]
-            {
-                ("field1", new PrimitiveContractType(PrimitiveType.Boolean)),
-                ("field2", new PrimitiveContractType(PrimitiveType.Integer))
-            });
+        // [Fact]
+        // public void test_parse_map_struct()
+        // {
+        //     var @struct = new StructContractType("testStruct", new (string, ContractType)[]
+        //     {
+        //         ("field1", new PrimitiveContractType(PrimitiveType.Boolean)),
+        //         ("field2", new PrimitiveContractType(PrimitiveType.Integer))
+        //     });
 
-            var text = "Map<Address,testStruct>";
-            var map = new Dictionary<string, StructContractType>();
-            map.Add(@struct.Name, @struct);
-            ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
+        //     var text = "Map<Address,testStruct>";
+        //     var map = new Dictionary<string, StructContractType>();
+        //     map.Add(@struct.Name, @struct);
+        //     ContractStorageSchema.TryParseContractType(text, map, out var actual).Should().BeTrue();
 
-            var expected = new MapContractType(PrimitiveType.Address, @struct);
-            actual.Should()
-                .NotBeNull()
-                .And.BeOfType<MapContractType>()
-                .And.Be(expected);
-        }
+        //     var expected = new MapContractType(PrimitiveType.Address, @struct);
+        //     actual.Should()
+        //         .NotBeNull()
+        //         .And.BeOfType<MapContractType>()
+        //         .And.Be(expected);
+        // }
 
         // [Fact]
         // public void test_ParseKeySegments_segment_object()

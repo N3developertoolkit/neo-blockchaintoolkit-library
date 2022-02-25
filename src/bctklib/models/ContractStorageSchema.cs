@@ -77,26 +77,26 @@ namespace Neo.BlockchainToolkit.Models
                 return true;
             }
 
-            if (@string.StartsWith("Map<"))
-            {
-                var buffer = @string.AsMemory(4);
-                var commaIndex = buffer.Span.IndexOf(',');
-                var lastAngleIndex = buffer.Span.LastIndexOf('>');
-                if (commaIndex != -1
-                    && lastAngleIndex != -1
-                    && commaIndex < lastAngleIndex
-                    && Enum.TryParse<PrimitiveType>(buffer.Span.Slice(0, commaIndex).Trim(), out var keyType))
-                {
+            // if (@string.StartsWith("Map<"))
+            // {
+            //     var buffer = @string.AsMemory(4);
+            //     var commaIndex = buffer.Span.IndexOf(',');
+            //     var lastAngleIndex = buffer.Span.LastIndexOf('>');
+            //     if (commaIndex != -1
+            //         && lastAngleIndex != -1
+            //         && commaIndex < lastAngleIndex
+            //         && Enum.TryParse<PrimitiveType>(buffer.Span.Slice(0, commaIndex).Trim(), out var keyType))
+            //     {
 
-                    int length = lastAngleIndex - (commaIndex + 1);
-                    var valueString = new string(buffer.Slice(commaIndex + 1, length).Span.Trim());
-                    if (TryParseContractType(valueString, structs, out var valueType))
-                    {
-                        type = new MapContractType(keyType, valueType);
-                        return true;
-                    }
-                }
-            }
+            //         int length = lastAngleIndex - (commaIndex + 1);
+            //         var valueString = new string(buffer.Slice(commaIndex + 1, length).Span.Trim());
+            //         if (TryParseContractType(valueString, structs, out var valueType))
+            //         {
+            //             type = new MapContractType(keyType, valueType);
+            //             return true;
+            //         }
+            //     }
+            // }
 
             type = default;
             return false;
