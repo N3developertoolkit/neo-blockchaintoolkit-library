@@ -5,6 +5,7 @@ on:
 
 jobs:
   build:
+    if: starts_with(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
