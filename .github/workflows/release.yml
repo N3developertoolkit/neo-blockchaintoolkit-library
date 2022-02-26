@@ -36,3 +36,5 @@ jobs:
         automatic_release_tag: ${{ env.NUGET_PACKAGE_VERSION }}
         files: |
           ./out/*
+    - name: Push to Nuget.org
+      run: dotnet nuget push ${{ format('./out/Neo.BlockchainToolkit.Library.{0}.nupkg', env.NUGET_PACKAGE_VERSION) }} --api-key ${{ secrets.NUGET_ORG_TOKEN }} --source https://api.nuget.org/v3/index.json
