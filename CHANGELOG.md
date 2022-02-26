@@ -19,6 +19,9 @@ may not exactly match a publicly released version.
 * ContractType models (#60)
 * Contract Storage Schema JSON parser (#60)
 * ContractType definitions for Transaction and Trimmed Block (#60)
+
+## [3.1.35] - 2022-02-25
+
 * ContractParameterParser.ConvertObject and ContractParameterParser.ConvertStackItem static methods (#56)
 * Added method token support for CALLT opCode in Extensions.GetComment (#57)
 
