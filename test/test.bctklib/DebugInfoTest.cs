@@ -21,7 +21,7 @@ namespace test.bctklib
         [Fact]
         public async Task can_load_debug_json_nccs_rc3()
         {
-            var debugInfoJson = GetResource("nccs_rc3.json");
+            var debugInfoJson = Utility.GetResource("nccs_rc3.json");
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
@@ -34,7 +34,7 @@ namespace test.bctklib
         [Fact]
         public async Task can_load_debug_json()
         {
-            var debugInfoJson = GetResource("Registrar.debug.json");
+            var debugInfoJson = Utility.GetResource("Registrar.debug.json");
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
@@ -47,7 +47,7 @@ namespace test.bctklib
         [Fact]
         public async Task can_load_nefdbgnfo()
         {
-            var debugInfoJson = GetResource("Registrar.debug.json");
+            var debugInfoJson = Utility.GetResource("Registrar.debug.json");
             var compressedDebugInfo = CreateCompressedDebugInfo("fakeContract", debugInfoJson);
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
@@ -84,7 +84,7 @@ namespace test.bctklib
         [Fact]
         public void cant_load_debug_info_without_hash()
         {
-            var debugInfoJson = GetResource("Registrar.debug.json");
+            var debugInfoJson = Utility.GetResource("Registrar.debug.json");
             var json = JObject.Parse(debugInfoJson);
             json.Remove("hash");
 
@@ -248,7 +248,7 @@ namespace test.bctklib
         [Fact]
         public void can_load_debug_info_with_invalid_sequence_points()
         {
-            var debugInfoJson = GetResource("invalidSequencePoints.json");
+            var debugInfoJson = Utility.GetResource("invalidSequencePoints.json");
             var json = JObject.Parse(debugInfoJson);
             var debug = DebugInfo.Load(json, t => t.Value<string>()!);
         }
@@ -263,16 +263,6 @@ namespace test.bctklib
                 stream.Write(jsonDebugInfo.ToByteArray(false));
             }
             return memoryStream.ToArray();
-        }
-
-        static string GetResource(string name)
-        {
-            var assembly = typeof(DebugInfoTest).Assembly;
-            using var resource = assembly.GetManifestResourceStream(name)
-                ?? assembly.GetManifestResourceStream($"test.bctklib._testFiles.{name}")
-                ?? throw new FileNotFoundException();
-            using var streamReader = new System.IO.StreamReader(resource);
-            return streamReader.ReadToEnd();
         }
     }
 }

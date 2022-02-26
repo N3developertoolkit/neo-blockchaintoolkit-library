@@ -49,7 +49,7 @@
     <PackageReference Include="Nerdbank.Streams" Version="2.8.57" />
     <PackageReference Include="OneOf" Version="3.0.211" />
     <PackageReference Include="rocksdb" Version="6.28.2.25302" />
-    <PackageReference Include="System.IO.Abstractions" Version="16.1.10" />
+    <PackageReference Include="System.IO.Abstractions" Version="16.1.15" />
   </ItemGroup>
 
   <Choose>

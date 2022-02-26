@@ -104,7 +104,8 @@ namespace Neo.BlockchainToolkit
 
         public static ContractParameter ConvertStackItem(Neo.VM.Types.StackItem item)
         {
-            return item switch {
+            return item switch
+            {
                 // Neo.VM.Types.Struct value handled by Array branch
                 Neo.VM.Types.Array value => new ContractParameter()
                 {
@@ -151,7 +152,8 @@ namespace Neo.BlockchainToolkit
         // but extended to support converting more types to ContractParameter (StackItem types in particular)
         public static ContractParameter ConvertObject(object? obj)
         {
-            return obj switch {
+            return obj switch
+            {
                 ContractParameter value => value,
                 Neo.VM.Types.StackItem value => ConvertStackItem(value),
                 bool value => new ContractParameter()
