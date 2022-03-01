@@ -45,6 +45,8 @@ namespace Neo.BlockchainToolkit.Models
         {
             var (name, fieldsToken) = kvp;
             if (fieldsToken is null) throw new JsonException("Null struct def type");
+            if (name.Contains('#')) throw new JsonException("Struct name cannot contain '#' characters");
+            if (name.Contains('<') || name.Contains('>')) throw new JsonException("Struct name cannot contain angle bracket characters");
 
             if (fieldsToken is JArray fieldsArray)
             {
@@ -63,45 +65,69 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        internal static bool TryParseContractType(string @string, IReadOnlyDictionary<string, StructContractType> structs, [MaybeNullWhen(false)] out ContractType type)
+        internal static bool TryParseContractType(string typeName, IReadOnlyDictionary<string, StructContractType> structs, out ContractType type)
         {
-            if (Enum.TryParse<PrimitiveType>(@string, out var primitive))
-            {
-                type = new PrimitiveContractType(primitive);
-                return true;
-            }
+            typeName = typeName.Trim();
 
-            if (structs.TryGetValue(@string, out var @struct))
+            if (structs.TryGetValue(typeName, out var @struct))
             {
                 type = @struct;
                 return true;
             }
 
-            // TODO: Support paring "Array<Type>" and "Map<KeyType, ValueType>"
+            if (TryParsePrimitiveType(typeName, out var primitive))
+            {
+                type = new PrimitiveContractType(primitive);
+                return true;
+            }
 
-            // if (@string.StartsWith("Map<"))
-            // {
-            //     var buffer = @string.AsMemory(4);
-            //     var commaIndex = buffer.Span.IndexOf(',');
-            //     var lastAngleIndex = buffer.Span.LastIndexOf('>');
-            //     if (commaIndex != -1
-            //         && lastAngleIndex != -1
-            //         && commaIndex < lastAngleIndex
-            //         && Enum.TryParse<PrimitiveType>(buffer.Span.Slice(0, commaIndex).Trim(), out var keyType))
-            //     {
+            if (typeName.Equals("#Unspecified", StringComparison.OrdinalIgnoreCase) 
+                || typeName.Equals("Unspecified", StringComparison.OrdinalIgnoreCase))
+            {
+                type = UnspecifiedContractType.Unspecified;
+                return true;
+            }
 
-            //         int length = lastAngleIndex - (commaIndex + 1);
-            //         var valueString = new string(buffer.Slice(commaIndex + 1, length).Span.Trim());
-            //         if (TryParseContractType(valueString, structs, out var valueType))
-            //         {
-            //             type = new MapContractType(keyType, valueType);
-            //             return true;
-            //         }
-            //     }
-            // }
+            if (typeName.StartsWith("Array<"))
+            {
+                var buffer = typeName.AsSpan(6);
+                var lastAngleIndex = buffer.LastIndexOf('>');
+                if (lastAngleIndex != -1)
+                {
+                    var arrayTypeSpan = buffer.Slice(0, lastAngleIndex).Trim();
+                    if (TryParseContractType(new string(arrayTypeSpan), structs, out var arrayType))
+                    {
+                        type = new ArrayContractType(arrayType);
+                        return true;
+                    }
+                }
+            }
 
-            type = default;
+            if (typeName.StartsWith("Map<"))
+            {
+                var buffer = typeName.AsSpan(4);
+                var commaIndex = buffer.IndexOf(',');
+                var lastAngleIndex = buffer.LastIndexOf('>');
+                if (commaIndex != -1
+                    && lastAngleIndex != -1
+                    && commaIndex < lastAngleIndex
+                    && TryParsePrimitiveType(buffer.Slice(0, commaIndex).Trim(), out var keyType))
+                {
+                    int length = lastAngleIndex - (commaIndex + 1);
+                    var valueTypeSpan = buffer.Slice(commaIndex + 1, length).Trim();
+                    if (TryParseContractType(new string(valueTypeSpan), structs, out var valueType))
+                    {
+                        type = new MapContractType(keyType, valueType);
+                        return true;
+                    }
+                }
+            }
+
+            type = UnspecifiedContractType.Unspecified;
             return false;
+
+            static bool TryParsePrimitiveType(ReadOnlySpan<char> span, out PrimitiveType type)
+                => Enum.TryParse<PrimitiveType>(span.StartsWith("#") ? span.Slice(1) : span, true, out type);
         }
 
         internal static IEnumerable<StructContractType> BindStructDefs(IEnumerable<(string name, IReadOnlyList<(string name, string type)> fields)> unboundStructs)

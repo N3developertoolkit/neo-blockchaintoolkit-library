@@ -35,8 +35,7 @@ namespace Neo.BlockchainToolkit.Models
         public readonly static PrimitiveContractType String = new PrimitiveContractType(PrimitiveType.String);
     }
 
+    public record ArrayContractType(ContractType Type) : ContractType;
+    public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
     public record StructContractType(string Name, IReadOnlyList<(string Name, ContractType Type)> Fields) : ContractType;
-
-    // public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
-    // public record ArrayContractType(ContractType Type) : ContractType;
 }
