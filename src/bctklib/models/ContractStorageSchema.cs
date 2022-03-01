@@ -77,6 +77,8 @@ namespace Neo.BlockchainToolkit.Models
                 return true;
             }
 
+            // TODO: Support paring "Array<Type>" and "Map<KeyType, ValueType>"
+
             // if (@string.StartsWith("Map<"))
             // {
             //     var buffer = @string.AsMemory(4);
