@@ -115,7 +115,7 @@ foreach (var type in types)
     Console.WriteLine($"    public static StructContractType {type.Name} => {privateName}.Value;");
     Console.WriteLine($"    static readonly Lazy<StructContractType> {privateName} = new(() => ");
     Console.WriteLine($"        new StructContractType(");
-    Console.WriteLine($"            \"{type.Name}\",");
+    Console.WriteLine($"            \"{type}\",");
     Console.WriteLine($"            new (string, ContractType)[] {{");
     foreach (var field in fields)
     {
