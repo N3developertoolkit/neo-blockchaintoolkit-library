@@ -29,7 +29,7 @@ public static class NeoCoreTypes
                 ("Nonce", PrimitiveContractType.Integer),
                 ("Index", PrimitiveContractType.Integer),
                 ("PrimaryIndex", PrimitiveContractType.Integer),
-                ("NextConsensus", PrimitiveContractType.Hash160),
+                ("NextConsensus", PrimitiveContractType.Address),
                 ("TransactionsCount", PrimitiveContractType.Integer),
             }));
 
@@ -132,7 +132,7 @@ public static class NeoCoreTypes
         new StructContractType(
             "Neo.SmartContract.Framework.Nep11TokenState",
             new (string, ContractType)[] {
-                ("Owner", PrimitiveContractType.Hash160),
+                ("Owner", PrimitiveContractType.Address),
                 ("Name", PrimitiveContractType.String),
             }));
 
@@ -163,7 +163,7 @@ public static class NeoCoreTypes
                 ("Hash", PrimitiveContractType.Hash256),
                 ("Version", PrimitiveContractType.Integer),
                 ("Nonce", PrimitiveContractType.Integer),
-                ("Sender", PrimitiveContractType.Hash160),
+                ("Sender", PrimitiveContractType.Address),
                 ("SystemFee", PrimitiveContractType.Integer),
                 ("NetworkFee", PrimitiveContractType.Integer),
                 ("ValidUntilBlock", PrimitiveContractType.Integer),
