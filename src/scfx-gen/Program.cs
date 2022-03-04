@@ -6,13 +6,44 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 EnableAnsiEscapeSequences();
 
-const string PATH = @"C:\Users\harry\.nuget\packages\neo.smartcontract.framework\3.1.0\src";
+// TODO: use "dotnet nuget locals global-packages --list"
+//       returns: global-packages: C:\Users\harry\.nuget\packages\
+const string globalPackages = @"C:\Users\harry\.nuget\packages\";
+
+var packagePath = Path.Combine(globalPackages, "neo.smartcontract.framework");
+if (!Directory.Exists(packagePath)) throw new Exception("SmartContract Framework not in nuget global packages repo");
+
+// TODO: find latest version or use version specified in CLI argument
+//       and use SemanticVersion type
+
+var version = "3.1.0";
+var path = Path.Combine(Path.Combine(packagePath, version), "src");
+if (!Directory.Exists(path)) throw new Exception($"SmartContract Framework source not found {path}");
 
 var enumOptions = new EnumerationOptions() { RecurseSubdirectories = true };
-var trees = Directory.EnumerateFiles(PATH, "*.cs", enumOptions)
+var trees = Directory.EnumerateFiles(path, "*.cs", enumOptions)
     .Select(f => CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f));
 var compileOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
-var references = CommonReferencePaths().Select(@ref => MetadataReference.CreateFromFile(@ref));
+
+// TODO: determine targeting pack folder @ runtime
+
+// Details: https://docs.microsoft.com/en-us/dotnet/core/distribution-packaging
+// to locate the targeting pack folder
+// * run 'dotnet --list-sdks' to get a list of installed SDKs + folder
+//   Output should be something like '6.0.102 [C:\Program Files\dotnet\sdk]'.
+// * 'packs' folder should be sibling to sdk folder from --list-sdks command
+// * 'packs/Microsoft.NETCore.App.Ref/<latest 6.0.x version>/ref/net6.0 
+
+// it's probably not important, but I could probably write  an MSBuild project
+// that echoed $(NetCoreRoot) or $(NetCoreTargetingPackRoot) to the console.
+// I wonder if you can launch msbuild as a command and pass build steps in on 
+// the command line. That would make it very easy to get $(NetCoreTargetingPackRoot)
+// But in the short term, I can simply start with the hardcoded path.
+
+const string PACK_FOLDER = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.2\ref\net6.0";
+var references = Directory
+    .EnumerateFiles(PACK_FOLDER, "*.dll")
+    .Select(@ref => MetadataReference.CreateFromFile(@ref));
 var compilation = CSharpCompilation.Create(null, trees, references, compileOptions);
 
 var diags = compilation.GetDiagnostics();
@@ -95,33 +126,6 @@ foreach (var type in types)
     Console.WriteLine($"            }}));");
 }
 Console.WriteLine("}");
-
-if (resolver.UnresolvedTypes.Any())
-{
-    foreach (var ut in resolver.UnresolvedTypes)
-    {
-        Console.WriteLine($"\t\x1b[{31}m{ut}\x1b[0m");
-    }
-}
-
-static IEnumerable<string> CommonReferencePaths()
-{
-    // Details: https://docs.microsoft.com/en-us/dotnet/core/distribution-packaging
-    // to locate the targeting pack folder
-    // * run 'dotnet --list-sdks' to get a list of installed SDKs + folder
-    //   Output should be something like '6.0.102 [C:\Program Files\dotnet\sdk]'.
-    // * 'packs' folder should be sibling to sdk folder from --list-sdks command
-    // * 'packs/Microsoft.NETCore.App.Ref/<latest 6.0.x version>/ref/net6.0 
-
-    // it's probably not important, but I could probably write  an MSBuild project
-    // that echoed $(NetCoreRoot) or $(NetCoreTargetingPackRoot) to the console.
-    // I wonder if you can launch msbuild as a command and pass build steps in on 
-    // the command line. That would make it very easy to get $(NetCoreTargetingPackRoot)
-    // But in the short term, I can simply start with the hardcoded path.
-
-    const string ROOT = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.2\ref\net6.0";
-    return Directory.EnumerateFiles(ROOT, "*.dll");
-}
 
 static void EnableAnsiEscapeSequences()
 {

@@ -20,12 +20,9 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
     public readonly INamedTypeSymbol ApiInterface;
     public readonly IReadOnlySet<INamedTypeSymbol> NeoPrimitives;
 
-    readonly HashSet<ISymbol> unresolvedTypes = new(SymbolEqualityComparer.Default);
-    public IReadOnlySet<ISymbol> UnresolvedTypes => unresolvedTypes;
-
     public ContractTypeVisitor(Compilation compilation)
     {
-        // TODO: Add Address type
+        // TODO: Add Address type support
 
         ApiInterface = compilation.FindType("Neo.SmartContract.Framework.IApiInterface");
         BigInteger = compilation.FindType("System.Numerics.BigInteger");
@@ -39,13 +36,7 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
         NeoPrimitives = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default) { ECPoint, ByteString, UInt160, UInt256 };
     }
 
-    public ContractType Resolve(ISymbol symbol) => Visit(symbol) ?? LogUnresolved(symbol);
-
-    UnspecifiedContractType LogUnresolved(ISymbol symbol)
-    {
-        unresolvedTypes.Add(symbol);
-        return UnspecifiedContractType.Unspecified;
-    }
+    public ContractType Resolve(ISymbol symbol) => Visit(symbol) ?? throw new Exception($"Could not resolve {symbol.Name}");
 
     public override ContractType? VisitNamedType(INamedTypeSymbol symbol)
     {
@@ -67,7 +58,8 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
             SpecialType.System_UInt64 => PrimitiveContractType.Integer,
             SpecialType.System_Object => UnspecifiedContractType.Unspecified,
             SpecialType.None => ConvertSymbol(symbol),
-            _ => LogUnresolved(symbol)
+            _ => throw new Exception($"Could not resolve {symbol.Name}")
+
         };
     }
 
@@ -110,7 +102,7 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
                 return new ArrayContractType(type);
             }
 
-            return LogUnresolved(symbol);
+            throw new Exception($"Could not resolve {symbol.Name}");
         }
 
         return new SymbolContractType(symbol);
