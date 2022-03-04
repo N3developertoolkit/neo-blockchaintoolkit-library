@@ -7,7 +7,7 @@ static class ContractTypeExtensions
         => type switch
         {
             PrimitiveContractType p => $"PrimitiveContractType.{p.Type}",
-            SymbolContractType s => s.Symbol.Name,
+            SymbolContractType s => $"NeoCoreTypes.{s.Symbol.Name}",
             ArrayContractType a => $"new ArrayContractType({a.Type.AsSource()})",
             UnspecifiedContractType => "UnspecifiedContractType.Unspecified",
             InteropSymbolContractType i => $"new InteropContractType(\"{i.Symbol.Name}\")",
