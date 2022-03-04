@@ -1,12 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Neo.BlockchainToolkit.Models;
 
-record InteropSymbolContractType(INamedTypeSymbol Symbol) : ContractType;
 record SymbolContractType(INamedTypeSymbol Symbol) : ContractType;
-record VoidContractType() : ContractType
-{
-    public readonly static VoidContractType Void = new VoidContractType();
-}
 
 class ContractTypeVisitor : SymbolVisitor<ContractType>
 {
@@ -46,7 +41,6 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
         {
             SpecialType.System_Boolean => PrimitiveContractType.Boolean,
             SpecialType.System_String => PrimitiveContractType.String,
-            SpecialType.System_Void => VoidContractType.Void,
             SpecialType.System_Char => PrimitiveContractType.Integer,
             SpecialType.System_Byte => PrimitiveContractType.Integer,
             SpecialType.System_SByte => PrimitiveContractType.Integer,
@@ -83,7 +77,7 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
         if (equals(symbol, UInt256)) return PrimitiveContractType.Hash256;
 
         if (symbol.AllInterfaces.Any(i => equals(i, ApiInterface)))
-            return new InteropSymbolContractType(symbol);
+            return new InteropContractType($"{symbol.Name}");
 
         if (symbol.IsGenericType)
         {
