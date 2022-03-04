@@ -9,30 +9,13 @@
 //------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Models;
 
 public static class NeoCoreTypes
 {
-    public static StructContractType Nep11TokenState => _nep11TokenState.Value;
-    static readonly Lazy<StructContractType> _nep11TokenState = new(() => 
-        new StructContractType(
-            "Neo.SmartContract.Framework.Nep11TokenState",
-            new (string, ContractType)[] {
-                ("Owner", PrimitiveContractType.Hash160),
-                ("Name", PrimitiveContractType.String),
-            }));
-
-    public static StructContractType NeoAccountState => _neoAccountState.Value;
-    static readonly Lazy<StructContractType> _neoAccountState = new(() => 
-        new StructContractType(
-            "Neo.SmartContract.Framework.Native.NeoAccountState",
-            new (string, ContractType)[] {
-                ("Balance", PrimitiveContractType.Integer),
-                ("Height", PrimitiveContractType.Integer),
-                ("VoteTo", PrimitiveContractType.PublicKey),
-            }));
-
     public static StructContractType Block => _block.Value;
     static readonly Lazy<StructContractType> _block = new(() => 
         new StructContractType(
@@ -134,6 +117,25 @@ public static class NeoCoreTypes
                 ("Methods", new ArrayContractType(PrimitiveContractType.String)),
             }));
 
+    public static StructContractType NeoAccountState => _neoAccountState.Value;
+    static readonly Lazy<StructContractType> _neoAccountState = new(() => 
+        new StructContractType(
+            "Neo.SmartContract.Framework.Native.NeoAccountState",
+            new (string, ContractType)[] {
+                ("Balance", PrimitiveContractType.Integer),
+                ("Height", PrimitiveContractType.Integer),
+                ("VoteTo", PrimitiveContractType.PublicKey),
+            }));
+
+    public static StructContractType Nep11TokenState => _nep11TokenState.Value;
+    static readonly Lazy<StructContractType> _nep11TokenState = new(() => 
+        new StructContractType(
+            "Neo.SmartContract.Framework.Nep11TokenState",
+            new (string, ContractType)[] {
+                ("Owner", PrimitiveContractType.Hash160),
+                ("Name", PrimitiveContractType.String),
+            }));
+
     public static StructContractType Notification => _notification.Value;
     static readonly Lazy<StructContractType> _notification = new(() => 
         new StructContractType(
@@ -167,4 +169,35 @@ public static class NeoCoreTypes
                 ("ValidUntilBlock", PrimitiveContractType.Integer),
                 ("Script", PrimitiveContractType.ByteArray),
             }));
+
+    static IReadOnlyDictionary<string, Lazy<StructContractType>> coreTypes 
+        = new Dictionary<string, Lazy<StructContractType>>()
+        {
+            { "Neo.SmartContract.Framework.Services.Block", _block },
+            { "Neo.SmartContract.Framework.Services.Contract", _contract },
+            { "Neo.SmartContract.Framework.Services.ContractAbi", _contractAbi },
+            { "Neo.SmartContract.Framework.Services.ContractEventDescriptor", _contractEventDescriptor },
+            { "Neo.SmartContract.Framework.Services.ContractGroup", _contractGroup },
+            { "Neo.SmartContract.Framework.Services.ContractManifest", _contractManifest },
+            { "Neo.SmartContract.Framework.Services.ContractMethodDescriptor", _contractMethodDescriptor },
+            { "Neo.SmartContract.Framework.Services.ContractParameterDefinition", _contractParameterDefinition },
+            { "Neo.SmartContract.Framework.Services.ContractPermission", _contractPermission },
+            { "Neo.SmartContract.Framework.Native.NeoAccountState", _neoAccountState },
+            { "Neo.SmartContract.Framework.Nep11TokenState", _nep11TokenState },
+            { "Neo.SmartContract.Framework.Services.Notification", _notification },
+            { "Neo.SmartContract.Framework.Services.StorageMap", _storageMap },
+            { "Neo.SmartContract.Framework.Services.Transaction", _transaction },
+        };
+
+    public static bool TryGetType(string name, [MaybeNullWhen(false)] out StructContractType type)
+    {
+        if (coreTypes.TryGetValue(name, out var lazy))
+        {
+            type = lazy.Value;
+            return true;
+        }
+
+        type = default;
+        return false;
+    }
 }

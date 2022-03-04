@@ -68,7 +68,9 @@ var resolver = new ContractTypeVisitor(compilation);
 
 var types = compilation.SyntaxTrees
     .SelectMany(tree => tree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>())
-    .Select(typeDef => compilation.GetSemanticModel(typeDef.SyntaxTree).GetDeclaredSymbol(typeDef));
+    .Select(typeDef => compilation.GetSemanticModel(typeDef.SyntaxTree).GetDeclaredSymbol(typeDef))
+    .OfType<INamedTypeSymbol>()
+    .OrderBy(s => s.Name);
 
 var attrib = compilation.FindType("System.Attribute");
 var contractAttrib = compilation.FindType("Neo.SmartContract.Framework.Attributes.ContractAttribute");
@@ -84,6 +86,8 @@ Console.WriteLine(@"
 //------------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Models;
 
@@ -91,10 +95,10 @@ public static class NeoCoreTypes
 {");
 
 bool first = true;
+List<(string fnsqName, string lazyName)> generatedTypes = new();
+
 foreach (var type in types)
 {
-    if (type is null) continue;
-
     Func<ISymbol?, ISymbol?, bool> compare = SymbolEqualityComparer.Default.Equals;
     if (compare(type.BaseType, attrib)) continue;
     if (type.TypeKind == TypeKind.Interface) continue;
@@ -109,13 +113,15 @@ foreach (var type in types)
         .Where(f => !f.HasConstantValue && !f.IsStatic);
     if (!fields.Any()) continue;
 
-    var privateName = $"_{char.ToLowerInvariant(type.Name[0])}{type.Name.Substring(1)}";
+    var fnsqName = $"{type}";
+    var lazyName = $"_{char.ToLowerInvariant(type.Name[0])}{type.Name.Substring(1)}";
+    generatedTypes.Add((fnsqName, lazyName));
 
     if (!first) Console.WriteLine(); else first = false; 
-    Console.WriteLine($"    public static StructContractType {type.Name} => {privateName}.Value;");
-    Console.WriteLine($"    static readonly Lazy<StructContractType> {privateName} = new(() => ");
+    Console.WriteLine($"    public static StructContractType {type.Name} => {lazyName}.Value;");
+    Console.WriteLine($"    static readonly Lazy<StructContractType> {lazyName} = new(() => ");
     Console.WriteLine($"        new StructContractType(");
-    Console.WriteLine($"            \"{type}\",");
+    Console.WriteLine($"            \"{fnsqName}\",");
     Console.WriteLine($"            new (string, ContractType)[] {{");
     foreach (var field in fields)
     {
@@ -125,7 +131,32 @@ foreach (var type in types)
     }
     Console.WriteLine($"            }}));");
 }
-Console.WriteLine("}");
+
+Console.WriteLine(@"
+    static IReadOnlyDictionary<string, Lazy<StructContractType>> coreTypes 
+        = new Dictionary<string, Lazy<StructContractType>>()
+        {");
+
+
+foreach (var (fnsq, lazy) in generatedTypes)
+{
+    Console.WriteLine($"            {{ \"{fnsq}\", {lazy} }},");
+}
+
+Console.WriteLine(@"        };
+
+    public static bool TryGetType(string name, [MaybeNullWhen(false)] out StructContractType type)
+    {
+        if (coreTypes.TryGetValue(name, out var lazy))
+        {
+            type = lazy.Value;
+            return true;
+        }
+
+        type = default;
+        return false;
+    }
+}");
 
 static void EnableAnsiEscapeSequences()
 {
