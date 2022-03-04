@@ -78,9 +78,9 @@ var contractAttrib = compilation.FindType("Neo.SmartContract.Framework.Attribute
 
 var hash160AsAddress = new List<(string type, string field)>()
 {
-    ("Neo.SmartContract.Framework.Nep11TokenState", "Owner"),
-    ("Neo.SmartContract.Framework.Services.Block", "NextConsensus"),
-    ("Neo.SmartContract.Framework.Services.Transaction", "Sender"),
+    ("Nep11TokenState", "Owner"),
+    ("Block", "NextConsensus"),
+    ("Transaction", "Sender"),
 };
 
 
@@ -122,7 +122,7 @@ foreach (var type in types)
         .Where(f => !f.HasConstantValue && !f.IsStatic);
     if (!fields.Any()) continue;
 
-    var fnsqName = $"{type}";
+    var fnsqName = $"Neo#{type.Name}";
     var lazyName = $"_{char.ToLowerInvariant(type.Name[0])}{type.Name.Substring(1)}";
     generatedTypes.Add((fnsqName, lazyName));
 
@@ -138,7 +138,7 @@ foreach (var type in types)
 
         if (fieldType is PrimitiveContractType primitive
             && primitive.Type == PrimitiveType.Hash160
-            && hash160AsAddress.Any(t => t.type == fnsqName && t.field == field.Name))
+            && hash160AsAddress.Any(t => t.type == type.Name && t.field == field.Name))
         {
             fieldType = PrimitiveContractType.Address;
         }

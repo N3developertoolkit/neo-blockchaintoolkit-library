@@ -19,7 +19,7 @@ public static class NeoCoreTypes
     public static StructContractType Block => _block.Value;
     static readonly Lazy<StructContractType> _block = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.Block",
+            "Neo#Block",
             new (string, ContractType)[] {
                 ("Hash", PrimitiveContractType.Hash256),
                 ("Version", PrimitiveContractType.Integer),
@@ -36,7 +36,7 @@ public static class NeoCoreTypes
     public static StructContractType Contract => _contract.Value;
     static readonly Lazy<StructContractType> _contract = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.Contract",
+            "Neo#Contract",
             new (string, ContractType)[] {
                 ("Id", PrimitiveContractType.Integer),
                 ("UpdateCounter", PrimitiveContractType.Integer),
@@ -48,7 +48,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractAbi => _contractAbi.Value;
     static readonly Lazy<StructContractType> _contractAbi = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractAbi",
+            "Neo#ContractAbi",
             new (string, ContractType)[] {
                 ("Methods", new ArrayContractType(NeoCoreTypes.ContractMethodDescriptor)),
                 ("Events", new ArrayContractType(NeoCoreTypes.ContractEventDescriptor)),
@@ -57,7 +57,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractEventDescriptor => _contractEventDescriptor.Value;
     static readonly Lazy<StructContractType> _contractEventDescriptor = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractEventDescriptor",
+            "Neo#ContractEventDescriptor",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
                 ("Parameters", new ArrayContractType(NeoCoreTypes.ContractParameterDefinition)),
@@ -66,7 +66,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractGroup => _contractGroup.Value;
     static readonly Lazy<StructContractType> _contractGroup = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractGroup",
+            "Neo#ContractGroup",
             new (string, ContractType)[] {
                 ("PubKey", PrimitiveContractType.PublicKey),
                 ("Signature", PrimitiveContractType.ByteArray),
@@ -75,7 +75,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractManifest => _contractManifest.Value;
     static readonly Lazy<StructContractType> _contractManifest = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractManifest",
+            "Neo#ContractManifest",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
                 ("Groups", new ArrayContractType(NeoCoreTypes.ContractGroup)),
@@ -90,7 +90,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractMethodDescriptor => _contractMethodDescriptor.Value;
     static readonly Lazy<StructContractType> _contractMethodDescriptor = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractMethodDescriptor",
+            "Neo#ContractMethodDescriptor",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
                 ("Parameters", new ArrayContractType(NeoCoreTypes.ContractParameterDefinition)),
@@ -102,7 +102,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractParameterDefinition => _contractParameterDefinition.Value;
     static readonly Lazy<StructContractType> _contractParameterDefinition = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractParameterDefinition",
+            "Neo#ContractParameterDefinition",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
                 ("Type", PrimitiveContractType.Integer),
@@ -111,7 +111,7 @@ public static class NeoCoreTypes
     public static StructContractType ContractPermission => _contractPermission.Value;
     static readonly Lazy<StructContractType> _contractPermission = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.ContractPermission",
+            "Neo#ContractPermission",
             new (string, ContractType)[] {
                 ("Contract", PrimitiveContractType.ByteArray),
                 ("Methods", new ArrayContractType(PrimitiveContractType.String)),
@@ -120,7 +120,7 @@ public static class NeoCoreTypes
     public static StructContractType NeoAccountState => _neoAccountState.Value;
     static readonly Lazy<StructContractType> _neoAccountState = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Native.NeoAccountState",
+            "Neo#NeoAccountState",
             new (string, ContractType)[] {
                 ("Balance", PrimitiveContractType.Integer),
                 ("Height", PrimitiveContractType.Integer),
@@ -130,7 +130,7 @@ public static class NeoCoreTypes
     public static StructContractType Nep11TokenState => _nep11TokenState.Value;
     static readonly Lazy<StructContractType> _nep11TokenState = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Nep11TokenState",
+            "Neo#Nep11TokenState",
             new (string, ContractType)[] {
                 ("Owner", PrimitiveContractType.Address),
                 ("Name", PrimitiveContractType.String),
@@ -139,7 +139,7 @@ public static class NeoCoreTypes
     public static StructContractType Notification => _notification.Value;
     static readonly Lazy<StructContractType> _notification = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.Notification",
+            "Neo#Notification",
             new (string, ContractType)[] {
                 ("ScriptHash", PrimitiveContractType.Hash160),
                 ("EventName", PrimitiveContractType.String),
@@ -149,7 +149,7 @@ public static class NeoCoreTypes
     public static StructContractType StorageMap => _storageMap.Value;
     static readonly Lazy<StructContractType> _storageMap = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.StorageMap",
+            "Neo#StorageMap",
             new (string, ContractType)[] {
                 ("Context", new InteropContractType("StorageContext")),
                 ("Prefix", PrimitiveContractType.ByteArray),
@@ -158,7 +158,7 @@ public static class NeoCoreTypes
     public static StructContractType Transaction => _transaction.Value;
     static readonly Lazy<StructContractType> _transaction = new(() => 
         new StructContractType(
-            "Neo.SmartContract.Framework.Services.Transaction",
+            "Neo#Transaction",
             new (string, ContractType)[] {
                 ("Hash", PrimitiveContractType.Hash256),
                 ("Version", PrimitiveContractType.Integer),
@@ -173,20 +173,20 @@ public static class NeoCoreTypes
     static IReadOnlyDictionary<string, Lazy<StructContractType>> coreTypes 
         = new Dictionary<string, Lazy<StructContractType>>()
         {
-            { "Neo.SmartContract.Framework.Services.Block", _block },
-            { "Neo.SmartContract.Framework.Services.Contract", _contract },
-            { "Neo.SmartContract.Framework.Services.ContractAbi", _contractAbi },
-            { "Neo.SmartContract.Framework.Services.ContractEventDescriptor", _contractEventDescriptor },
-            { "Neo.SmartContract.Framework.Services.ContractGroup", _contractGroup },
-            { "Neo.SmartContract.Framework.Services.ContractManifest", _contractManifest },
-            { "Neo.SmartContract.Framework.Services.ContractMethodDescriptor", _contractMethodDescriptor },
-            { "Neo.SmartContract.Framework.Services.ContractParameterDefinition", _contractParameterDefinition },
-            { "Neo.SmartContract.Framework.Services.ContractPermission", _contractPermission },
-            { "Neo.SmartContract.Framework.Native.NeoAccountState", _neoAccountState },
-            { "Neo.SmartContract.Framework.Nep11TokenState", _nep11TokenState },
-            { "Neo.SmartContract.Framework.Services.Notification", _notification },
-            { "Neo.SmartContract.Framework.Services.StorageMap", _storageMap },
-            { "Neo.SmartContract.Framework.Services.Transaction", _transaction },
+            { "Neo#Block", _block },
+            { "Neo#Contract", _contract },
+            { "Neo#ContractAbi", _contractAbi },
+            { "Neo#ContractEventDescriptor", _contractEventDescriptor },
+            { "Neo#ContractGroup", _contractGroup },
+            { "Neo#ContractManifest", _contractManifest },
+            { "Neo#ContractMethodDescriptor", _contractMethodDescriptor },
+            { "Neo#ContractParameterDefinition", _contractParameterDefinition },
+            { "Neo#ContractPermission", _contractPermission },
+            { "Neo#NeoAccountState", _neoAccountState },
+            { "Neo#Nep11TokenState", _nep11TokenState },
+            { "Neo#Notification", _notification },
+            { "Neo#StorageMap", _storageMap },
+            { "Neo#Transaction", _transaction },
         };
 
     public static bool TryGetType(string name, [MaybeNullWhen(false)] out StructContractType type)
