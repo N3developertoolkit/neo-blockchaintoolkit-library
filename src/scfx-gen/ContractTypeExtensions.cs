@@ -16,4 +16,15 @@ static class ContractTypeExtensions
 
     public static INamedTypeSymbol FindType(this Compilation compilation, string name)
         => compilation.GetTypeByMetadataName(name) ?? throw new Exception($"{name} type not found");
+
+    public static IEnumerable<IFieldSymbol> GetAllFields(this ITypeSymbol @this)
+    {
+        if (@this.SpecialType == SpecialType.System_Object) return Enumerable.Empty<IFieldSymbol>();
+
+        var baseFields = @this.IsReferenceType && @this.BaseType is not null
+            ? GetAllFields(@this.BaseType)
+            : Enumerable.Empty<IFieldSymbol>();
+        return baseFields
+            .Concat(@this.GetMembers().OfType<IFieldSymbol>());
+    }
 }

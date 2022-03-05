@@ -117,8 +117,7 @@ foreach (var type in types)
     if (type.GetAttributes().Any(a => compare(a.AttributeClass, contractAttrib))) continue;
     if (type.IsGenericType) continue;
 
-    var fields = type.GetMembers()
-        .OfType<IFieldSymbol>()
+    var fields = type.GetAllFields()
         .Where(f => !f.HasConstantValue && !f.IsStatic);
     if (!fields.Any()) continue;
 
