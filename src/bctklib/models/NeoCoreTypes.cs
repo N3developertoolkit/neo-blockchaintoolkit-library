@@ -127,15 +127,6 @@ public static class NeoCoreTypes
                 ("VoteTo", PrimitiveContractType.PublicKey),
             }));
 
-    public static StructContractType Nep11TokenState => _nep11TokenState.Value;
-    static readonly Lazy<StructContractType> _nep11TokenState = new(() => 
-        new StructContractType(
-            "Neo#Nep11TokenState",
-            new (string, ContractType)[] {
-                ("Owner", PrimitiveContractType.Address),
-                ("Name", PrimitiveContractType.String),
-            }));
-
     public static StructContractType Notification => _notification.Value;
     static readonly Lazy<StructContractType> _notification = new(() => 
         new StructContractType(
@@ -144,15 +135,6 @@ public static class NeoCoreTypes
                 ("ScriptHash", PrimitiveContractType.Hash160),
                 ("EventName", PrimitiveContractType.String),
                 ("State", new ArrayContractType(UnspecifiedContractType.Unspecified)),
-            }));
-
-    public static StructContractType StorageMap => _storageMap.Value;
-    static readonly Lazy<StructContractType> _storageMap = new(() => 
-        new StructContractType(
-            "Neo#StorageMap",
-            new (string, ContractType)[] {
-                ("Context", new InteropContractType("StorageContext")),
-                ("Prefix", PrimitiveContractType.ByteArray),
             }));
 
     public static StructContractType Transaction => _transaction.Value;
@@ -183,9 +165,7 @@ public static class NeoCoreTypes
             { "Neo#ContractParameterDefinition", _contractParameterDefinition },
             { "Neo#ContractPermission", _contractPermission },
             { "Neo#NeoAccountState", _neoAccountState },
-            { "Neo#Nep11TokenState", _nep11TokenState },
             { "Neo#Notification", _notification },
-            { "Neo#StorageMap", _storageMap },
             { "Neo#Transaction", _transaction },
         };
 

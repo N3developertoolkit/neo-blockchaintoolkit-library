@@ -83,6 +83,21 @@ var hash160AsAddress = new List<(string type, string field)>()
     ("Transaction", "Sender"),
 };
 
+var skipTypes = new List<string>()
+{
+    "Nep11TokenState", "StorageMap"
+};
+
+// Note: Nep11TokenState and StorageMap are C# helper types that aren't
+//       really core types. Not sure they should be included in NeoCoreTypes.
+//       StorageMap has two fields, an interop StorageContext + the prefix
+//       byte array. Advanced debug view of StorageMap doesn't seem very 
+//       important. Nep11TokenState is obviously of limited general use and
+//       it's intentded to be derived rather than used directly. On the 
+//       other hand, not sure how to ensure Nep11TokenState.Owner renders
+//       as account rather than UInt160 in a derived type w/o modifying
+//       the C# source. 
+
 
 Console.WriteLine(@"
 //------------------------------------------------------------------------------
@@ -116,6 +131,7 @@ foreach (var type in types)
     if (type.IsStatic) continue;
     if (type.GetAttributes().Any(a => compare(a.AttributeClass, contractAttrib))) continue;
     if (type.IsGenericType) continue;
+    if (skipTypes.Contains(type.Name)) continue;
 
     var fields = type.GetAllFields()
         .Where(f => !f.HasConstantValue && !f.IsStatic);

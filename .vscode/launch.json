@@ -9,9 +9,9 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/test/state-store/bin/Debug/net5.0/state-store.dll",
+            "program": "${workspaceFolder}/src/scfx-gen/bin/Debug/net6.0/scfx-gen.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/test/state-store",
+            "cwd": "${workspaceFolder}/src/scfx-gen",
             "console": "internalConsole",
             "stopAtEntry": false
         },
