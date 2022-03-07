@@ -19,6 +19,7 @@ if (!Directory.Exists(packagePath)) throw new Exception("SmartContract Framework
 
 var version = "3.1.0";
 var path = Path.Combine(Path.Combine(packagePath, version), "src");
+path = @"C:\Users\harry\Source\neo\official\devpack\src\Neo.SmartContract.Framework";
 if (!Directory.Exists(path)) throw new Exception($"SmartContract Framework source not found {path}");
 
 var enumOptions = new EnumerationOptions() { RecurseSubdirectories = true };
@@ -115,7 +116,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Models;
 
-public static class NeoCoreTypes
+public static partial class NativeStructs
 {");
 
 bool first = true;

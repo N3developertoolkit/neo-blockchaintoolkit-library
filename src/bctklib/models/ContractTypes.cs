@@ -73,7 +73,7 @@ namespace Neo.BlockchainToolkit.Models
                 }
 
                 if (typeName.StartsWith("Neo#")
-                    && NeoCoreTypes.TryGetType(typeName, out var @struct))
+                    && NativeStructs.TryGetType(typeName, out var @struct))
                 {
                     type = @struct;
                     return true;
@@ -130,6 +130,11 @@ namespace Neo.BlockchainToolkit.Models
         public string Name { get; } = string.Empty;
         public IReadOnlyList<(string Name, ContractType Type)> Fields { get; }
             = Array.Empty<(string, ContractType)>();
+
+        public static StructContractType Create(string name, params (string Name, ContractType Type)[] fields)
+        {
+            return new StructContractType(name, fields);
+        }
 
         public StructContractType(string name, IReadOnlyList<(string Name, ContractType Type)> fields)
         {

@@ -4,14 +4,24 @@ using System.Linq;
 
 namespace Neo.BlockchainToolkit.Models
 {
+    public readonly record struct KeySegment(string Name, PrimitiveType Type);
+
     public readonly struct StorageDef : IEquatable<StorageDef>
     {
-        public readonly record struct KeySegment(string Name, PrimitiveType Type);
-
         public readonly string Name;
         public readonly ReadOnlyMemory<byte> KeyPrefix;
         public readonly IReadOnlyList<KeySegment> KeySegments;
         public readonly ContractType ValueType;
+
+        public StorageDef(string name, byte keyPrefix, ContractType valueType)
+            : this(name, new[] { keyPrefix }, Array.Empty<KeySegment>(), valueType)
+        {
+        }
+
+        public StorageDef(string name, byte keyPrefix, ContractType valueType, params KeySegment[] keySegments)
+            : this(name, new[] { keyPrefix }, keySegments, valueType)
+        {
+        }
 
         public StorageDef(string name, ReadOnlyMemory<byte> keyPrefix, IReadOnlyList<KeySegment> keySegments, ContractType valueType)
         {

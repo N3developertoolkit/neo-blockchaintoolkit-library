@@ -219,10 +219,10 @@ namespace Neo.BlockchainToolkit.Models
             throw new JsonException($"Invalid key prefix JSON type {prefixToken.Type}");
         }
 
-        internal static IReadOnlyList<StorageDef.KeySegment> ParseKeySegments(JToken? keyToken)
+        internal static IReadOnlyList<KeySegment> ParseKeySegments(JToken? keyToken)
         {
             var segmentsToken = keyToken?.SelectToken("segments");
-            if (segmentsToken is null) return Array.Empty<StorageDef.KeySegment>();
+            if (segmentsToken is null) return Array.Empty<KeySegment>();
 
             if (segmentsToken.Type == JTokenType.Array)
             {
@@ -237,7 +237,7 @@ namespace Neo.BlockchainToolkit.Models
             throw new JsonException("Invalid Key Segment JSON");
         }
 
-        internal static StorageDef.KeySegment ParseKeySegment(JToken segmentToken)
+        internal static KeySegment ParseKeySegment(JToken segmentToken)
         {
             if (segmentToken.Type != JTokenType.Object) throw new JsonException($"Invalid Key Segment JSON type {segmentToken.Type}");
 
@@ -245,7 +245,7 @@ namespace Neo.BlockchainToolkit.Models
             var segmentType = Enum.Parse<PrimitiveType>(segmentToken.Value<string>("type")
                 ?? throw new JsonException("Invalid Key Segment type JSON"));
 
-            return new StorageDef.KeySegment(segmentName, segmentType);
+            return new KeySegment(segmentName, segmentType);
         }
     }
 }

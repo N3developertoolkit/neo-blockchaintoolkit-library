@@ -14,7 +14,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Models;
 
-public static class NeoCoreTypes
+public static partial class NativeStructs
 {
     public static StructContractType Block => _block.Value;
     static readonly Lazy<StructContractType> _block = new(() => 
@@ -42,7 +42,7 @@ public static class NeoCoreTypes
                 ("UpdateCounter", PrimitiveContractType.Integer),
                 ("Hash", PrimitiveContractType.Hash160),
                 ("Nef", PrimitiveContractType.ByteArray),
-                ("Manifest", NeoCoreTypes.ContractManifest),
+                ("Manifest", NativeStructs.ContractManifest),
             }));
 
     public static StructContractType ContractAbi => _contractAbi.Value;
@@ -50,8 +50,8 @@ public static class NeoCoreTypes
         new StructContractType(
             "Neo#ContractAbi",
             new (string, ContractType)[] {
-                ("Methods", new ArrayContractType(NeoCoreTypes.ContractMethodDescriptor)),
-                ("Events", new ArrayContractType(NeoCoreTypes.ContractEventDescriptor)),
+                ("Methods", new ArrayContractType(NativeStructs.ContractMethodDescriptor)),
+                ("Events", new ArrayContractType(NativeStructs.ContractEventDescriptor)),
             }));
 
     public static StructContractType ContractEventDescriptor => _contractEventDescriptor.Value;
@@ -60,7 +60,7 @@ public static class NeoCoreTypes
             "Neo#ContractEventDescriptor",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
-                ("Parameters", new ArrayContractType(NeoCoreTypes.ContractParameterDefinition)),
+                ("Parameters", new ArrayContractType(NativeStructs.ContractParameterDefinition)),
             }));
 
     public static StructContractType ContractGroup => _contractGroup.Value;
@@ -78,11 +78,11 @@ public static class NeoCoreTypes
             "Neo#ContractManifest",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
-                ("Groups", new ArrayContractType(NeoCoreTypes.ContractGroup)),
+                ("Groups", new ArrayContractType(NativeStructs.ContractGroup)),
                 ("Reserved", UnspecifiedContractType.Unspecified),
                 ("SupportedStandards", new ArrayContractType(PrimitiveContractType.String)),
-                ("Abi", NeoCoreTypes.ContractAbi),
-                ("Permissions", new ArrayContractType(NeoCoreTypes.ContractPermission)),
+                ("Abi", NativeStructs.ContractAbi),
+                ("Permissions", new ArrayContractType(NativeStructs.ContractPermission)),
                 ("Trusts", new ArrayContractType(PrimitiveContractType.ByteArray)),
                 ("Extra", PrimitiveContractType.String),
             }));
@@ -93,7 +93,7 @@ public static class NeoCoreTypes
             "Neo#ContractMethodDescriptor",
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
-                ("Parameters", new ArrayContractType(NeoCoreTypes.ContractParameterDefinition)),
+                ("Parameters", new ArrayContractType(NativeStructs.ContractParameterDefinition)),
                 ("ReturnType", PrimitiveContractType.Integer),
                 ("Offset", PrimitiveContractType.Integer),
                 ("Safe", PrimitiveContractType.Boolean),
