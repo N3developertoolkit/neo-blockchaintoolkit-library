@@ -1,25 +1,53 @@
 ﻿
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Neo.BlockchainToolkit.Models;
+using CliWrap;
+using CliWrap.Buffered;
+using SemVersion;
 
 EnableAnsiEscapeSequences();
 
-// TODO: use "dotnet nuget locals global-packages --list"
-//       returns: global-packages: C:\Users\harry\.nuget\packages\
-const string globalPackages = @"C:\Users\harry\.nuget\packages\";
+var result = await Cli.Wrap("dotnet")
+    .WithArguments("nuget locals global-packages --list")
+    .ExecuteBufferedAsync();
+
+var globalPackages = result.ExitCode == 0 && result.StandardOutput.StartsWith("global-packages:")
+    ? result.StandardOutput.Substring(16).Trim()
+    : throw new Exception($"dotnet nuget locals global-packages --list failed");
+
+result = await Cli.Wrap("dotnet")
+    .WithArguments("--list-sdks")
+    .ExecuteBufferedAsync();
+
+var sdkPath = result.StandardOutput.Split(Environment.NewLine)
+    .Select(l => Regex.Match(l, @"(.*)\ \[(.*)\]"))
+    .Where(m => m.Success)
+    .Select(m => (
+        version: SemanticVersion.Parse(m.Groups[1].Value),
+        path: (string?)m.Groups[2].Value))
+    .OrderByDescending(t => t.version)
+    .Select(t => t.path)
+    .FirstOrDefault();
+
+var dotnetPath = Path.GetDirectoryName(sdkPath);
+if (string.IsNullOrEmpty(dotnetPath)) throw new Exception("dotnet --list-sdks failed");
 
 var packagePath = Path.Combine(globalPackages, "neo.smartcontract.framework");
 if (!Directory.Exists(packagePath)) throw new Exception("SmartContract Framework not in nuget global packages repo");
 
-// TODO: find latest version or use version specified in CLI argument
-//       and use SemanticVersion type
+var latestVersion = Directory.EnumerateDirectories(packagePath)
+    .Select(p => SemVersion.SemanticVersion.Parse(Path.GetFileName(p)))
+    .Where(v => string.IsNullOrEmpty(v.Prerelease))
+    .OrderByDescending(v => v)
+    .FirstOrDefault();
 
-var version = "3.1.0";
-var path = Path.Combine(Path.Combine(packagePath, version), "src");
-path = @"C:\Users\harry\Source\neo\official\devpack\src\Neo.SmartContract.Framework";
+if (latestVersion is null) throw new Exception("valid version of SCFX not found");
+
+var path = Path.Combine(Path.Combine(packagePath, $"{latestVersion}"), "src");
 if (!Directory.Exists(path)) throw new Exception($"SmartContract Framework source not found {path}");
 
 var enumOptions = new EnumerationOptions() { RecurseSubdirectories = true };
@@ -27,24 +55,19 @@ var trees = Directory.EnumerateFiles(path, "*.cs", enumOptions)
     .Select(f => CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f));
 var compileOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
 
-// TODO: determine targeting pack folder @ runtime
+var netCoreAppRefPath = Path.Combine(dotnetPath, "packs", "Microsoft.NETCore.App.Ref");
+var sdkVersion = Directory.EnumerateDirectories(netCoreAppRefPath)
+    .Select(p => SemVersion.SemanticVersion.Parse(Path.GetFileName(p)))
+    .Where(v => string.IsNullOrEmpty(v.Prerelease))
+    .Where(v => v.Major == 6)
+    .OrderByDescending(v => v)
+    .FirstOrDefault();
 
-// Details: https://docs.microsoft.com/en-us/dotnet/core/distribution-packaging
-// to locate the targeting pack folder
-// * run 'dotnet --list-sdks' to get a list of installed SDKs + folder
-//   Output should be something like '6.0.102 [C:\Program Files\dotnet\sdk]'.
-// * 'packs' folder should be sibling to sdk folder from --list-sdks command
-// * 'packs/Microsoft.NETCore.App.Ref/<latest 6.0.x version>/ref/net6.0 
+if (sdkVersion is null) throw new Exception("Could not locate 6.x reference assemblies");
 
-// it's probably not important, but I could probably write  an MSBuild project
-// that echoed $(NetCoreRoot) or $(NetCoreTargetingPackRoot) to the console.
-// I wonder if you can launch msbuild as a command and pass build steps in on 
-// the command line. That would make it very easy to get $(NetCoreTargetingPackRoot)
-// But in the short term, I can simply start with the hardcoded path.
-
-const string PACK_FOLDER = @"C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\6.0.2\ref\net6.0";
+var referencesPath = Path.Combine(netCoreAppRefPath, $"{sdkVersion}", "ref", "net6.0");
 var references = Directory
-    .EnumerateFiles(PACK_FOLDER, "*.dll")
+    .EnumerateFiles(referencesPath, "*.dll")
     .Select(@ref => MetadataReference.CreateFromFile(@ref));
 var compilation = CSharpCompilation.Create(null, trees, references, compileOptions);
 
