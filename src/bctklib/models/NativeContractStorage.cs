@@ -1,21 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Models;
 
 public static class NativeContractStorage
 {
-    static readonly IReadOnlyList<StorageDef> contractManagement = new []
+    public static IReadOnlyList<StorageDef> ContractManagement => _contractManagement.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _contractManagement = new(() => new[]
     {
         new StorageDef("Contract", 8, NativeStructs.Contract,
             new KeySegment("hash", PrimitiveType.Hash160)),
         new StorageDef("NextAvailableId", 15, PrimitiveContractType.Integer),
         new StorageDef("MinimumDeploymentFee", 20, PrimitiveContractType.Integer),
-    };
+    });
 
-    static readonly IReadOnlyList<StorageDef> gasToken = new []
+    public static IReadOnlyList<StorageDef> GasToken => _gasToken.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _gasToken = new(() => new[]
     {
         new StorageDef("TotalSupply", 11, PrimitiveContractType.Integer),
         new StorageDef("Account", 20, 
@@ -25,12 +25,13 @@ public static class NativeContractStorage
                     ("Balance", PrimitiveContractType.Integer)
                 }),
             new KeySegment("account", PrimitiveType.Hash160)),
-    };
+    });
 
-    static readonly IReadOnlyList<StorageDef> ledgerContract = new []
+    public static IReadOnlyList<StorageDef> LedgerContract => _ledgerContract.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _ledgerContract = new(() => new[]
     {
         new StorageDef("BlockHash", 9, PrimitiveContractType.Hash256,
-            new KeySegment("index", (PrimitiveType)0xff)), // big endian uint
+            new KeySegment("index", default(BlockIndex))),
         new StorageDef("CurrentBlock", 12, 
             new StructContractType(
                 "Neo#HashIndexState",
@@ -42,9 +43,10 @@ public static class NativeContractStorage
             new KeySegment("hash", PrimitiveType.Hash256)),
         new StorageDef("Transaction", 11, NativeStructs.Transaction,
             new KeySegment("hash", PrimitiveType.Hash256)),
-    };
+    });
 
-    static readonly IReadOnlyList<StorageDef> neoToken = new []
+    public static IReadOnlyList<StorageDef> NeoToken => _neoToken.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _neoToken = new(() => new[]
     {
         new StorageDef("TotalSupply", 11, PrimitiveContractType.Integer),
         new StorageDef("Account", 20, NativeStructs.NeoAccountState,
@@ -66,14 +68,15 @@ public static class NativeContractStorage
                     ("Votes", PrimitiveContractType.Integer)
                 }))),
         new StorageDef("GasPerBlock", 29, PrimitiveContractType.Integer,
-            new KeySegment("index", PrimitiveType.Integer)), // big endian uint
+            new KeySegment("index", default(BlockIndex))),
         new StorageDef("RegisterPrice", 13, PrimitiveContractType.Integer),
         new StorageDef("VoterRewardPerCommittee", 23, PrimitiveContractType.Integer,
             new KeySegment("publicKey", PrimitiveType.PublicKey),
-            new KeySegment("index", PrimitiveType.Integer)), // big endian uint
-    };
+            new KeySegment("index", default(BlockIndex))),
+    });
 
-    static readonly IReadOnlyList<StorageDef> oracleContract = new []
+    public static IReadOnlyList<StorageDef> OracleContract => _oracleContract.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _oracleContract = new(() => new[]
     {
         new StorageDef("Price", 5, PrimitiveContractType.Integer),
         new StorageDef("RequestId", 9, PrimitiveContractType.Integer),
@@ -89,11 +92,38 @@ public static class NativeContractStorage
                     ("CallbackMethod", PrimitiveContractType.String),
                     ("UserData", PrimitiveContractType.ByteArray)
                 }),
-            new KeySegment("index", PrimitiveType.Integer)), // big endian uint
+            new KeySegment("index", default(BlockIndex))),
         new StorageDef("IdList", 9, new ArrayContractType(PrimitiveContractType.Integer),
             new KeySegment("urlHash", PrimitiveType.Hash160)),
-    };
+    });
 
-    // PolicyContract
-    // RoleManagement
+    public static IReadOnlyList<StorageDef> PolicyContract => _policyContract.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _policyContract = new(() => new[]
+    {
+        new StorageDef("BlockedAccount", 15, PrimitiveContractType.ByteArray,
+            new KeySegment("account", PrimitiveType.Address)),
+        new StorageDef("FeePerByte", 10, PrimitiveContractType.Integer),
+        new StorageDef("ExecFeeFactor", 18, PrimitiveContractType.Integer),
+        new StorageDef("StoragePrice", 19, PrimitiveContractType.Integer),
+    });
+
+    public static IReadOnlyList<StorageDef> RoleManagement => _roleManagement.Value;
+    static readonly Lazy<IReadOnlyList<StorageDef>> _roleManagement = new(() => new[]
+    {
+        new StorageDef("StateValidator", 4, NodeList,
+            new KeySegment("index", default(BlockIndex))), 
+        new StorageDef("Oracle", 8, NodeList,
+            new KeySegment("index", default(BlockIndex))),
+        new StorageDef("NeoFSAlphabetNode", 16, NodeList,
+            new KeySegment("index", default(BlockIndex))),
+    });
+
+    public static StructContractType NodeList => _NodeList.Value;
+    static readonly Lazy<StructContractType> _NodeList = new(() => 
+        new StructContractType(
+            "Neo#NodeList",
+            new (string, ContractType)[] {
+                ("Nodes", new ArrayContractType(PrimitiveContractType.PublicKey)),
+            }));
+
 }

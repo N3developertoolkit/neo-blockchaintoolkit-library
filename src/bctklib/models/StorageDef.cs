@@ -1,10 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OneOf;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    public readonly record struct KeySegment(string Name, PrimitiveType Type);
+    // Several native contracts use the big-endian encoded block index as a key segment.
+    // This is *NOT SUPPORTED* for deployed contracts. There is no string serialized 
+    // format for BlockIndex, so it should never appear in the debug info of a deployed
+    // contract. 
+
+    public struct BlockIndex { }
+    public readonly record struct KeySegment(string Name, OneOf<PrimitiveType, BlockIndex> Type);
 
     public readonly struct StorageDef : IEquatable<StorageDef>
     {

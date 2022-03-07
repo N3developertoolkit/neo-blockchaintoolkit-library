@@ -53,7 +53,6 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
             SpecialType.System_Object => UnspecifiedContractType.Unspecified,
             SpecialType.None => ConvertSymbol(symbol),
             _ => throw new Exception($"Could not resolve {symbol.Name}")
-
         };
     }
 
