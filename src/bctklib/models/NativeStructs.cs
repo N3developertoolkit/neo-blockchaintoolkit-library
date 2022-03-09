@@ -16,8 +16,8 @@ namespace Neo.BlockchainToolkit.Models;
 
 public static partial class NativeStructs
 {
-    public static StructContractType Block => _block.Value;
-    static readonly Lazy<StructContractType> _block = new(() => 
+    public static StructContractType Block => block.Value;
+    static readonly Lazy<StructContractType> block = new(() => 
         new StructContractType(
             "Neo#Block",
             new (string, ContractType)[] {
@@ -33,8 +33,8 @@ public static partial class NativeStructs
                 ("TransactionsCount", PrimitiveContractType.Integer),
             }));
 
-    public static StructContractType Contract => _contract.Value;
-    static readonly Lazy<StructContractType> _contract = new(() => 
+    public static StructContractType Contract => contract.Value;
+    static readonly Lazy<StructContractType> contract = new(() => 
         new StructContractType(
             "Neo#Contract",
             new (string, ContractType)[] {
@@ -45,8 +45,8 @@ public static partial class NativeStructs
                 ("Manifest", NativeStructs.ContractManifest),
             }));
 
-    public static StructContractType ContractAbi => _contractAbi.Value;
-    static readonly Lazy<StructContractType> _contractAbi = new(() => 
+    public static StructContractType ContractAbi => contractAbi.Value;
+    static readonly Lazy<StructContractType> contractAbi = new(() => 
         new StructContractType(
             "Neo#ContractAbi",
             new (string, ContractType)[] {
@@ -54,8 +54,8 @@ public static partial class NativeStructs
                 ("Events", new ArrayContractType(NativeStructs.ContractEventDescriptor)),
             }));
 
-    public static StructContractType ContractEventDescriptor => _contractEventDescriptor.Value;
-    static readonly Lazy<StructContractType> _contractEventDescriptor = new(() => 
+    public static StructContractType ContractEventDescriptor => contractEventDescriptor.Value;
+    static readonly Lazy<StructContractType> contractEventDescriptor = new(() => 
         new StructContractType(
             "Neo#ContractEventDescriptor",
             new (string, ContractType)[] {
@@ -63,8 +63,8 @@ public static partial class NativeStructs
                 ("Parameters", new ArrayContractType(NativeStructs.ContractParameterDefinition)),
             }));
 
-    public static StructContractType ContractGroup => _contractGroup.Value;
-    static readonly Lazy<StructContractType> _contractGroup = new(() => 
+    public static StructContractType ContractGroup => contractGroup.Value;
+    static readonly Lazy<StructContractType> contractGroup = new(() => 
         new StructContractType(
             "Neo#ContractGroup",
             new (string, ContractType)[] {
@@ -72,8 +72,8 @@ public static partial class NativeStructs
                 ("Signature", PrimitiveContractType.ByteArray),
             }));
 
-    public static StructContractType ContractManifest => _contractManifest.Value;
-    static readonly Lazy<StructContractType> _contractManifest = new(() => 
+    public static StructContractType ContractManifest => contractManifest.Value;
+    static readonly Lazy<StructContractType> contractManifest = new(() => 
         new StructContractType(
             "Neo#ContractManifest",
             new (string, ContractType)[] {
@@ -87,8 +87,8 @@ public static partial class NativeStructs
                 ("Extra", PrimitiveContractType.String),
             }));
 
-    public static StructContractType ContractMethodDescriptor => _contractMethodDescriptor.Value;
-    static readonly Lazy<StructContractType> _contractMethodDescriptor = new(() => 
+    public static StructContractType ContractMethodDescriptor => contractMethodDescriptor.Value;
+    static readonly Lazy<StructContractType> contractMethodDescriptor = new(() => 
         new StructContractType(
             "Neo#ContractMethodDescriptor",
             new (string, ContractType)[] {
@@ -99,8 +99,8 @@ public static partial class NativeStructs
                 ("Safe", PrimitiveContractType.Boolean),
             }));
 
-    public static StructContractType ContractParameterDefinition => _contractParameterDefinition.Value;
-    static readonly Lazy<StructContractType> _contractParameterDefinition = new(() => 
+    public static StructContractType ContractParameterDefinition => contractParameterDefinition.Value;
+    static readonly Lazy<StructContractType> contractParameterDefinition = new(() => 
         new StructContractType(
             "Neo#ContractParameterDefinition",
             new (string, ContractType)[] {
@@ -108,8 +108,8 @@ public static partial class NativeStructs
                 ("Type", PrimitiveContractType.Integer),
             }));
 
-    public static StructContractType ContractPermission => _contractPermission.Value;
-    static readonly Lazy<StructContractType> _contractPermission = new(() => 
+    public static StructContractType ContractPermission => contractPermission.Value;
+    static readonly Lazy<StructContractType> contractPermission = new(() => 
         new StructContractType(
             "Neo#ContractPermission",
             new (string, ContractType)[] {
@@ -117,8 +117,8 @@ public static partial class NativeStructs
                 ("Methods", new ArrayContractType(PrimitiveContractType.String)),
             }));
 
-    public static StructContractType NeoAccountState => _neoAccountState.Value;
-    static readonly Lazy<StructContractType> _neoAccountState = new(() => 
+    public static StructContractType NeoAccountState => neoAccountState.Value;
+    static readonly Lazy<StructContractType> neoAccountState = new(() => 
         new StructContractType(
             "Neo#NeoAccountState",
             new (string, ContractType)[] {
@@ -127,8 +127,8 @@ public static partial class NativeStructs
                 ("VoteTo", PrimitiveContractType.PublicKey),
             }));
 
-    public static StructContractType Notification => _notification.Value;
-    static readonly Lazy<StructContractType> _notification = new(() => 
+    public static StructContractType Notification => notification.Value;
+    static readonly Lazy<StructContractType> notification = new(() => 
         new StructContractType(
             "Neo#Notification",
             new (string, ContractType)[] {
@@ -137,8 +137,8 @@ public static partial class NativeStructs
                 ("State", new ArrayContractType(ContractType.Unspecified)),
             }));
 
-    public static StructContractType Transaction => _transaction.Value;
-    static readonly Lazy<StructContractType> _transaction = new(() => 
+    public static StructContractType Transaction => transaction.Value;
+    static readonly Lazy<StructContractType> transaction = new(() => 
         new StructContractType(
             "Neo#Transaction",
             new (string, ContractType)[] {
@@ -152,26 +152,26 @@ public static partial class NativeStructs
                 ("Script", PrimitiveContractType.ByteArray),
             }));
 
-    static IReadOnlyDictionary<string, Lazy<StructContractType>> coreTypes 
-        = new Dictionary<string, Lazy<StructContractType>>()
+    static readonly Lazy<IReadOnlyDictionary<string, Lazy<StructContractType>>> coreTypes 
+        = new Lazy<IReadOnlyDictionary<string, Lazy<StructContractType>>>(() => new Dictionary<string, Lazy<StructContractType>>()
         {
-            { "Neo#Block", _block },
-            { "Neo#Contract", _contract },
-            { "Neo#ContractAbi", _contractAbi },
-            { "Neo#ContractEventDescriptor", _contractEventDescriptor },
-            { "Neo#ContractGroup", _contractGroup },
-            { "Neo#ContractManifest", _contractManifest },
-            { "Neo#ContractMethodDescriptor", _contractMethodDescriptor },
-            { "Neo#ContractParameterDefinition", _contractParameterDefinition },
-            { "Neo#ContractPermission", _contractPermission },
-            { "Neo#NeoAccountState", _neoAccountState },
-            { "Neo#Notification", _notification },
-            { "Neo#Transaction", _transaction },
-        };
+            { "Neo#Block", block },
+            { "Neo#Contract", contract },
+            { "Neo#ContractAbi", contractAbi },
+            { "Neo#ContractEventDescriptor", contractEventDescriptor },
+            { "Neo#ContractGroup", contractGroup },
+            { "Neo#ContractManifest", contractManifest },
+            { "Neo#ContractMethodDescriptor", contractMethodDescriptor },
+            { "Neo#ContractParameterDefinition", contractParameterDefinition },
+            { "Neo#ContractPermission", contractPermission },
+            { "Neo#NeoAccountState", neoAccountState },
+            { "Neo#Notification", notification },
+            { "Neo#Transaction", transaction },
+        });
 
     public static bool TryGetType(string name, [MaybeNullWhen(false)] out StructContractType type)
     {
-        if (coreTypes.TryGetValue(name, out var lazy))
+        if (coreTypes.Value.TryGetValue(name, out var lazy))
         {
             type = lazy.Value;
             return true;

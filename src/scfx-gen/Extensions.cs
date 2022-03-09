@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Neo.BlockchainToolkit.Models;
 
-static class ContractTypeExtensions
+static class Extensions
 {
     public static string AsSource(this ContractType type) 
         => type switch
