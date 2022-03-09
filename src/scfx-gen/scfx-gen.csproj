@@ -6,7 +6,7 @@
     <RootNamespace>scfx_gen</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <DefineConstants>SCFXGEN</DefineConstants>
+    <DefineConstants>$(DefineConstants);SCFXGEN</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

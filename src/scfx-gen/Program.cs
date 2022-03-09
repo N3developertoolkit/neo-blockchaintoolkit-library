@@ -15,8 +15,9 @@ var result = await Cli.Wrap("dotnet")
     .WithArguments("nuget locals global-packages --list")
     .ExecuteBufferedAsync();
 
-var globalPackages = result.ExitCode == 0 && result.StandardOutput.StartsWith("global-packages:")
-    ? result.StandardOutput.Substring(16).Trim()
+const string GLOBAL_PACKAGES = "global-packages:";
+var globalPackages = result.ExitCode == 0 && result.StandardOutput.StartsWith(GLOBAL_PACKAGES)
+    ? result.StandardOutput.Substring(GLOBAL_PACKAGES.Length).Trim()
     : throw new Exception($"dotnet nuget locals global-packages --list failed");
 
 result = await Cli.Wrap("dotnet")
