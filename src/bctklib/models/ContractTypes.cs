@@ -47,7 +47,16 @@ namespace Neo.BlockchainToolkit.Models
                 if (typeName.StartsWith(ARRAY_PREFIX)
                     && typeName[^1] == '>')
                 {
-                    if (TryParse(new string(typeName.AsSpan()[ARRAY_PREFIX.Length..^1]), structs, out var arrayType))
+                    var arrayArg = typeName.AsSpan()[ARRAY_PREFIX.Length..^1];
+
+                    // support 'Array<>' syntax for untyped arrays
+                    if (arrayArg.IsEmpty)
+                    {
+                        type = new ArrayContractType(ContractType.Unspecified);
+                        return true;
+                    }
+
+                    if (TryParse(new string(arrayArg), structs, out var arrayType))
                     {
                         type = new ArrayContractType(arrayType);
                         return true;
@@ -58,6 +67,14 @@ namespace Neo.BlockchainToolkit.Models
                     && typeName[^1] == '>')
                 {
                     var mapArgs = typeName.AsSpan()[MAP_PREFIX.Length..^1];
+
+                    // support 'Map<>' syntax for untyped maps
+                    if (mapArgs.IsEmpty)
+                    {
+                        type = new MapContractType(PrimitiveType.ByteArray, ContractType.Unspecified);
+                        return true;
+                    }
+
                     var colonIndex = mapArgs.IndexOf(':');
                     if (colonIndex != -1
                         && Enum.TryParse<PrimitiveType>(mapArgs.Slice(0, colonIndex), out var keyType)
