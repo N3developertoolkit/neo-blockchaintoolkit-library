@@ -20,11 +20,19 @@ namespace Neo.BlockchainToolkit.Models
     {
         public readonly static ContractType Unspecified = new UnspecifiedContractType();
 
+#if (!SCFXGEN)
+
+        const string UNSPECIFIED = "#Unspecified";
+        const string ARRAY_PREFIX = "Array<";
+        const string MAP_PREFIX = "Map<";
+        const string INTEROP_PREFIX = "Interop<";
+        const string NEO_PREFIX = "Neo#";
+
         public static bool TryParse(string typeName, IReadOnlyDictionary<string, StructContractType> structs, out ContractType type)
         {
             if (typeName.Length > 0)
             {
-                if (typeName.Equals("#Unspecified"))
+                if (typeName.Equals(UNSPECIFIED))
                 {
                     type = ContractType.Unspecified;
                     return true;
@@ -37,20 +45,20 @@ namespace Neo.BlockchainToolkit.Models
                     return true;
                 }
 
-                if (typeName.StartsWith("Array<")
+                if (typeName.StartsWith(ARRAY_PREFIX)
                     && typeName[^1] == '>')
                 {
-                    if (TryParse(new string(typeName.AsSpan()[6..^1]), structs, out var arrayType))
+                    if (TryParse(new string(typeName.AsSpan()[ARRAY_PREFIX.Length..^1]), structs, out var arrayType))
                     {
                         type = new ArrayContractType(arrayType);
                         return true;
                     }
                 }
 
-                if (typeName.StartsWith("Map<")
+                if (typeName.StartsWith(MAP_PREFIX)
                     && typeName[^1] == '>')
                 {
-                    var mapArgs = typeName.AsSpan()[4..^1];
+                    var mapArgs = typeName.AsSpan()[MAP_PREFIX.Length..^1];
                     var colonIndex = mapArgs.IndexOf(':');
                     if (colonIndex != -1
                         && Enum.TryParse<PrimitiveType>(mapArgs.Slice(0, colonIndex), out var keyType)
@@ -61,30 +69,23 @@ namespace Neo.BlockchainToolkit.Models
                     }
                 }
 
-                if (typeName.StartsWith("Interop<")
+                if (typeName.StartsWith(INTEROP_PREFIX)
                     && typeName[^1] == '>')
                 {
-                    var interopArg = typeName.AsSpan()[8..^1];
-                    if (false == (interopArg.Contains('#')
-                        || interopArg.Contains('<')
-                        || interopArg.Contains('>')))
-                    {
-                        type = new InteropContractType(new string(interopArg));
-                        return true;
-                    }
-                }
-                
-#if (!SCFXGEN)
-                if (typeName.StartsWith("Neo#")
-                    && NativeStructs.TryGetType(typeName, out var nativeStruct))
-                {
-                    type = nativeStruct;
+                    var interopArg = typeName.AsSpan()[INTEROP_PREFIX.Length..^1];
+                    type = new InteropContractType(new string(interopArg));
                     return true;
                 }
-#endif
+                
+                if (typeName.StartsWith(NEO_PREFIX)
+                    && NativeStructs.TryGetType(typeName, out var @struct))
+                {
+                    type = @struct;
+                    return true;
+                }
 
                 if (StructContractType.IsValidName(typeName)
-                    && structs.TryGetValue(typeName, out var @struct))
+                    && structs.TryGetValue(typeName, out @struct))
                 {
                     type = @struct;
                     return true;
@@ -94,6 +95,7 @@ namespace Neo.BlockchainToolkit.Models
             type = ContractType.Unspecified;
             return false;
         }
+#endif
     }
 
     public record UnspecifiedContractType() : ContractType;
