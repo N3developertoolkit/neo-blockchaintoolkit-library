@@ -20,14 +20,13 @@ namespace Neo.BlockchainToolkit.Models
     {
         public readonly static ContractType Unspecified = new UnspecifiedContractType();
 
-#if (!SCFXGEN)
-
         const string UNSPECIFIED = "#Unspecified";
         const string ARRAY_PREFIX = "Array<";
         const string MAP_PREFIX = "Map<";
         const string INTEROP_PREFIX = "Interop<";
-        const string NEO_PREFIX = "Neo#";
+        protected const string NEO_PREFIX = "Neo#";
 
+#if (!SCFXGEN)
         public static bool TryParse(string typeName, IReadOnlyDictionary<string, StructContractType> structs, out ContractType type)
         {
             if (typeName.Length > 0)
@@ -141,7 +140,7 @@ namespace Neo.BlockchainToolkit.Models
 
         public StructContractType(string name, IReadOnlyList<(string Name, ContractType Type)> fields)
         {
-            if (!name.StartsWith("Neo#") && !IsValidName(name)) throw new ArgumentException(nameof(name));
+            if (!name.StartsWith(NEO_PREFIX) && !IsValidName(name)) throw new ArgumentException(nameof(name));
 
             this.Name = name;
             this.Fields = fields;
