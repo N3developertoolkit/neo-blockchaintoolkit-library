@@ -6,20 +6,18 @@
     <RootNamespace>scfx_gen</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <DefineConstants>SCFXGEN</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="NativeStructs.cs" />
+    <Compile Include="..\bctklib\models\ContractTypes.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CliWrap" Version="3.4.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.1.0" />
     <PackageReference Include="SemanticVersion" Version="2.1.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\bctklib\bctklib.csproj" />
   </ItemGroup>
 
 </Project>

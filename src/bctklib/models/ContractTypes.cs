@@ -73,16 +73,18 @@ namespace Neo.BlockchainToolkit.Models
                         return true;
                     }
                 }
-
+                
+#if (!SCFXGEN)
                 if (typeName.StartsWith("Neo#")
-                    && NativeStructs.TryGetType(typeName, out var @struct))
+                    && NativeStructs.TryGetType(typeName, out var nativeStruct))
                 {
-                    type = @struct;
+                    type = nativeStruct;
                     return true;
                 }
+#endif
 
                 if (StructContractType.IsValidName(typeName)
-                    && structs.TryGetValue(typeName, out @struct))
+                    && structs.TryGetValue(typeName, out var @struct))
                 {
                     type = @struct;
                     return true;
