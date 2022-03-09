@@ -9,10 +9,10 @@ namespace Neo.BlockchainToolkit.Models
 {
     public readonly record struct ContractStorageSchema
     {
-        public IReadOnlyList<StorageDef> StorageDefs { get; init; } = Array.Empty<StorageDef>();
+        public IReadOnlyList<StorageGroup> StorageDefs { get; init; } = Array.Empty<StorageGroup>();
         public IReadOnlyList<StructContractType> StructDefs { get; init; } = Array.Empty<StructContractType>();
 
-        public ContractStorageSchema(IReadOnlyList<StorageDef> storageDefs, IReadOnlyList<StructContractType> structDefs)
+        public ContractStorageSchema(IReadOnlyList<StorageGroup> storageDefs, IReadOnlyList<StructContractType> structDefs)
         {
             StorageDefs = storageDefs;
             StructDefs = structDefs;
@@ -84,7 +84,7 @@ namespace Neo.BlockchainToolkit.Models
             if (typeName.Equals("#Unspecified", StringComparison.OrdinalIgnoreCase) 
                 || typeName.Equals("Unspecified", StringComparison.OrdinalIgnoreCase))
             {
-                type = UnspecifiedContractType.Unspecified;
+                type = ContractType.Unspecified;
                 return true;
             }
 
@@ -123,7 +123,7 @@ namespace Neo.BlockchainToolkit.Models
                 }
             }
 
-            type = UnspecifiedContractType.Unspecified;
+            type = ContractType.Unspecified;
             return false;
 
             static bool TryParsePrimitiveType(ReadOnlySpan<char> span, out PrimitiveType type)
@@ -175,7 +175,7 @@ namespace Neo.BlockchainToolkit.Models
             return boundStructMap.Values;
         }
 
-        internal static StorageDef ParseStorageDef(KeyValuePair<string, JToken?> kvp, IReadOnlyDictionary<string, StructContractType> structMap)
+        internal static StorageGroup ParseStorageDef(KeyValuePair<string, JToken?> kvp, IReadOnlyDictionary<string, StructContractType> structMap)
         {
             var (name, storageToken) = kvp;
             if (storageToken is null) throw new JsonException("Null storage def type");
@@ -192,7 +192,7 @@ namespace Neo.BlockchainToolkit.Models
                     ? structDef
                     : throw new JsonException($"unrecognized storage value type {value}");
 
-            return new StorageDef(name, prefix, segments, valueType);
+            return new StorageGroup(name, prefix, segments, valueType);
         }
 
         internal static ReadOnlyMemory<byte> ParseKeyPrefix(JToken? keyToken)

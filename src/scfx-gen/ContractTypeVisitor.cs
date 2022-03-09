@@ -50,7 +50,7 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
             SpecialType.System_UInt16 => PrimitiveContractType.Integer,
             SpecialType.System_UInt32 => PrimitiveContractType.Integer,
             SpecialType.System_UInt64 => PrimitiveContractType.Integer,
-            SpecialType.System_Object => UnspecifiedContractType.Unspecified,
+            SpecialType.System_Object => ContractType.Unspecified,
             SpecialType.None => ConvertSymbol(symbol),
             _ => throw new Exception($"Could not resolve {symbol.Name}")
         };
@@ -61,7 +61,7 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
         if (symbol.ElementType.SpecialType == SpecialType.System_Byte)
             return PrimitiveContractType.ByteArray;
 
-        var elementType = Visit(symbol.ElementType) ?? UnspecifiedContractType.Unspecified;
+        var elementType = Visit(symbol.ElementType) ?? ContractType.Unspecified;
         return new ArrayContractType(elementType);
     }
 
@@ -85,13 +85,13 @@ class ContractTypeVisitor : SymbolVisitor<ContractType>
                 var key = Visit(symbol.TypeArguments[0]) as PrimitiveContractType;
                 if (key is null) throw new Exception("Invalid Map Key Type");
 
-                var value = Visit(symbol.TypeArguments[1]) ?? UnspecifiedContractType.Unspecified;
+                var value = Visit(symbol.TypeArguments[1]) ?? ContractType.Unspecified;
                 return new MapContractType(key.Type, value);
             }
 
             if (equals(Map, symbol.ConstructedFrom))
             {
-                var type = Visit(symbol.TypeArguments[0]) ?? UnspecifiedContractType.Unspecified;
+                var type = Visit(symbol.TypeArguments[0]) ?? ContractType.Unspecified;
                 return new ArrayContractType(type);
             }
 

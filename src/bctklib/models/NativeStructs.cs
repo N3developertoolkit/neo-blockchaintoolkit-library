@@ -79,7 +79,7 @@ public static partial class NativeStructs
             new (string, ContractType)[] {
                 ("Name", PrimitiveContractType.String),
                 ("Groups", new ArrayContractType(NativeStructs.ContractGroup)),
-                ("Reserved", UnspecifiedContractType.Unspecified),
+                ("Reserved", ContractType.Unspecified),
                 ("SupportedStandards", new ArrayContractType(PrimitiveContractType.String)),
                 ("Abi", NativeStructs.ContractAbi),
                 ("Permissions", new ArrayContractType(NativeStructs.ContractPermission)),
@@ -134,7 +134,7 @@ public static partial class NativeStructs
             new (string, ContractType)[] {
                 ("ScriptHash", PrimitiveContractType.Hash160),
                 ("EventName", PrimitiveContractType.String),
-                ("State", new ArrayContractType(UnspecifiedContractType.Unspecified)),
+                ("State", new ArrayContractType(ContractType.Unspecified)),
             }));
 
     public static StructContractType Transaction => _transaction.Value;

@@ -18,13 +18,15 @@ namespace Neo.BlockchainToolkit.Models
 
     public abstract record ContractType()
     {
+        public readonly static ContractType Unspecified = new UnspecifiedContractType();
+
         public static bool TryParse(string typeName, IReadOnlyDictionary<string, StructContractType> structs, out ContractType type)
         {
             if (typeName.Length > 0)
             {
                 if (typeName.Equals("#Unspecified"))
                 {
-                    type = UnspecifiedContractType.Unspecified;
+                    type = ContractType.Unspecified;
                     return true;
                 }
 
@@ -79,7 +81,7 @@ namespace Neo.BlockchainToolkit.Models
                     return true;
                 }
 
-                if (StructContractType.ValidateName(typeName)
+                if (StructContractType.IsValidName(typeName)
                     && structs.TryGetValue(typeName, out @struct))
                 {
                     type = @struct;
@@ -87,15 +89,12 @@ namespace Neo.BlockchainToolkit.Models
                 }
             }
 
-            type = UnspecifiedContractType.Unspecified;
+            type = ContractType.Unspecified;
             return false;
         }
     }
 
-    public record UnspecifiedContractType() : ContractType
-    {
-        public readonly static UnspecifiedContractType Unspecified = new UnspecifiedContractType();
-    }
+    public record UnspecifiedContractType() : ContractType;
 
     public record PrimitiveContractType(PrimitiveType Type) : ContractType
     {
@@ -138,19 +137,23 @@ namespace Neo.BlockchainToolkit.Models
 
         public StructContractType(string name, IReadOnlyList<(string Name, ContractType Type)> fields)
         {
-            if (!ValidateName(name)) throw new ArgumentException(nameof(name));
+            if (!name.StartsWith("Neo#") && !IsValidName(name)) throw new ArgumentException(nameof(name));
 
             this.Name = name;
             this.Fields = fields;
         }
 
-        public static bool ValidateName(string typeName)
-            => (typeName.Contains('#')
-                || typeName.Contains('<')
-                || typeName.Contains('>'));
+        public static bool IsValidName(ReadOnlySpan<char> typeName)
+            => typeName.Length > 0
+                && !typeName.Contains('#')
+                && !typeName.Contains('<')
+                && !typeName.Contains('>');
     }
 
     public record ArrayContractType(ContractType Type) : ContractType;
     public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
-    public record InteropContractType(string Type) : ContractType;
+    public record InteropContractType(string Type) : ContractType
+    {
+        public readonly static InteropContractType Unknown = new InteropContractType(string.Empty);
+    }
 }

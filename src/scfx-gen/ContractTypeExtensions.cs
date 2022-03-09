@@ -9,7 +9,7 @@ static class ContractTypeExtensions
             PrimitiveContractType p => $"PrimitiveContractType.{p.Type}",
             SymbolContractType s => $"NativeStructs.{s.Symbol.Name}",
             ArrayContractType a => $"new ArrayContractType({a.Type.AsSource()})",
-            UnspecifiedContractType => "UnspecifiedContractType.Unspecified",
+            UnspecifiedContractType => "ContractType.Unspecified",
             InteropContractType i => $"new InteropContractType(\"{i.Type}\")",
             _ => throw new NotImplementedException($"{nameof(AsSource)} {type.GetType().Name}"),
         };

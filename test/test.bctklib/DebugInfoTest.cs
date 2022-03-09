@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Neo;
 using Neo.BlockchainToolkit.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -17,6 +18,17 @@ namespace test.bctklib
     public class DebugInfoTest
     {
         const string TEST_HASH = "0xf69e5188632deb3a9273519efc86cb68da8d42b8";
+
+        [Fact]
+        public void can_load_v2_debug_info()
+        {
+            var debugInfoText = Utility.GetResource("v2-debug.json");
+            var debugInfoJson = JObject.Parse(debugInfoText);
+            var unboundStructs = DebugInfo.ParseUnboundStructs(debugInfoJson["structs"] as JArray ?? throw new Exception()).ToArray();
+            var boundStructs = DebugInfo.BindStructs(unboundStructs);
+
+            var debugInfo = DebugInfo.Load(debugInfoJson, token => token.Value<string>());
+        }
 
         [Fact]
         public async Task can_load_debug_json_nccs_rc3()
@@ -88,7 +100,7 @@ namespace test.bctklib
             var json = JObject.Parse(debugInfoJson);
             json.Remove("hash");
 
-            var ex = Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
+            var ex = Assert.Throws<JsonException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
             Assert.Equal("Missing hash value", ex.Message);
         }
 
@@ -194,13 +206,13 @@ namespace test.bctklib
                 s =>
                 {
                     Assert.Equal("testStatic1", s.Name);
-                    Assert.Equal("String", s.Type);
+                    Assert.Equal(PrimitiveContractType.String, s.Type);
                     Assert.Equal(0, s.Index);
                 },
                 s =>
                 {
                     Assert.Equal("testStatic2", s.Name);
-                    Assert.Equal("Hash160", s.Type);
+                    Assert.Equal(PrimitiveContractType.Hash160, s.Type);
                     Assert.Equal(1, s.Index);
                 });
         }
@@ -221,13 +233,13 @@ namespace test.bctklib
                 s =>
                 {
                     Assert.Equal("testStatic1", s.Name);
-                    Assert.Equal("String", s.Type);
+                    Assert.Equal(PrimitiveContractType.String, s.Type);
                     Assert.Equal(1, s.Index);
                 },
                 s =>
                 {
                     Assert.Equal("testStatic2", s.Name);
-                    Assert.Equal("Hash160", s.Type);
+                    Assert.Equal(PrimitiveContractType.Hash160, s.Type);
                     Assert.Equal(3, s.Index);
                 });
         }
@@ -242,7 +254,7 @@ namespace test.bctklib
                         "testStatic1,String,1",
                         "testStatic2,Hash160")));
 
-            Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
+            Assert.Throws<NotSupportedException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
         }
 
         [Fact]
