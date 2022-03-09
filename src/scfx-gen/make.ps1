@@ -1,2 +1,1 @@
-dotnet run > NativeStructs.cs
-mv .\NativeStructs.cs ..\bctklib\models\ -Force
+dotnet run > ..\bctklib\models\NativeStructs.cs
