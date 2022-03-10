@@ -20,10 +20,9 @@ namespace Neo.BlockchainToolkit.Models
  
     public partial class DebugInfo
     {
-        public readonly record struct Event(string Id, string Namespace, string Name, IReadOnlyList<SlotVariable> Parameters);
+        public readonly record struct Event(string Namespace, string Name, IReadOnlyList<SlotVariable> Parameters);
         public readonly record struct Method
         {
-            public string Id { get; init; }
             public string Namespace { get; init; }
             public string Name { get; init; }
             public (int Start, int End) Range { get; init; }
@@ -89,8 +88,10 @@ namespace Neo.BlockchainToolkit.Models
                 ? versionToken.Value<uint>()
                 : 1;
 
+            if (version != 1 && version != 2) throw new JsonException($"Invalid version {version}");
+
             var hash = json.TryGetValue("hash", out var hashToken)
-                ? UInt160.Parse(hashToken.Value<string>())
+                ? UInt160.Parse(hashToken.Value<string>() ?? "")
                 : throw new JsonException("Missing hash value");
 
             var checksum = version == 1 
@@ -104,7 +105,7 @@ namespace Neo.BlockchainToolkit.Models
 
             Func<string, ParsedType> parseType = version == 1
                 ? TryParseContractParameterType
-                : typeStr => typeStr.Equals("#Void")
+                : typeStr => typeStr is null || typeStr.Equals("#Void")
                     ? default(VoidReturn)
                     : ContractType.TryParse(typeStr, structMap, out var type)
                         ? type
@@ -170,7 +171,7 @@ namespace Neo.BlockchainToolkit.Models
 
         internal static UnboundVariable ParseUnboundVariable(JToken token)
         {
-            var value = token.Value<string>();
+            var value = token.Value<string>() ?? "";
             var values = value.Split(',');
             if (values.Length < 2 || values.Length > 3) throw new JsonException($"invalid type string \"{value}\"");
             int? index = values.Length == 3 ? int.Parse(values[2]) : null;
@@ -188,14 +189,11 @@ namespace Neo.BlockchainToolkit.Models
 
         internal static DebugInfo.Event ParseEvent(JToken token, ParseTypeFunc parseType)
         {
-            var id = token.Value<string>("id");
-            if (string.IsNullOrEmpty(id)) throw new JsonException("Invalid event id");
             var (ns, name) = SplitCommaPair(token.Value<string>("name"));
             var @params = ParseVariables(token["params"], parseType);
 
             return new DebugInfo.Event()
             {
-                Id = id,
                 Name = name,
                 Namespace = ns,
                 Parameters = @params.ToArray(),
@@ -222,15 +220,11 @@ namespace Neo.BlockchainToolkit.Models
 
         internal static DebugInfo.Method ParseMethod(JToken token, ParseTypeFunc parseType)
         {
-            var id = token.Value<string>("id");
-            if (string.IsNullOrEmpty(id)) throw new JsonException("Invalid method id");
             var (ns, name) = SplitCommaPair(token.Value<string>("name"));
             var @return = parseType(token.Value<string>("return"))
-                .Match<OneOf<ContractType, VoidReturn>>(
-                    ct => ct,
-                    vr => vr,
-                    _ => ContractType.Unspecified);
-
+                .TryPickT2(out _, out var _return)
+                    ? ContractType.Unspecified
+                    : _return;
 
             var unboundParams = RemoveInvalidThisParam(token["params"]
                 .Ensure()
@@ -243,7 +237,7 @@ namespace Neo.BlockchainToolkit.Models
             var variables = ParseVariables(token["variables"], parseType);
             var sequencePoints = token["sequence-points"].Ensure().Select(ParseSequencePoint);
 
-            var rangeValue = token.Value<string>("range");
+            var rangeValue = token.Value<string>("range") ?? "";
             var rangeValues = rangeValue.Split('-');
             if (rangeValues.Length != 2) throw new JsonException($"Invalid range string \"{rangeValue}\"");
             var rangeStart = int.Parse(rangeValues[0]);
@@ -251,7 +245,6 @@ namespace Neo.BlockchainToolkit.Models
 
             return new DebugInfo.Method()
             {
-                Id = id,
                 Name = name,
                 Namespace = ns,
                 Range = (rangeStart, rangeEnd),
@@ -276,16 +269,17 @@ namespace Neo.BlockchainToolkit.Models
 
         internal static StorageGroup ParseStorage(JToken storageToken, StructMap structMap)
         {
-            var name = storageToken.Value<string>("name");
+            var name = storageToken.Value<string>("name") ?? "";
             if (string.IsNullOrEmpty(name)) throw new JsonException("invalid storage name");
-            var type = ContractType.TryParse(storageToken.Value<string>("type"), structMap, out var _type)
+            var type = ContractType.TryParse(storageToken.Value<string>("type") ?? "", structMap, out var _type)
                 ? _type : ContractType.Unspecified;
-            var prefix = Convert.FromHexString(storageToken.Value<string>("prefix"));
+            var prefix = Convert.FromHexString(storageToken.Value<string>("prefix") ?? "");
 
             var segments = storageToken["segments"].Ensure().Select(j =>
                 {
                     var (name, primitive) = SplitCommaPair(j.Value<string>());
-                    var type = Enum.Parse<PrimitiveType>(primitive);
+                    var type = ContractType.TryParsePrimitive(primitive, out var _type)
+                        ? _type : throw new JsonException($"Invalid storage segment type {primitive}");
                     return new KeySegment(name, type);
                 });
 
@@ -300,13 +294,11 @@ namespace Neo.BlockchainToolkit.Models
         internal static IEnumerable<(string name, IReadOnlyList<(string, string)> fields)> ParseUnboundStructs(JToken structs)
             => structs.Select(s =>
                 {
-                    var name = s.Value<string>("name");
-                    if (!StructContractType.IsValidName(name)) throw new JsonException($"Invalid struct name \"{name}\"");
-
-                    var fieldsToken = s["fields"] ?? throw new JsonException("missing fields property");
-                    IReadOnlyList<(string, string)> fields = fieldsToken.Select(f => SplitCommaPair(f.Value<string>())).ToArray();
-
-                    return (name, fields);
+                    var (ns, name) = SplitCommaPair(s.Value<string>("name"));
+                    var nsqName = $"{ns}.{name}";
+                    if (!StructContractType.IsValidName(nsqName)) throw new JsonException($"Invalid struct name \"{nsqName}\"");
+                    var fields = s["fields"].Ensure().Select(f => SplitCommaPair(f.Value<string>())).ToArray();
+                    return (nsqName, (IReadOnlyList<(string, string)>)fields);
                 });
 
         internal static StructMap BindStructs(IEnumerable<(string name, IReadOnlyList<(string name, string type)> fields)> unboundStructs)
@@ -358,8 +350,10 @@ namespace Neo.BlockchainToolkit.Models
             return boundStructMap;
         }
 
-        static (string, string) SplitCommaPair(string value)
+        static (string, string) SplitCommaPair(string? value)
         {
+            if (value is null) throw new ArgumentNullException(nameof(value));
+
             var values = value.Split(',');
             if (values.Length == 2)
             {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Models
 {
@@ -21,12 +22,25 @@ namespace Neo.BlockchainToolkit.Models
         public readonly static ContractType Unspecified = new UnspecifiedContractType();
 
         const string UNSPECIFIED = "#Unspecified";
-        const string ARRAY_PREFIX = "Array<";
-        const string MAP_PREFIX = "Map<";
-        const string INTEROP_PREFIX = "Interop<";
-        protected const string NEO_PREFIX = "Neo#";
+        const string ARRAY_PREFIX = "#Array<";
+        const string MAP_PREFIX = "#Map<";
+        const string INTEROP_PREFIX = "#Interop<";
+        protected const string NEO_NAMESPACE = "#Neo.";
 
 #if (!SCFXGEN)
+        public static bool TryParsePrimitive(ReadOnlySpan<char> typeName, [MaybeNullWhen(false)] out PrimitiveType type)
+        {
+            if (typeName[0] == '#'
+                && Enum.TryParse<PrimitiveType>(typeName.Slice(1), out var primitive))
+            {
+                type = primitive;
+                return true;
+            }
+
+            type = default;
+            return false;
+        }
+
         public static bool TryParse(string typeName, IReadOnlyDictionary<string, StructContractType> structs, out ContractType type)
         {
             if (typeName.Length > 0)
@@ -37,10 +51,9 @@ namespace Neo.BlockchainToolkit.Models
                     return true;
                 }
 
-                if (typeName[0] == '#'
-                    && Enum.TryParse<PrimitiveType>(typeName.AsSpan(1), out var pt))
+                if (TryParsePrimitive(typeName, out var primitive))
                 {
-                    type = PrimitiveContractType.AsContractType(pt);
+                    type = PrimitiveContractType.AsContractType(primitive);
                     return true;
                 }
 
@@ -56,11 +69,10 @@ namespace Neo.BlockchainToolkit.Models
                         return true;
                     }
 
-                    if (TryParse(new string(arrayArg), structs, out var arrayType))
-                    {
-                        type = new ArrayContractType(arrayType);
-                        return true;
-                    }
+                    var arrayType = TryParse(new string(arrayArg), structs, out var _type)
+                        ? _type : ContractType.Unspecified;
+                    type = new ArrayContractType(arrayType);
+                    return true;
                 }
 
                 if (typeName.StartsWith(MAP_PREFIX)
@@ -76,10 +88,12 @@ namespace Neo.BlockchainToolkit.Models
                     }
 
                     var colonIndex = mapArgs.IndexOf(':');
-                    if (colonIndex != -1
-                        && Enum.TryParse<PrimitiveType>(mapArgs.Slice(0, colonIndex), out var keyType)
-                        && TryParse(new string(mapArgs.Slice(colonIndex + 1)), structs, out var valueType))
+                    if (colonIndex != -1)
                     {
+                        var keyType = TryParsePrimitive(mapArgs.Slice(0, colonIndex), out var _key)
+                            ? _key : PrimitiveType.ByteArray;
+                        var valueType = TryParse(new string(mapArgs.Slice(colonIndex + 1)), structs, out var _value)
+                            ? _value : ContractType.Unspecified;
                         type = new MapContractType(keyType, valueType);
                         return true;
                     }
@@ -93,7 +107,7 @@ namespace Neo.BlockchainToolkit.Models
                     return true;
                 }
                 
-                if (typeName.StartsWith(NEO_PREFIX)
+                if (typeName.StartsWith(NEO_NAMESPACE)
                     && NativeStructs.TryGetType(typeName, out var @struct))
                 {
                     type = @struct;
@@ -157,7 +171,7 @@ namespace Neo.BlockchainToolkit.Models
 
         public StructContractType(string name, IReadOnlyList<(string Name, ContractType Type)> fields)
         {
-            if (!name.StartsWith(NEO_PREFIX) && !IsValidName(name)) throw new ArgumentException(nameof(name));
+            if (!name.StartsWith(NEO_NAMESPACE) && !IsValidName(name)) throw new ArgumentException(nameof(name));
 
             this.Name = name;
             this.Fields = fields;
