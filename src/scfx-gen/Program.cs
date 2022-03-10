@@ -129,11 +129,6 @@ var hash160AsAddress = new List<(string type, string field)>()
 //       that Nep11TokenState subclasses will render Owner field as UInt160
 //       instead of Address until Address type gets added to SCFX
 
-var skipTypes = new List<string>()
-{
-    "Nep11TokenState", "StorageMap"
-};
-
 // Configure variables needed during code generation
 
 var resolver = new ContractTypeVisitor(compilation);
@@ -180,7 +175,6 @@ foreach (var type in types)
     if (type.IsStatic) continue;
     if (type.GetAttributes().Any(a => SymbolEquals(a.AttributeClass, contractAttrib))) continue;
     if (type.IsGenericType) continue;
-    if (skipTypes.Contains(type.Name)) continue;
 
     var fields = type.GetAllFields()
         .Where(f => !f.HasConstantValue && !f.IsStatic);
@@ -188,7 +182,7 @@ foreach (var type in types)
 
     // create namespace qualified + lazy variable type names
 
-    var nsqName = $"Neo#{type.Name}";
+    var nsqName = $"#Neo.{type.Name}";
     var lazyName = $"{char.ToLowerInvariant(type.Name[0])}{type.Name.Substring(1)}";
     if (lazyName == type.Name) lazyName = "_" + lazyName;
 
