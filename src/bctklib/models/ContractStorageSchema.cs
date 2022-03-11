@@ -9,12 +9,12 @@ namespace Neo.BlockchainToolkit.Models
 {
     public readonly record struct ContractStorageSchema
     {
-        public IReadOnlyList<StorageGroup> StorageDefs { get; init; } = Array.Empty<StorageGroup>();
+        public IReadOnlyList<StorageGroupDef> StorageGroupDefs { get; init; } = Array.Empty<StorageGroupDef>();
         public IReadOnlyList<StructContractType> StructDefs { get; init; } = Array.Empty<StructContractType>();
 
-        public ContractStorageSchema(IReadOnlyList<StorageGroup> storageDefs, IReadOnlyList<StructContractType> structDefs)
+        public ContractStorageSchema(IReadOnlyList<StorageGroupDef> storageDefs, IReadOnlyList<StructContractType> structDefs)
         {
-            StorageDefs = storageDefs;
+            StorageGroupDefs = storageDefs;
             StructDefs = structDefs;
         }
 
@@ -32,7 +32,7 @@ namespace Neo.BlockchainToolkit.Models
 
             return new ContractStorageSchema
             {
-                StorageDefs = storages.ToArray(),
+                StorageGroupDefs = storages.ToArray(),
                 StructDefs = structs.ToArray(),
             };
         }
@@ -175,7 +175,7 @@ namespace Neo.BlockchainToolkit.Models
             return boundStructMap.Values;
         }
 
-        internal static StorageGroup ParseStorageDef(KeyValuePair<string, JToken?> kvp, IReadOnlyDictionary<string, StructContractType> structMap)
+        internal static StorageGroupDef ParseStorageDef(KeyValuePair<string, JToken?> kvp, IReadOnlyDictionary<string, StructContractType> structMap)
         {
             var (name, storageToken) = kvp;
             if (storageToken is null) throw new JsonException("Null storage def type");
@@ -192,7 +192,7 @@ namespace Neo.BlockchainToolkit.Models
                     ? structDef
                     : throw new JsonException($"unrecognized storage value type {value}");
 
-            return new StorageGroup(name, prefix, segments, valueType);
+            return new StorageGroupDef(name, prefix, segments, valueType);
         }
 
         internal static ReadOnlyMemory<byte> ParseKeyPrefix(JToken? keyToken)

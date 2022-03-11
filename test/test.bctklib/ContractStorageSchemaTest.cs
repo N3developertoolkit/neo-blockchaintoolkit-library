@@ -70,7 +70,7 @@ namespace test.bctklib
             var json = Utility.GetResourceJson("nft-schema.json");
             var schema = ContractStorageSchema.Parse((JObject)json);
             schema.StructDefs.Should().HaveCount(1);
-            schema.StorageDefs.Should().HaveCount(6);
+            schema.StorageGroupDefs.Should().HaveCount(6);
         }
 
         [Fact]

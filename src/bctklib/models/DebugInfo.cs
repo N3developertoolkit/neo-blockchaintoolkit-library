@@ -33,7 +33,7 @@ namespace Neo.BlockchainToolkit.Models
         }
         public readonly record struct SequencePoint(int Address, int Document, (int line, int column) Start, (int line, int column) End);
         public readonly record struct SlotVariable(string Name, ContractType Type, int Index);
-        public readonly record struct UnboundVariable(string Name, string Type, int? Index);
+        internal readonly record struct UnboundVariable(string Name, string Type, int? Index);
         public struct VoidReturn { }
 
         public uint Version { get; init; }
@@ -46,8 +46,8 @@ namespace Neo.BlockchainToolkit.Models
             = Array.Empty<SlotVariable>();
         public IReadOnlyList<StructContractType> Structs { get; init; }
             = Array.Empty<StructContractType>();
-        public IReadOnlyList<StorageGroup> StorageGroups { get; init; }
-            = Array.Empty<StorageGroup>();
+        public IReadOnlyList<StorageGroupDef> StorageGroups { get; init; }
+            = Array.Empty<StorageGroupDef>();
 
         public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
         {
@@ -116,7 +116,7 @@ namespace Neo.BlockchainToolkit.Models
             var staticVars = ParseVariables(json["static-variables"], parseType);
             var documents = json["documents"].Ensure().Select(resolveDocument);
             var storages = version == 1
-                ? Enumerable.Empty<StorageGroup>()
+                ? Enumerable.Empty<StorageGroupDef>()
                 : json["storages"].Ensure().Select(s => ParseStorage(s, structMap));
 
             return new DebugInfo
@@ -192,12 +192,7 @@ namespace Neo.BlockchainToolkit.Models
             var (ns, name) = SplitCommaPair(token.Value<string>("name"));
             var @params = ParseVariables(token["params"], parseType);
 
-            return new DebugInfo.Event()
-            {
-                Name = name,
-                Namespace = ns,
-                Parameters = @params.ToArray(),
-            };
+            return new DebugInfo.Event(ns, name, @params.ToArray());
         }
 
         static Regex spRegex = new Regex(@"^(\d+)\[(-?\d+)\](\d+)\:(\d+)\-(\d+)\:(\d+)$");
@@ -207,13 +202,14 @@ namespace Neo.BlockchainToolkit.Models
             var matches = spRegex.Match(value);
             if (matches.Groups.Count != 7) throw new JsonException($"Invalid Sequence Point \"{value}\"");
 
-            return new DebugInfo.SequencePoint
-            {
-                Address = ParseGroup(1),
-                Document = ParseGroup(2),
-                Start = (ParseGroup(3), ParseGroup(4)),
-                End = (ParseGroup(5), ParseGroup(6)),
-            };
+            var address = ParseGroup(1);
+            var document = ParseGroup(2);
+            var startLine = ParseGroup(3);
+            var startCol = ParseGroup(4);
+            var endLine = ParseGroup(5);
+            var endCol = ParseGroup(6);
+
+            return new DebugInfo.SequencePoint(address, document, (startLine, startCol), (endLine, endCol));
 
             int ParseGroup(int i) => int.Parse(matches.Groups[i].Value);
         }
@@ -267,7 +263,7 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        internal static StorageGroup ParseStorage(JToken storageToken, StructMap structMap)
+        internal static StorageGroupDef ParseStorage(JToken storageToken, StructMap structMap)
         {
             var name = storageToken.Value<string>("name") ?? "";
             if (string.IsNullOrEmpty(name)) throw new JsonException("invalid storage name");
@@ -283,7 +279,7 @@ namespace Neo.BlockchainToolkit.Models
                     return new KeySegment(name, type);
                 });
 
-            return new StorageGroup(name, prefix.AsMemory(), segments.ToArray(), type);
+            return new StorageGroupDef(name, prefix.AsMemory(), segments.ToArray(), type);
         }
 
         internal static StructMap ParseStructs(JToken? structsToken) 
