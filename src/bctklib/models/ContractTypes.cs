@@ -161,6 +161,15 @@ namespace Neo.BlockchainToolkit.Models
     public record StructContractType : ContractType
     {
         public string Name { get; } = string.Empty;
+        public string ShortName 
+        {
+            get
+            {
+                var index = Name.LastIndexOf('.');
+                return index == -1 ? Name : Name.Substring(index + 1);
+            }
+        }
+
         public IReadOnlyList<(string Name, ContractType Type)> Fields { get; }
             = Array.Empty<(string, ContractType)>();
 
