@@ -101,7 +101,7 @@ namespace Neo.BlockchainToolkit.SmartContract
         }
 
         public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas, WitnessChecker? witnessChecker)
-            : base(trigger, container ?? CreateTestTransaction(), snapshot, persistingBlock, settings, gas, new Diagnostic())
+            : base(trigger, container ?? CreateTestTransaction(), snapshot, persistingBlock, settings, gas, new Neo.SmartContract.Diagnostic())
         {
             this.witnessChecker = witnessChecker ?? CheckWitness;
             ApplicationEngine.Log += OnLog;
