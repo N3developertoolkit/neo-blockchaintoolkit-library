@@ -1,6 +1,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using Neo.Cryptography.ECC;
@@ -18,11 +20,19 @@ namespace Neo.BlockchainToolkit
 
     using PrimitiveArg = OneOf<bool, BigInteger, ReadOnlyMemory<byte>, string>;
 
-    public record ContractArg;
+    public abstract record ContractArg
+    {
+        public abstract void Accept(ContractInvocationVisitor visitor);
+    }
 
     public record NullContractArg : ContractArg
     {
-        public readonly static NullContractArg Null = new NullContractArg(); 
+        public readonly static NullContractArg Null = new NullContractArg();
+
+        public override void Accept(ContractInvocationVisitor visitor)
+        {
+            visitor.VisitNull(this);
+        }
     }
 
     public record PrimitiveContractArg(PrimitiveArg Value) : ContractArg
@@ -32,20 +42,44 @@ namespace Neo.BlockchainToolkit
 
         public static PrimitiveContractArg FromString(string value)
             => (PrimitiveContractArg)Utility.StrictUTF8.GetBytes(value);
-        
+
         public static PrimitiveContractArg FromSerializable(ISerializable value)
             => (PrimitiveContractArg)value.ToArray();
+
+        public override void Accept(ContractInvocationVisitor visitor)
+        {
+            visitor.VisitPrimitive(this);
+        }
     }
 
-    public record ArrayContractArg(IReadOnlyList<ContractArg> Values) : ContractArg;
-    public record MapContractArg(IReadOnlyList<(ContractArg key, ContractArg value)> Values) : ContractArg;
-    
+    public record ArrayContractArg(ImmutableList<ContractArg> Values) : ContractArg
+    {
+        public override void Accept(ContractInvocationVisitor visitor)
+        {
+            visitor.VisitArray(this);
+        }
+    }
+
+    public record MapContractArg(ImmutableList<(ContractArg key, ContractArg value)> Values) : ContractArg
+    {
+        public override void Accept(ContractInvocationVisitor visitor)
+        {
+            visitor.VisitMap(this);
+        }
+    }
+
     public readonly record struct ContractInvocation(
         OneOf<UInt160, string> Contract,
         string Operation,
-        IReadOnlyList<ContractArg> Args);
+        ImmutableList<ContractArg> Args)
+    {
+        public void Accept(ContractInvocationVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
 
-    public static class ContractInvocationParser
+    public static partial class ContractInvocationParser
     {
         public static IEnumerable<ContractInvocation> ParseInvocations(JToken doc)
         {
@@ -72,7 +106,7 @@ namespace Neo.BlockchainToolkit
                 throw new JsonException("Invalid invocation JSON");
             }
         }
-        
+
         public static ContractInvocation ParseInvocation(JObject json)
         {
             var contract = json.Value<string>("contract");
@@ -81,8 +115,8 @@ namespace Neo.BlockchainToolkit
             if (string.IsNullOrEmpty(operation)) throw new JsonException("missing invocation operation property");
 
             var args = json.TryGetValue("args", out var jsonArgs)
-                    ? ParseArgs(jsonArgs).ToArray()
-                    : Array.Empty<ContractArg>();
+                    ? ParseArgs(jsonArgs).ToImmutableList()
+                    : ImmutableList<ContractArg>.Empty;
             return new ContractInvocation(contract, operation, args);
         }
 
@@ -110,7 +144,7 @@ namespace Neo.BlockchainToolkit
                 JTokenType.Boolean => new PrimitiveContractArg(json.Value<bool>()),
                 JTokenType.Integer => new PrimitiveContractArg(BigInteger.Parse(json.Value<string>())),
                 JTokenType.String => new PrimitiveContractArg(json.Value<string>()),
-                JTokenType.Array => new ArrayContractArg(json.Select(ParseArg).ToArray()),
+                JTokenType.Array => new ArrayContractArg(json.Select(ParseArg).ToImmutableList()),
                 JTokenType.Object => ParseObject((JObject)json),
                 _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
             };
@@ -126,27 +160,27 @@ namespace Neo.BlockchainToolkit
 
             return type switch
             {
-                ContractParameterType.Any => 
+                ContractParameterType.Any =>
                     NullContractArg.Null,
-                ContractParameterType.Signature or 
-                ContractParameterType.ByteArray => 
+                ContractParameterType.Signature or
+                ContractParameterType.ByteArray =>
                     ParseBinary(value.Value<string>()),
-                ContractParameterType.Boolean => 
+                ContractParameterType.Boolean =>
                     new PrimitiveContractArg(value.Value<bool>()),
-                ContractParameterType.Integer => 
+                ContractParameterType.Integer =>
                     new PrimitiveContractArg(BigInteger.Parse(value.Value<string>())),
-                ContractParameterType.Hash160 => 
+                ContractParameterType.Hash160 =>
                     PrimitiveContractArg.FromSerializable(UInt160.Parse(value.Value<string>())),
-                ContractParameterType.Hash256 => 
+                ContractParameterType.Hash256 =>
                     PrimitiveContractArg.FromSerializable(UInt256.Parse(value.Value<string>())),
-                ContractParameterType.PublicKey => 
+                ContractParameterType.PublicKey =>
                     PrimitiveContractArg.FromSerializable(ECPoint.Parse(value.Value<string>(), ECCurve.Secp256r1)),
-                ContractParameterType.String => 
+                ContractParameterType.String =>
                     PrimitiveContractArg.FromString(value.Value<string>()),
                 ContractParameterType.Array =>
-                    new ArrayContractArg(value.Select(ParseArg).ToArray()),
+                    new ArrayContractArg(value.Select(ParseArg).ToImmutableList()),
                 ContractParameterType.Map =>
-                    new MapContractArg(value.Select(ParseMapElement).ToArray()),
+                    new MapContractArg(value.Select(ParseMapElement).ToImmutableList()),
                 _ => throw new ArgumentException($"invalid type {type}", nameof(json)),
             };
 
@@ -172,85 +206,11 @@ namespace Neo.BlockchainToolkit
 
         public static bool Validate(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
         {
-            bool valid = true;
-            foreach (var invocation in invocations)
-            {
-                valid &= Validate(invocation, diagnostics);
-            }
-            return valid;
+            var visitor = new ValidationVistor(diagnostics);
+            visitor.Visit(invocations);
+            return visitor.IsValid;
         }
-
-        public static bool Validate(ContractInvocation invocation, ICollection<Diagnostic> diagnostics)
-        {
-            bool valid = true;
-            if (invocation.Contract.IsT1)
-            {
-                valid = false;
-                diagnostics.Add(Diagnostic.Error($"Unbound contract hash {invocation.Contract.AsT1}"));
-            }
-
-            if (string.IsNullOrEmpty(invocation.Operation))
-            {
-                valid = false;
-                diagnostics.Add(Diagnostic.Error($"Missing opertion"));
-            }
-
-            foreach (var arg in invocation.Args)
-            {
-                valid &= Validate(arg, diagnostics);
-            }
-
-            return valid;
-        }
-
-        public static bool Validate(ContractArg arg, ICollection<Diagnostic> diagnostics)
-        {
-            return arg switch
-            {
-                NullContractArg => true,
-                PrimitiveContractArg prim => ValidatePrimitive(prim, diagnostics),
-                ArrayContractArg array => ValidateArray(array, diagnostics),
-                MapContractArg map => ValidateMap(map, diagnostics),
-                _ => false,
-            };
-
-            static bool ValidatePrimitive(PrimitiveContractArg arg, ICollection<Diagnostic> diagnostics)
-            {
-                if (arg.Value.IsT3)
-                {
-                    diagnostics.Add(Diagnostic.Error($"Unbound string arg '{arg.Value.AsT3}"));
-                    return false;
-                }
-                return true;
-            }
-
-            static bool ValidateArray(ArrayContractArg array, ICollection<Diagnostic> diagnostics)
-            {
-                bool valid = true;
-                foreach (var arg in array.Values)
-                {
-                    valid &= Validate(arg, diagnostics);
-                }
-                return valid;
-            }
-
-            static bool ValidateMap(MapContractArg map, ICollection<Diagnostic> diagnostics)
-            {
-                bool valid = true;
-                foreach (var kvp in map.Values)
-                {
-                    valid &= Validate(kvp.key, diagnostics);
-                    valid &= Validate(kvp.value, diagnostics);
-                    if (kvp.key is not PrimitiveContractArg)
-                    {
-                        diagnostics.Add(Diagnostic.Error("Map keys must be primitive types"));
-                        valid = false;
-                    }
-                }
-
-                return valid;
-            }
-        }
-
     }
 }
+
+
