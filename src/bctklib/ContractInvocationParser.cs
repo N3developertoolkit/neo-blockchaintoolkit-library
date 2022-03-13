@@ -124,6 +124,7 @@ namespace Neo.BlockchainToolkit
     public readonly record struct ContractInvocation(
         OneOf<UInt160, string> Contract,
         string Operation,
+        CallFlags CallFlags,
         IReadOnlyList<ContractArg> Args);
 
     public static partial class ContractInvocationParser
@@ -163,10 +164,16 @@ namespace Neo.BlockchainToolkit
             var operation = json.Value<string>("operation");
             if (string.IsNullOrEmpty(operation)) throw new JsonException("missing invocation operation property");
 
+            var callFlags = json.ContainsKey("callFlags")
+                ? Enum.Parse<CallFlags>(json.Value<string>("callFlags"))
+                // default to CallFlags.All if not specified in JSON
+                : CallFlags.All;
+
             var args = json.TryGetValue("args", out var jsonArgs)
                     ? ParseArgs(jsonArgs)
                     : Array.Empty<ContractArg>();
-            return new ContractInvocation(contract, operation, args);
+
+            return new ContractInvocation(contract, operation, callFlags, args);
         }
 
         public static IReadOnlyList<ContractArg> ParseArgs(JToken jsonArgs)

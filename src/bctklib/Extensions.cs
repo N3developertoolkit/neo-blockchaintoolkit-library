@@ -62,6 +62,75 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        public static ScriptBuilder EmitInvocation(this ScriptBuilder builder, ContractInvocation invocation)
+        {
+            if (invocation.Contract.TryPickT1(out var contract, out var hash))
+            {
+                throw new Exception($"Unbound Contract {contract}");
+            }
+
+            builder.EmitArgArray(invocation.Args);
+            builder.EmitPush(invocation.CallFlags);
+            builder.EmitPush(invocation.Operation);
+            builder.EmitPush(hash);
+            return builder.EmitSysCall(ApplicationEngine.System_Contract_Call);
+        }
+
+        public static ScriptBuilder EmitPush(this ScriptBuilder builder, ContractArg arg)
+        {
+            switch (arg)
+            {
+                case NullContractArg:
+                    return builder.Emit(OpCode.PUSHNULL);
+                case PrimitiveContractArg primitive:
+                {
+                    if (primitive.Value.TryPickT3(out var str, out var remainder))
+                    {
+                        throw new Exception($"Unbound parameter {str}");
+                    }
+                    else
+                    {
+                        return remainder.Match(
+                            b => builder.EmitPush(b),
+                            i => builder.EmitPush(i),
+                            ia => builder.EmitPush(ia));
+                    }
+                }
+                case ArrayContractArg array:
+                    return builder.EmitArgArray(array.Values);
+                case MapContractArg map:
+                    {
+                        builder.Emit(OpCode.NEWMAP);
+                        foreach (var (key, value) in map.Values)
+                        {
+                            if (key is not PrimitiveContractArg)
+                            {
+                                throw new Exception("Map key must be primitive type");
+                            }
+                            builder.Emit(OpCode.DUP);
+                            builder.EmitPush(key);
+                            builder.EmitPush(value);
+                            builder.Emit(OpCode.SETITEM);
+                        }
+                        return builder;
+                    }
+                default:
+                    throw new NotSupportedException($"Unknown ContractArg type {arg.GetType().Name}");
+            }
+        }
+
+        public static ScriptBuilder EmitArgArray(this ScriptBuilder builder, IReadOnlyList<ContractArg> args)
+        {
+            if (args.Count == 0) { return builder.Emit(OpCode.NEWARRAY0); }
+
+            for (int i = args.Count - 1; i >= 0; i --)
+            {
+                builder.EmitPush(args[i]);
+            }
+            builder.EmitPush(args.Count);
+            return builder.Emit(OpCode.PACK);
+        }
+
         public static ScriptBuilder EmitPush(this ScriptBuilder builder, ImmutableArray<byte> data)
         {
             var array = System.Runtime.CompilerServices.Unsafe.As<ImmutableArray<byte>, byte[]>(ref data);
