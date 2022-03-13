@@ -22,16 +22,16 @@ namespace Neo.BlockchainToolkit
 
     public abstract record ContractArg
     {
-        public abstract void Accept(ContractInvocationVisitor visitor);
+        public abstract TResult Accept<TResult>(ContractInvocationVisitor<TResult> visitor);
     }
 
     public record NullContractArg : ContractArg
     {
         public readonly static NullContractArg Null = new NullContractArg();
 
-        public override void Accept(ContractInvocationVisitor visitor)
+        public override TResult Accept<TResult>(ContractInvocationVisitor<TResult> visitor)
         {
-            visitor.VisitNull(this);
+            return visitor.VisitNull(this);
         }
     }
 
@@ -46,38 +46,32 @@ namespace Neo.BlockchainToolkit
         public static PrimitiveContractArg FromSerializable(ISerializable value)
             => (PrimitiveContractArg)value.ToArray();
 
-        public override void Accept(ContractInvocationVisitor visitor)
+        public override TResult Accept<TResult>(ContractInvocationVisitor<TResult> visitor)
         {
-            visitor.VisitPrimitive(this);
+            return visitor.VisitPrimitive(this);
         }
     }
 
     public record ArrayContractArg(IReadOnlyList<ContractArg> Values) : ContractArg
     {
-        public override void Accept(ContractInvocationVisitor visitor)
+        public override TResult Accept<TResult>(ContractInvocationVisitor<TResult> visitor)
         {
-            visitor.VisitArray(this);
+            return visitor.VisitArray(this);
         }
     }
 
     public record MapContractArg(IReadOnlyList<(ContractArg key, ContractArg value)> Values) : ContractArg
     {
-        public override void Accept(ContractInvocationVisitor visitor)
+        public override TResult Accept<TResult>(ContractInvocationVisitor<TResult> visitor)
         {
-            visitor.VisitMap(this);
+            return visitor.VisitMap(this);
         }
     }
 
     public readonly record struct ContractInvocation(
         OneOf<UInt160, string> Contract,
         string Operation,
-        IReadOnlyList<ContractArg> Args)
-    {
-        public void Accept(ContractInvocationVisitor visitor)
-        {
-            visitor.Visit(this);
-        }
-    }
+        IReadOnlyList<ContractArg> Args);
 
     public static partial class ContractInvocationParser
     {
@@ -142,7 +136,7 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        public static ContractArg ParseArg(JToken json)
+        internal static ContractArg ParseArg(JToken json)
         {
             if (json is null) return NullContractArg.Null;
             return json.Type switch
@@ -213,20 +207,38 @@ namespace Neo.BlockchainToolkit
 
         public static bool Validate(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
         {
-            var visitor = new ValidationVistor(diagnostics);
-            visitor.Visit(invocations);
-            return visitor.IsValid;
+            var visitor = new ValidationVisitor(diagnostics);
+            bool valid = true;
+            foreach (var invocation in invocations)
+            {
+                if (invocation.Contract.IsT1)
+                {
+                    diagnostics.Add(Diagnostic.Error($"Unbound contract hash {invocation.Contract.AsT1}"));
+                    valid = false;
+                }
+
+                if (string.IsNullOrEmpty(invocation.Operation))
+                {
+                    diagnostics.Add(Diagnostic.Error("Invalid operation"));
+                    valid = false;
+                }
+
+                for (int i = 0; i < invocation.Args.Count; i++)
+                {
+                    valid &= visitor.Visit(invocation.Args[i]);
+                }
+            }
+            return valid;
         }
 
-        public static IReadOnlyList<T> Update<T>(IReadOnlyList<T> items, Func<T, T> update)
+        internal static IReadOnlyList<T> Update<T>(IReadOnlyList<T> items, Func<T, T> update)
             where T : class
         {
-            // Lazily create updatedItems list when we first encounter an
-            // updated item
+            // Lazily create updatedItems list when we first encounter an updated item
             List<T>? updatedItems = null;
             for (int i = 0; i < items.Count; i++)
             {
-                // Potentially update the tiem
+                // Potentially update the item
                 var updatedItem = update(items[i]);
  
                 // if we haven't already got an updatedItems list
@@ -258,6 +270,7 @@ namespace Neo.BlockchainToolkit
             return updatedItems ?? items;
         }
 
+
         public static IEnumerable<ContractInvocation> BindContracts(IEnumerable<ContractInvocation> invocations, TryGetContractHash? tryGetContractHash, ICollection<Diagnostic> diagnostics)
         {
             foreach (var invocation in invocations)
@@ -265,11 +278,6 @@ namespace Neo.BlockchainToolkit
                 yield return invocation;
             }
         }
-
-        // static ContractArg UpdateArg(ContractArg arg)
-        // {
-
-        // }
 
         static bool TryPickContractHash(string contract, TryGetContractHash? tryGetContractHash, out UInt160 hash)
         {
@@ -297,5 +305,3 @@ namespace Neo.BlockchainToolkit
         }
     }
 }
-
-

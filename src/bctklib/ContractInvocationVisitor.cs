@@ -6,53 +6,31 @@ using OneOf;
 
 namespace Neo.BlockchainToolkit
 {
-    public abstract class ContractInvocationVisitor
+    public abstract class ContractInvocationVisitor<TResult>
     {
-        public virtual void Visit(IEnumerable<ContractInvocation> invocations)
+        public virtual TResult Visit(ContractArg arg)
         {
-            if (invocations is IReadOnlyList<ContractInvocation> invocationList)
-            {
-                for (int i = 0; i < invocationList.Count; i++)
-                {
-                    invocationList[i].Accept(this);
-                }
-            }
-            else
-            {
-                foreach (var invocation in invocations)
-                {
-                    invocation.Accept(this);
-                }
-            }
+            return arg.Accept(this);
         }
 
-        public virtual void Visit(ContractInvocation invocation)
+        public virtual TResult VisitNull(NullContractArg arg) 
         {
-            for (int i = 0; i < invocation.Args.Count; i++)
-            {
-                invocation.Args[i].Accept(this);
-            }
+            return default!;
         }
 
-        public virtual void VisitNull(NullContractArg arg) {}
-
-        public virtual void VisitPrimitive(PrimitiveContractArg arg) {}
-
-        public virtual void VisitArray(ArrayContractArg arg)
+        public virtual TResult VisitPrimitive(PrimitiveContractArg arg)
         {
-            for (int i = 0; i < arg.Values.Count; i++) 
-            {
-                arg.Values[i].Accept(this); 
-            }
+            return default!;
         }
 
-        public virtual void VisitMap(MapContractArg arg)
+        public virtual TResult VisitArray(ArrayContractArg arg)
         {
-            for (int i = 0; i < arg.Values.Count; i++)
-            {
-                arg.Values[i].key.Accept(this);
-                arg.Values[i].value.Accept(this);
-            }
+            return default!;
+        }
+
+        public virtual TResult VisitMap(MapContractArg arg)
+        {
+            return default!;
         }
     }
 }

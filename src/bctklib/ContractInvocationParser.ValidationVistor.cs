@@ -8,49 +8,55 @@ namespace Neo.BlockchainToolkit
 {
     public static partial class ContractInvocationParser
     {
-        class ValidationVistor : ContractInvocationVisitor
+        class ValidationVisitor : ContractInvocationVisitor<bool>
         {
             bool isValid = true;
             readonly ICollection<Diagnostic> diagnostics;
 
             public bool IsValid => isValid;
 
-            public ValidationVistor(ICollection<Diagnostic> diagnostics)
+            public ValidationVisitor(ICollection<Diagnostic> diagnostics)
             {
                 this.diagnostics = diagnostics;
             }
 
-            public override void Visit(ContractInvocation invocation)
+            public override bool VisitNull(NullContractArg arg) => true;
+
+            public override bool VisitPrimitive(PrimitiveContractArg arg)
             {
-                base.Visit(invocation);
-                if (invocation.Contract.IsT1)
+                if (arg.Value.TryPickT3(out var @string, out _))
                 {
-                    diagnostics.Add(Diagnostic.Error($"Unbound contract hash {invocation.Contract.AsT1}"));
-                    isValid = false;
+                    diagnostics.Add(Diagnostic.Error($"Unbound string arg '{@string}"));
+                    return false;
                 }
+                return true;
             }
 
-            public override void VisitPrimitive(PrimitiveContractArg arg)
+            public override bool VisitArray(ArrayContractArg arg)
             {
-                base.VisitPrimitive(arg);
-                if (arg.Value.IsT3)
+                bool valid = true;
+                for (int i = 0; i < arg.Values.Count; i++)
                 {
-                    diagnostics.Add(Diagnostic.Error($"Unbound string arg '{arg.Value.AsT3}"));
-                    isValid = false;
+                    valid &= Visit(arg.Values[i]);
                 }
+                return valid;
             }
 
-            public override void VisitMap(MapContractArg arg)
+            public override bool VisitMap(MapContractArg arg)
             {
-                base.VisitMap(arg);
-                foreach (var kvp in arg.Values)
+                bool valid = true;
+                for (int i = 0; i < arg.Values.Count; i++)
                 {
+                    var kvp = arg.Values[i];
+                    valid &= Visit(kvp.key);
+                    valid &= Visit(kvp.value);
                     if (kvp.key is not PrimitiveContractArg)
                     {
                         diagnostics.Add(Diagnostic.Error("Map keys must be primitive types"));
-                        isValid = false;
+                        valid = false;
                     }
                 }
+                return valid;
             }
         }
     }
