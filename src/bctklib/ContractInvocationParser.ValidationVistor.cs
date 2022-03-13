@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Neo.BlockchainToolkit.Models;
 
 namespace Neo.BlockchainToolkit
 {

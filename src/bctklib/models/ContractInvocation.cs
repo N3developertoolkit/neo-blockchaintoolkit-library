@@ -8,7 +8,7 @@ using Neo.IO;
 using Neo.SmartContract;
 using OneOf;
 
-namespace Neo.BlockchainToolkit
+namespace Neo.BlockchainToolkit.Models
 {
     // Note, string is not a valid arg type. Strings need to be converted into byte arrays 
     // by later processing steps. However, the specific conversion of string -> byte array

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Neo.BlockchainToolkit.Models;
 using OneOf;
 using None = OneOf.Types.None;
 

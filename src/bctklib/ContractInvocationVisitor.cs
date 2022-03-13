@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using Neo.BlockchainToolkit.Models;
 using OneOf;
 
 namespace Neo.BlockchainToolkit
