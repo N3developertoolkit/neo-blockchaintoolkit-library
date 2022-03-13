@@ -1,6 +1,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using OneOf;
 using None = OneOf.Types.None;
 
@@ -21,12 +22,6 @@ namespace Neo.BlockchainToolkit
                 this.recordError = recordError;
             }
 
-            public T RecordError<T>(string message, T value)
-            {
-                recordError(message);
-                return value;
-            }
-
             public override ContractArg VisitNull(NullContractArg arg) => arg;
 
             public override ContractArg VisitPrimitive(PrimitiveContractArg arg)
@@ -34,9 +29,20 @@ namespace Neo.BlockchainToolkit
                     ? bindingFunc(@string, recordError).Match(updated => updated, _ => arg)
                     : arg;
 
+            public ContractArg NullCheckVisit(ContractArg arg)
+            {
+                var result = Visit(arg);
+                if (result is null)
+                {
+                    recordError("null visitor return");
+                    return arg;
+                }
+                return result;
+            }
+
             public override ContractArg VisitArray(ArrayContractArg arg)
             {
-                var values = arg.Values.Update(a => Visit(a) ?? RecordError("null visitor return", a));
+                var values = arg.Values.Update(NullCheckVisit);
                 return ReferenceEquals(arg.Values, values)
                     ? arg
                     : arg with { Values = values };
@@ -45,24 +51,24 @@ namespace Neo.BlockchainToolkit
             public override ContractArg VisitMap(MapContractArg arg)
             {
                 var values = arg.Values.Update(
-                kvp =>
-                {
-                    var key = Visit(kvp.key) ?? RecordError("null visitor return", kvp.key);
-                    var value = Visit(kvp.value) ?? RecordError("null visitor return", kvp.value);
-                    return ReferenceEquals(kvp.key, key)
-                        && ReferenceEquals(kvp.value, value)
-                            ? kvp
-                            : (key, value);
-                },
-                (a, b) => ReferenceEquals(a.key, b.key)
-                    && ReferenceEquals(a.value, b.value));
+                    kvp =>
+                    {
+                        var key = NullCheckVisit(kvp.key);
+                        var value = NullCheckVisit(kvp.value);
 
-                return object.ReferenceEquals(arg.Values, values)
+                        return ReferenceEquals(kvp.key, key)
+                            && ReferenceEquals(kvp.value, value)
+                                ? kvp
+                                : (key, value);
+                    },
+                    (a, b) =>
+                        ReferenceEquals(a.key, b.key)
+                        && ReferenceEquals(a.value, b.value));
+
+                return ReferenceEquals(arg.Values, values)
                     ? arg
                     : arg with { Values = values };
             }
         }
     }
 }
-
-

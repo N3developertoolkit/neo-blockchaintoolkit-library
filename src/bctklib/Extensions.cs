@@ -77,12 +77,6 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        internal static T RecordError<T>(this ICollection<Diagnostic> diagnostics, string message, T value)
-        {
-            diagnostics.Add(Diagnostic.Error(message));
-            return value;
-        }
-
         internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update) where T : class
             => Update(@this, update, ReferenceEquals);
 

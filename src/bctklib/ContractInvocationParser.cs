@@ -20,7 +20,7 @@ namespace Neo.BlockchainToolkit
     // by later processing steps. However, the specific conversion of string -> byte array
     // is string content dependent
 
-    using PrimitiveArg = OneOf<bool, BigInteger, ReadOnlyMemory<byte>, string>;
+    using PrimitiveArg = OneOf<bool, BigInteger, ImmutableArray<byte>, string>;
     using BindingFunc = Func<string, Action<string>, OneOf<PrimitiveContractArg, OneOf.Types.None>>;
 
     public abstract record ContractArg
@@ -42,14 +42,59 @@ namespace Neo.BlockchainToolkit
 
     public record PrimitiveContractArg(PrimitiveArg Value) : ContractArg
     {
-        public static explicit operator PrimitiveContractArg(byte[] array)
-            => new PrimitiveContractArg((ReadOnlyMemory<byte>)array);
+        public static PrimitiveContractArg FromArray(Func<byte[]> makeArray)
+        {
+            var array = makeArray();
+            var ia = System.Runtime.CompilerServices.Unsafe.As<byte[], ImmutableArray<byte>>(ref array);
+            return new PrimitiveContractArg(ia);
+        }
 
         public static PrimitiveContractArg FromString(string value)
-            => (PrimitiveContractArg)Utility.StrictUTF8.GetBytes(value);
+            => FromArray(() => Utility.StrictUTF8.GetBytes(value));
+
+        public static bool TryFromHexString(string hexString, [MaybeNullWhen(false)] out PrimitiveContractArg arg)
+        {
+            if (hexString.StartsWith("0x"))
+            {
+                try
+                {
+                    arg = FromArray(() => Convert.FromHexString(hexString.AsSpan(2)));
+                    return true;
+                }
+                catch (FormatException) { }
+            }
+
+            arg = default;
+            return false;
+        }
+
+        public static bool TryFromBase64String(ReadOnlyMemory<char> base64, [MaybeNullWhen(false)] out PrimitiveContractArg arg)
+        {
+            var buffer = new byte[GetLength(base64)];
+            if (Convert.TryFromBase64Chars(base64.Span, buffer, out var written))
+            {
+                arg = FromArray(() => buffer);
+                return true;
+            }
+
+            arg = default;
+            return false;
+
+            static int GetLength(ReadOnlyMemory<char> base64)
+            {
+                if (base64.IsEmpty) return 0;
+
+                var characterCount = base64.Length;
+                var paddingCount = 0;
+                if (base64.Span[characterCount - 1] == '=') paddingCount++;
+                if (base64.Span[characterCount - 2] == '=') paddingCount++;
+
+                return (3 * (characterCount / 4)) - paddingCount;
+            }
+        }
 
         public static PrimitiveContractArg FromSerializable(ISerializable value)
-            => (PrimitiveContractArg)value.ToArray();
+            => FromArray(() => value.ToArray());
 
         [return: MaybeNull]
         public override TResult Accept<TResult>(ContractInvocationVisitor<TResult> visitor)
@@ -74,11 +119,6 @@ namespace Neo.BlockchainToolkit
         {
             return visitor.VisitMap(this);
         }
-    }
-
-    static class CIExtensions
-    {
-
     }
 
     public readonly record struct ContractInvocation(
@@ -157,7 +197,7 @@ namespace Neo.BlockchainToolkit
                 JTokenType.Boolean => new PrimitiveContractArg(json.Value<bool>()),
                 JTokenType.Integer => new PrimitiveContractArg(BigInteger.Parse(json.Value<string>())),
                 JTokenType.String => new PrimitiveContractArg(json.Value<string>()),
-                JTokenType.Array => new ArrayContractArg(json.Select(ParseArg).ToImmutableList()),
+                JTokenType.Array => new ArrayContractArg(json.Select(ParseArg).ToArray()),
                 JTokenType.Object => ParseObject((JObject)json),
                 _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
             };
@@ -191,28 +231,32 @@ namespace Neo.BlockchainToolkit
                 ContractParameterType.String =>
                     PrimitiveContractArg.FromString(value.Value<string>()),
                 ContractParameterType.Array =>
-                    new ArrayContractArg(value.Select(ParseArg).ToImmutableList()),
+                    new ArrayContractArg(value.Select(ParseArg).ToArray()),
                 ContractParameterType.Map =>
-                    new MapContractArg(value.Select(ParseMapElement).ToImmutableList()),
+                    new MapContractArg(value.Select(ParseMapElement).ToArray()),
                 _ => throw new ArgumentException($"invalid type {type}", nameof(json)),
             };
 
             static PrimitiveContractArg ParseBinary(string value)
             {
-                Span<byte> span = stackalloc byte[value.Length / 4 * 3];
-                if (Convert.TryFromBase64String(value, span, out var written))
+                if (PrimitiveContractArg.TryFromBase64String(value.AsMemory(), out var arg))
                 {
-                    return (PrimitiveContractArg)span.Slice(0, written).ToArray();
+                    return arg;
                 }
 
-                return (PrimitiveContractArg)Convert.FromHexString(value);
+                // TODO: Should I support hex encoding here? 
+                //       Core ContractParam.FromJson only supports base64
+
+                throw new JsonException("Invalid binary string");
             }
 
             static (ContractArg, ContractArg) ParseMapElement(JToken json)
             {
-                var key = ParseArg(json["key"] ?? throw new Exception());
-                if (key is not PrimitiveContractArg) throw new Exception();
-                var value = ParseArg(json["value"] ?? throw new Exception());
+                var keyToken = json["key"] ?? throw new JsonException("Missing key property");
+                var key = ParseArg(keyToken);
+                if (key is not PrimitiveContractArg) throw new Exception("Map key must be a primitive type");
+                var valueToken = json["value"] ?? throw new JsonException("Missing value property");
+                var value = ParseArg(valueToken);
                 return (key, value);
             }
         }
@@ -243,10 +287,17 @@ namespace Neo.BlockchainToolkit
             return valid;
         }
 
-        public static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics,
-            byte addressVersion, TryConvert<UInt160>? tryGetAccount = null, TryConvert<UInt160>? tryGetContract = null, IFileSystem? fileSystem = null)
+        public static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations,
+            ICollection<Diagnostic> diagnostics,
+            byte addressVersion = 0,
+            TryConvert<UInt160>? tryGetAccount = null,
+            TryConvert<UInt160>? tryGetContract = null,
+            IFileSystem? fileSystem = null)
         {
             Action<string> reportError = msg => diagnostics.Add(Diagnostic.Error(msg));
+            addressVersion = addressVersion == 0
+                ? Neo.ProtocolSettings.Default.AddressVersion
+                : addressVersion;
 
             var contractBinder = CreateContractBinder(tryGetContract, reportError);
             var addressBinder = CreateAddressBinder(tryGetAccount, addressVersion, reportError);
@@ -281,7 +332,7 @@ namespace Neo.BlockchainToolkit
 
         static ContractInvocation BindArguments(ContractInvocation invocation, BindStringArgVisitor visitor)
         {
-            var args = invocation.Args.Update(a => visitor.Visit(a) ?? visitor.RecordError("null visitor return", a));
+            var args = invocation.Args.Update(visitor.NullCheckVisit);
             return ReferenceEquals(args, invocation.Args)
                 ? invocation
                 : invocation with { Args = args };
@@ -360,7 +411,7 @@ namespace Neo.BlockchainToolkit
                     {
                         try
                         {
-                            return (PrimitiveContractArg)fileSystem.File.ReadAllBytes(path);
+                            return PrimitiveContractArg.FromArray(() => fileSystem.File.ReadAllBytes(path));
                         }
                         catch (Exception ex)
                         {
@@ -377,33 +428,17 @@ namespace Neo.BlockchainToolkit
         {
             BindingFunc func = (value, reportError) =>
             {
-                const string DATA_OCTET_STREAM_BASE64 = "data:application/octet-stream;base64,";
+                // TODO: Should we support base64 encocding here?
+                //       "data:application/octet-stream;base64," would be appropriate prefix
 
-                if (value.StartsWith(DATA_OCTET_STREAM_BASE64))
+                if (PrimitiveContractArg.TryFromHexString(value, out var arg))
                 {
-                    var data = value.AsSpan(DATA_OCTET_STREAM_BASE64.Length);
-                    Span<byte> span = stackalloc byte[data.Length / 4 * 3];
-                    if (Convert.TryFromBase64String(value, span, out var written))
-                    {
-                        return (PrimitiveContractArg)span.Slice(0, written).ToArray();
-                    }
-                }
-
-                if (value.StartsWith("0x"))
-                {
-                    try
-                    {
-                        return (PrimitiveContractArg)Convert.FromHexString(value.AsSpan(2));
-                    }
-                    catch (System.Exception ex)
-                    {
-                        reportError(ex.Message);
-                    }
+                    return arg;
                 }
 
                 try
                 {
-                    return (PrimitiveContractArg)Neo.Utility.StrictUTF8.GetBytes(value);
+                    return PrimitiveContractArg.FromString(value);
                 }
                 catch (System.Exception ex)
                 {
