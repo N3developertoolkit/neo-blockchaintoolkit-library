@@ -257,7 +257,7 @@ namespace Neo.BlockchainToolkit
                     diagnostics.Add(Diagnostic.Error($"failed to bind contract {value}"));
                 }
                 return default(OneOf.Types.None);
-            });
+            }, diagnostics);
 
             foreach (var invocation in invocations)
             {
@@ -305,9 +305,9 @@ namespace Neo.BlockchainToolkit
                     diagnostics.Add(Diagnostic.Error($"failed to bind address {value}"));
                 }
                 return default(OneOf.Types.None);
-            });
+            }, diagnostics);
 
-            return BindStringArgs(invocations, visitor);
+            return BindStringArgs(invocations, visitor, diagnostics);
         }
 
         public static IEnumerable<ContractInvocation> BindFileUris(IEnumerable<ContractInvocation> invocations, IFileSystem fileSystem, ICollection<Diagnostic> diagnostics)
@@ -339,9 +339,9 @@ namespace Neo.BlockchainToolkit
                     }
                 }
                 return default(OneOf.Types.None);
-            });
+            }, diagnostics);
 
-            return BindStringArgs(invocations, visitor);
+            return BindStringArgs(invocations, visitor, diagnostics);
         }
 
         public static IEnumerable<ContractInvocation> BindBinaryStrings(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
@@ -372,9 +372,9 @@ namespace Neo.BlockchainToolkit
                     }
                 }
                 return default(OneOf.Types.None);
-            });
+            }, diagnostics);
 
-            return BindStringArgs(invocations, visitor);
+            return BindStringArgs(invocations, visitor, diagnostics);
         }
 
         public static IEnumerable<ContractInvocation> BindUtf8Strings(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
@@ -390,9 +390,9 @@ namespace Neo.BlockchainToolkit
                     diagnostics.Add(Diagnostic.Error(ex.Message));
                 }
                 return default(OneOf.Types.None);
-            });
+            }, diagnostics);
 
-            return BindStringArgs(invocations, visitor);
+            return BindStringArgs(invocations, visitor, diagnostics);
         }
 
         static bool TryConvertContractHash(string contract, TryConvert<UInt160>? tryGetContractHash, out UInt160 hash)
@@ -421,11 +421,11 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        private static IEnumerable<ContractInvocation> BindStringArgs(IEnumerable<ContractInvocation> invocations, BindStringArgVisitor visitor)
+        private static IEnumerable<ContractInvocation> BindStringArgs(IEnumerable<ContractInvocation> invocations, BindStringArgVisitor visitor, ICollection<Diagnostic> diagnostics)
         {
             foreach (var invocation in invocations)
             {
-                var args = invocation.Args.Update(a => visitor.Visit(a) ?? a);
+                var args = invocation.Args.Update(a => visitor.Visit(a) ?? diagnostics.RecordError("null visitor return", a));
                 var boundInvocation = ReferenceEquals(args, invocation.Args)
                     ? invocation
                     : invocation with { Args = args };

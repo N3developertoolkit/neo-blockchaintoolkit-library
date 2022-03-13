@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using OneOf;
 using None = OneOf.Types.None;
 
@@ -10,10 +11,12 @@ namespace Neo.BlockchainToolkit
         class BindStringArgVisitor : ContractInvocationVisitor<ContractArg>
         {
             readonly Func<string, OneOf<PrimitiveContractArg, None>> tryUpdate;
+            readonly ICollection<Diagnostic> diagnostics;
 
-            public BindStringArgVisitor(Func<string, OneOf<PrimitiveContractArg, None>> tryUpdate)
+            public BindStringArgVisitor(Func<string, OneOf<PrimitiveContractArg, None>> tryUpdate, ICollection<Diagnostic> diagnostics)
             {
                 this.tryUpdate = tryUpdate;
+                this.diagnostics = diagnostics;
             }
 
             public override ContractArg VisitNull(NullContractArg arg) => arg;
@@ -25,7 +28,7 @@ namespace Neo.BlockchainToolkit
 
             public override ContractArg VisitArray(ArrayContractArg arg)
             {
-                var values = arg.Values.Update(a => Visit(a) ?? a);
+                var values = arg.Values.Update(a => Visit(a) ?? diagnostics.RecordError("null visitor return", a));
                 return ReferenceEquals(arg.Values, values)
                     ? arg
                     : arg with { Values = values };
@@ -36,8 +39,8 @@ namespace Neo.BlockchainToolkit
                 var values = arg.Values.Update(
                 kvp =>
                 {
-                    var key = Visit(kvp.key) ?? kvp.key;
-                    var value = Visit(kvp.value) ?? kvp.value;
+                    var key = Visit(kvp.key) ?? diagnostics.RecordError("null visitor return", kvp.key);
+                    var value = Visit(kvp.value) ?? diagnostics.RecordError("null visitor return", kvp.value);
                     return ReferenceEquals(kvp.key, key)
                         && ReferenceEquals(kvp.value, value)
                             ? kvp
