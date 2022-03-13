@@ -52,7 +52,7 @@ namespace Neo.BlockchainToolkit
         }
     }
 
-    public record ArrayContractArg(ImmutableList<ContractArg> Values) : ContractArg
+    public record ArrayContractArg(IReadOnlyList<ContractArg> Values) : ContractArg
     {
         public override void Accept(ContractInvocationVisitor visitor)
         {
@@ -60,7 +60,7 @@ namespace Neo.BlockchainToolkit
         }
     }
 
-    public record MapContractArg(ImmutableList<(ContractArg key, ContractArg value)> Values) : ContractArg
+    public record MapContractArg(IReadOnlyList<(ContractArg key, ContractArg value)> Values) : ContractArg
     {
         public override void Accept(ContractInvocationVisitor visitor)
         {
@@ -71,7 +71,7 @@ namespace Neo.BlockchainToolkit
     public readonly record struct ContractInvocation(
         OneOf<UInt160, string> Contract,
         string Operation,
-        ImmutableList<ContractArg> Args)
+        IReadOnlyList<ContractArg> Args)
     {
         public void Accept(ContractInvocationVisitor visitor)
         {
@@ -81,6 +81,9 @@ namespace Neo.BlockchainToolkit
 
     public static partial class ContractInvocationParser
     {
+        public delegate bool TryGetContractHash(string value, out UInt160 account);
+        public delegate bool TryGetAddress(string value, out UInt160 account);
+
         public static IEnumerable<ContractInvocation> ParseInvocations(JToken doc)
         {
             if (doc is JObject obj)
@@ -115,23 +118,27 @@ namespace Neo.BlockchainToolkit
             if (string.IsNullOrEmpty(operation)) throw new JsonException("missing invocation operation property");
 
             var args = json.TryGetValue("args", out var jsonArgs)
-                    ? ParseArgs(jsonArgs).ToImmutableList()
-                    : ImmutableList<ContractArg>.Empty;
+                    ? ParseArgs(jsonArgs)
+                    : Array.Empty<ContractArg>();
             return new ContractInvocation(contract, operation, args);
         }
 
-        public static IEnumerable<ContractArg> ParseArgs(JToken jsonArgs)
+        public static IReadOnlyList<ContractArg> ParseArgs(JToken jsonArgs)
         {
             if (jsonArgs is JArray argsArray)
             {
-                foreach (var arg in argsArray)
+                var array = new ContractArg[argsArray.Count];
+                for (int i = 0; i < argsArray.Count; i++)
                 {
-                    yield return ParseArg(arg);
+                    array[i] = ParseArg(argsArray[i]);
                 }
+                return array;
             }
             else
             {
-                yield return ParseArg(jsonArgs);
+                var array = new ContractArg[1];
+                array[0] = ParseArg(jsonArgs);
+                return array;
             }
         }
 
@@ -209,6 +216,84 @@ namespace Neo.BlockchainToolkit
             var visitor = new ValidationVistor(diagnostics);
             visitor.Visit(invocations);
             return visitor.IsValid;
+        }
+
+        public static IReadOnlyList<T> Update<T>(IReadOnlyList<T> items, Func<T, T> update)
+            where T : class
+        {
+            // Lazily create updatedItems list when we first encounter an
+            // updated item
+            List<T>? updatedItems = null;
+            for (int i = 0; i < items.Count; i++)
+            {
+                // Potentially update the tiem
+                var updatedItem = update(items[i]);
+ 
+                // if we haven't already got an updatedItems list
+                // check to see if the object returned from update
+                // is different from the one we passed in 
+                if (updatedItems is null
+                    && !object.ReferenceEquals(updatedItem, items[i]))
+                {
+                    // If this is the first modified updatedItem, 
+                    // create the updatedItems list and add all the
+                    // previously processed and unmodified items 
+ 
+                    updatedItems = new List<T>(items.Count);
+                    for (int j = 0; j < i; j++)
+                    {
+                        updatedItems.Add(items[j]);
+                    }
+                }
+
+                // if the updated items list exists, add the updatedItem to it
+                // (modified or not) 
+                if (updatedItems is not null)
+                {
+                    updatedItems.Add(updatedItem);
+                }
+            }
+
+            // updateItems will be null if there were no modifications
+            return updatedItems ?? items;
+        }
+
+        public static IEnumerable<ContractInvocation> BindContracts(IEnumerable<ContractInvocation> invocations, TryGetContractHash? tryGetContractHash, ICollection<Diagnostic> diagnostics)
+        {
+            foreach (var invocation in invocations)
+            {
+                yield return invocation;
+            }
+        }
+
+        // static ContractArg UpdateArg(ContractArg arg)
+        // {
+
+        // }
+
+        static bool TryPickContractHash(string contract, TryGetContractHash? tryGetContractHash, out UInt160 hash)
+        {
+            if (tryGetContractHash is not null
+                && tryGetContractHash(contract, out hash))
+            {
+                return true;
+            }
+
+            if (Neo.SmartContract.Native.NativeContract.Contracts.TryFind(
+                    nc => nc.Name.Equals(contract, StringComparison.InvariantCultureIgnoreCase),
+                    out var result))
+            {
+                hash = result.Hash;
+                return true;
+            }
+
+            if (UInt160.TryParse(contract, out hash))
+            {
+                return true;
+            }
+
+            hash = UInt160.Zero;
+            return false;
         }
     }
 }

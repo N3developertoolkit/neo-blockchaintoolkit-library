@@ -62,6 +62,22 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        
+        public static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> func, [MaybeNullWhen(false)] out T result)
+        {
+            foreach (var item in @this)
+            {
+                if (func(item))
+                {
+                    result = item;
+                    return true;
+                }
+            }
+
+            result = default;
+            return false;
+        }
+
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
             if (fileSystem.Path.DirectorySeparatorChar == '\\')

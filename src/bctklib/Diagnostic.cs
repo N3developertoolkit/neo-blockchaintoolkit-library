@@ -1,5 +1,7 @@
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using OneOf;
 
@@ -18,5 +20,9 @@ namespace Neo.BlockchainToolkit
             => new Diagnostic(SeverityLevel.Info, message); 
         public static Diagnostic Warning(string message)
             => new Diagnostic(SeverityLevel.Warning, message); 
+
+        public static bool Success(IEnumerable<Diagnostic> diagnostics)
+            => !diagnostics.Any(d => d.Severity == SeverityLevel.Error);
+
     }
 }
