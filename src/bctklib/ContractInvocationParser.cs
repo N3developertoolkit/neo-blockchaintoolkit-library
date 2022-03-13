@@ -12,6 +12,7 @@ using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OneOf;
+using None = OneOf.Types.None;
 
 namespace Neo.BlockchainToolkit
 {
@@ -20,6 +21,7 @@ namespace Neo.BlockchainToolkit
     // is string content dependent
 
     using PrimitiveArg = OneOf<bool, BigInteger, ReadOnlyMemory<byte>, string>;
+    using BindingFunc = Func<string, Action<string>, OneOf<PrimitiveContractArg, OneOf.Types.None>>;
 
     public abstract record ContractArg
     {
@@ -72,6 +74,11 @@ namespace Neo.BlockchainToolkit
         {
             return visitor.VisitMap(this);
         }
+    }
+
+    static class CIExtensions
+    {
+
     }
 
     public readonly record struct ContractInvocation(
@@ -236,9 +243,53 @@ namespace Neo.BlockchainToolkit
             return valid;
         }
 
-        public static IEnumerable<ContractInvocation> BindContracts(IEnumerable<ContractInvocation> invocations, TryConvert<UInt160>? tryGetContractHash, ICollection<Diagnostic> diagnostics)
+        public static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics,
+            byte addressVersion, TryConvert<UInt160>? tryGetAccount = null, TryConvert<UInt160>? tryGetContract = null, IFileSystem? fileSystem = null)
         {
-            var visitor = new BindStringArgVisitor(value =>
+            Action<string> reportError = msg => diagnostics.Add(Diagnostic.Error(msg));
+
+            var contractBinder = CreateContractBinder(tryGetContract, reportError);
+            var addressBinder = CreateAddressBinder(tryGetAccount, addressVersion, reportError);
+            var fileUriBinder = CreateFileUriBinder(fileSystem ?? new FileSystem(), reportError);
+            var stringBinder = CreateStringBinder(reportError);
+
+            return invocations
+                .Select(i => BindContract(i, tryGetContract, reportError))
+                .Select(i => BindArguments(i, contractBinder))
+                .Select(i => BindArguments(i, addressBinder))
+                .Select(i => BindArguments(i, fileUriBinder))
+                .Select(i => BindArguments(i, stringBinder));
+        }
+
+        static ContractInvocation BindContract(ContractInvocation invocation, TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
+        {
+            if (invocation.Contract.TryPickT1(out var contract, out _))
+            {
+                contract = contract.Length > 0 && contract[0] == '#'
+                    ? contract.Substring(1) : contract;
+                if (TryConvertContractHash(contract, tryGetContractHash, out var hash))
+                {
+                    return invocation with { Contract = hash };
+                }
+                else
+                {
+                    reportError($"Failed to bind contract {contract}");
+                }
+            }
+            return invocation;
+        }
+
+        static ContractInvocation BindArguments(ContractInvocation invocation, BindStringArgVisitor visitor)
+        {
+            var args = invocation.Args.Update(a => visitor.Visit(a) ?? visitor.RecordError("null visitor return", a));
+            return ReferenceEquals(args, invocation.Args)
+                ? invocation
+                : invocation with { Args = args };
+        }
+
+        static BindStringArgVisitor CreateContractBinder(TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
+        {
+            BindingFunc func = (value, reportError) =>
             {
                 if (value.StartsWith("#"))
                 {
@@ -254,36 +305,16 @@ namespace Neo.BlockchainToolkit
                         return PrimitiveContractArg.FromSerializable(uint256);
                     }
 
-                    diagnostics.Add(Diagnostic.Error($"failed to bind contract {value}"));
+                    reportError($"failed to bind contract {value}");
                 }
-                return default(OneOf.Types.None);
-            }, diagnostics);
-
-            foreach (var invocation in invocations)
-            {
-                var boundInvocation = invocation.Contract.TryPickT0(out _, out var contract)
-                    ? invocation
-                    : TryConvertContractHash(StripHash(contract), tryGetContractHash, out var hash)
-                        ? invocation with { Contract = hash }
-                        : diagnostics.RecordError($"Failed to bind contract {contract}", invocation);
-
-
-                var args = boundInvocation.Args.Update(a => visitor.Visit(a) ?? diagnostics.RecordError("null return", a));
-                boundInvocation = ReferenceEquals(args, boundInvocation.Args)
-                    ? boundInvocation
-                    : boundInvocation with { Args = args };
-
-                yield return boundInvocation;
-            }
-
-            static string StripHash(string @string) => @string.Length > 0 && @string[0] == '#'
-                ? @string.Substring(1)
-                : @string;
+                return default(None);
+            };
+            return new BindStringArgVisitor(func, reportError);
         }
 
-        public static IEnumerable<ContractInvocation> BindAddresses(IEnumerable<ContractInvocation> invocations, TryConvert<UInt160>? tryGetAddress, byte addressVersion, ICollection<Diagnostic> diagnostics)
+        static BindStringArgVisitor CreateAddressBinder(TryConvert<UInt160>? tryGetAddress, byte addressVersion, Action<string> reportError)
         {
-            var visitor = new BindStringArgVisitor(value =>
+            BindingFunc func = (value, reportError) =>
             {
                 if (value.StartsWith("@"))
                 {
@@ -302,17 +333,16 @@ namespace Neo.BlockchainToolkit
                     }
                     catch (FormatException) { }
 
-                    diagnostics.Add(Diagnostic.Error($"failed to bind address {value}"));
+                    reportError($"failed to bind address {value}");
                 }
-                return default(OneOf.Types.None);
-            }, diagnostics);
-
-            return BindStringArgs(invocations, visitor, diagnostics);
+                return default(None);
+            };
+            return new BindStringArgVisitor(func, reportError);
         }
 
-        public static IEnumerable<ContractInvocation> BindFileUris(IEnumerable<ContractInvocation> invocations, IFileSystem fileSystem, ICollection<Diagnostic> diagnostics)
+        static BindStringArgVisitor CreateFileUriBinder(IFileSystem fileSystem, Action<string> reportError)
         {
-            var visitor = new BindStringArgVisitor(value =>
+            BindingFunc func = (value, reportError) =>
             {
                 const string FILE_URI = "file://";
                 if (value.StartsWith(FILE_URI))
@@ -324,7 +354,7 @@ namespace Neo.BlockchainToolkit
 
                     if (!fileSystem.File.Exists(path))
                     {
-                        diagnostics.Add(Diagnostic.Error($"{value} not found"));
+                        reportError($"{value} not found");
                     }
                     else
                     {
@@ -334,19 +364,18 @@ namespace Neo.BlockchainToolkit
                         }
                         catch (Exception ex)
                         {
-                            diagnostics.Add(Diagnostic.Error(ex.Message));
+                            reportError(ex.Message);
                         }
                     }
                 }
-                return default(OneOf.Types.None);
-            }, diagnostics);
-
-            return BindStringArgs(invocations, visitor, diagnostics);
+                return default(None);
+            };
+            return new BindStringArgVisitor(func, reportError);
         }
 
-        public static IEnumerable<ContractInvocation> BindBinaryStrings(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
+        static BindStringArgVisitor CreateStringBinder(Action<string> reportError)
         {
-            var visitor = new BindStringArgVisitor(value =>
+            BindingFunc func = (value, reportError) =>
             {
                 const string DATA_OCTET_STREAM_BASE64 = "data:application/octet-stream;base64,";
 
@@ -368,31 +397,22 @@ namespace Neo.BlockchainToolkit
                     }
                     catch (System.Exception ex)
                     {
-                        diagnostics.Add(Diagnostic.Error(ex.Message));
+                        reportError(ex.Message);
                     }
                 }
-                return default(OneOf.Types.None);
-            }, diagnostics);
 
-            return BindStringArgs(invocations, visitor, diagnostics);
-        }
-
-        public static IEnumerable<ContractInvocation> BindUtf8Strings(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
-        {
-            var visitor = new BindStringArgVisitor(value =>
-            {
                 try
                 {
                     return (PrimitiveContractArg)Neo.Utility.StrictUTF8.GetBytes(value);
                 }
                 catch (System.Exception ex)
                 {
-                    diagnostics.Add(Diagnostic.Error(ex.Message));
+                    reportError(ex.Message);
                 }
-                return default(OneOf.Types.None);
-            }, diagnostics);
 
-            return BindStringArgs(invocations, visitor, diagnostics);
+                return default(None);
+            };
+            return new BindStringArgVisitor(func, reportError);
         }
 
         static bool TryConvertContractHash(string contract, TryConvert<UInt160>? tryGetContractHash, out UInt160 hash)
@@ -419,19 +439,6 @@ namespace Neo.BlockchainToolkit
 
             hash = UInt160.Zero;
             return false;
-        }
-
-        private static IEnumerable<ContractInvocation> BindStringArgs(IEnumerable<ContractInvocation> invocations, BindStringArgVisitor visitor, ICollection<Diagnostic> diagnostics)
-        {
-            foreach (var invocation in invocations)
-            {
-                var args = invocation.Args.Update(a => visitor.Visit(a) ?? diagnostics.RecordError("null visitor return", a));
-                var boundInvocation = ReferenceEquals(args, invocation.Args)
-                    ? invocation
-                    : invocation with { Args = args };
-
-                yield return boundInvocation;
-            }
         }
     }
 }
