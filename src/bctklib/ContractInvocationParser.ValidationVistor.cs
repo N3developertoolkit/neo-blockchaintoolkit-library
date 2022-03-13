@@ -1,8 +1,5 @@
-
-using System;
 using System.Collections.Generic;
-using System.Numerics;
-using OneOf;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit
 {

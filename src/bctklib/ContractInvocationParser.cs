@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
@@ -75,8 +76,7 @@ namespace Neo.BlockchainToolkit
 
     public static partial class ContractInvocationParser
     {
-        public delegate bool TryGetContractHash(string value, out UInt160 account);
-        public delegate bool TryGetAddress(string value, out UInt160 account);
+        public delegate bool TryConvert<T>(string value, [MaybeNullWhen(false)] out T account);
 
         public static IEnumerable<ContractInvocation> ParseInvocations(JToken doc)
         {
@@ -231,59 +231,85 @@ namespace Neo.BlockchainToolkit
             return valid;
         }
 
-        internal static IReadOnlyList<T> Update<T>(IReadOnlyList<T> items, Func<T, T> update)
-            where T : class
+        public static IEnumerable<ContractInvocation> BindContracts(IEnumerable<ContractInvocation> invocations, TryConvert<UInt160>? tryGetContractHash, ICollection<Diagnostic> diagnostics)
         {
-            // Lazily create updatedItems list when we first encounter an updated item
-            List<T>? updatedItems = null;
-            for (int i = 0; i < items.Count; i++)
+            var visitor = new BindStringArgVisitor(arg => 
             {
-                // Potentially update the item
-                var updatedItem = update(items[i]);
- 
-                // if we haven't already got an updatedItems list
-                // check to see if the object returned from update
-                // is different from the one we passed in 
-                if (updatedItems is null
-                    && !object.ReferenceEquals(updatedItem, items[i]))
+                if (arg.Value.TryPickT3(out var @string, out _)
+                    && @string.StartsWith("#"))
                 {
-                    // If this is the first modified updatedItem, 
-                    // create the updatedItems list and add all the
-                    // previously processed and unmodified items 
- 
-                    updatedItems = new List<T>(items.Count);
-                    for (int j = 0; j < i; j++)
+                    var hashString = @string.Substring(1);
+
+                    if (TryConvertContractHash(hashString, tryGetContractHash, out var uInt160))
                     {
-                        updatedItems.Add(items[j]);
+                        return PrimitiveContractArg.FromSerializable(uInt160);
                     }
+
+                    if (UInt256.TryParse(hashString, out var uInt256))
+                    {
+                        return PrimitiveContractArg.FromSerializable(uInt256);
+                    }
+
+                    diagnostics.Add(Diagnostic.Error($"failed to bind contract {@string}"));
                 }
+                return arg;
+            });
 
-                // if the updated items list exists, add the updatedItem to it
-                // (modified or not) 
-                if (updatedItems is not null)
-                {
-                    updatedItems.Add(updatedItem);
-                }
-            }
-
-            // updateItems will be null if there were no modifications
-            return updatedItems ?? items;
-        }
-
-
-        public static IEnumerable<ContractInvocation> BindContracts(IEnumerable<ContractInvocation> invocations, TryGetContractHash? tryGetContractHash, ICollection<Diagnostic> diagnostics)
-        {
             foreach (var invocation in invocations)
             {
-                yield return invocation;
+                var boundInvocation = invocation.Contract.TryPickT0(out _, out var contract)
+                    ? invocation
+                    : TryConvertContractHash(StripHash(contract), tryGetContractHash, out var hash)
+                        ? invocation with { Contract = hash }
+                        : diagnostics.RecordError($"Failed to bind contract {contract}", invocation);
+
+
+                var args = boundInvocation.Args.Update(visitor.Visit);
+                boundInvocation = ReferenceEquals(args, boundInvocation.Args)
+                    ? boundInvocation
+                    : boundInvocation with { Args = args };
+
+                yield return boundInvocation;
+            }
+
+            static string StripHash(string @string) => @string.Length > 0 && @string[0] == '#'
+                ? @string.Substring(1) 
+                : @string;
+        }
+
+        public static IEnumerable<ContractInvocation> BindAddresses(IEnumerable<ContractInvocation> invocations, TryConvert<UInt160>? tryGetAddress, byte addressVersion, ICollection<Diagnostic> diagnostics)
+        {
+            var visitor = new BindStringArgVisitor(arg => 
+            {
+                if (arg.Value.TryPickT3(out var @string, out _)
+                    && @string.StartsWith("@"))
+                {
+                    if (TryConvertAddress(@string.Substring(1), tryGetAddress, addressVersion, out var hash))
+                    {
+                        return PrimitiveContractArg.FromSerializable(hash);
+                    }
+                    diagnostics.Add(Diagnostic.Error($"failed to bind address {@string}"));
+                }
+                return arg;
+            });
+
+            foreach (var invocation in invocations)
+            {
+                var args = invocation.Args.Update(visitor.Visit);
+                var boundInvocation = ReferenceEquals(args, invocation.Args)
+                    ? invocation
+                    : invocation with { Args = args };
+
+                yield return boundInvocation;
             }
         }
 
-        static bool TryPickContractHash(string contract, TryGetContractHash? tryGetContractHash, out UInt160 hash)
+        static bool TryConvertContractHash(string contract, TryConvert<UInt160>? tryGetContractHash, out UInt160 hash)
         {
             if (tryGetContractHash is not null
-                && tryGetContractHash(contract, out hash))
+                && tryGetContractHash(contract, out var _hash))
             {
+                hash = _hash;
                 return true;
             }
 
@@ -299,6 +325,26 @@ namespace Neo.BlockchainToolkit
             {
                 return true;
             }
+
+            hash = UInt160.Zero;
+            return false;
+        }
+
+        static bool TryConvertAddress(string address, TryConvert<UInt160>? tryGetAddress, byte addressVersion, out UInt160 hash)
+        {
+            if (tryGetAddress is not null
+                && tryGetAddress(address, out var _hash))
+            {
+                hash = _hash;
+                return true;
+            }
+
+            try
+            {
+                hash = Neo.Wallets.Helper.ToScriptHash(address, addressVersion);
+                return true;
+            }
+            catch (FormatException) { }
 
             hash = UInt160.Zero;
             return false;

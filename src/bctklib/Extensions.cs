@@ -62,8 +62,7 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        
-        public static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> func, [MaybeNullWhen(false)] out T result)
+        internal static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> func, [MaybeNullWhen(false)] out T result)
         {
             foreach (var item in @this)
             {
@@ -77,6 +76,54 @@ namespace Neo.BlockchainToolkit
             result = default;
             return false;
         }
+
+        internal static T RecordError<T>(this ICollection<Diagnostic> diagnostics, string message, T value)
+        {
+            diagnostics.Add(Diagnostic.Error(message));
+            return value;
+        }
+
+        internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update) where T : class
+            => Update(@this, update, ReferenceEquals);
+
+        internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update, Func<T, T, bool> equals)
+        {
+            // Lazily create updatedItems list when we first encounter an updated item
+            List<T>? updatedList = null;
+            for (int i = 0; i < @this.Count; i++)
+            {
+                // Potentially update the item
+                var updatedItem = update(@this[i]);
+
+                // if we haven't already got an updatedItems list
+                // check to see if the object returned from update
+                // is different from the one we passed in 
+                if (updatedList is null && !equals(updatedItem, @this[i]))
+                {
+                    // if the updated item is different, this is the
+                    // first modified item in the list. 
+                    // Create the updatedItems list and add all the
+                    // previously processed but unmodified items 
+
+                    updatedList = new List<T>(@this.Count);
+                    for (int j = 0; j < i; j++)
+                    {
+                        updatedList.Add(@this[j]);
+                    }
+                }
+
+                // if the updated items list exists, add the updatedItem to it
+                // (modified or not) 
+                if (updatedList is not null)
+                {
+                    updatedList.Add(updatedItem);
+                }
+            }
+
+            // updateItems will be null if there were no modifications
+            return updatedList ?? @this;
+        }
+
 
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
