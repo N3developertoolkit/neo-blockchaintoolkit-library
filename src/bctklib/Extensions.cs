@@ -62,6 +62,12 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        public static ScriptBuilder EmitPush(this ScriptBuilder builder, ImmutableArray<byte> data)
+        {
+            var array = System.Runtime.CompilerServices.Unsafe.As<ImmutableArray<byte>, byte[]>(ref data);
+            return builder.EmitPush(array);
+        }
+
         internal static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> func, [MaybeNullWhen(false)] out T result)
         {
             foreach (var item in @this)
@@ -117,7 +123,6 @@ namespace Neo.BlockchainToolkit
             // updateItems will be null if there were no modifications
             return updatedList ?? @this;
         }
-
 
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
