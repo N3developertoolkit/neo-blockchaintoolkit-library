@@ -1,5 +1,7 @@
 
 using System;
+using OneOf;
+using None = OneOf.Types.None;
 
 namespace Neo.BlockchainToolkit
 {
@@ -7,20 +9,23 @@ namespace Neo.BlockchainToolkit
     {
         class BindStringArgVisitor : ContractInvocationVisitor<ContractArg>
         {
-            readonly Func<PrimitiveContractArg, PrimitiveContractArg> update;
+            readonly Func<string, OneOf<PrimitiveContractArg, None>> tryUpdate;
 
-            public BindStringArgVisitor(Func<PrimitiveContractArg, PrimitiveContractArg> update)
+            public BindStringArgVisitor(Func<string, OneOf<PrimitiveContractArg, None>> tryUpdate)
             {
-                this.update = update;
+                this.tryUpdate = tryUpdate;
             }
 
             public override ContractArg VisitNull(NullContractArg arg) => arg;
 
-            public override ContractArg VisitPrimitive(PrimitiveContractArg arg) => update(arg);
+            public override ContractArg VisitPrimitive(PrimitiveContractArg arg)
+                => arg.Value.TryPickT3(out var @string, out _)
+                    ? tryUpdate(@string).Match(updated => updated, _ => arg)
+                    : arg;
 
             public override ContractArg VisitArray(ArrayContractArg arg)
             {
-                var values = arg.Values.Update(Visit);
+                var values = arg.Values.Update(a => Visit(a) ?? a);
                 return ReferenceEquals(arg.Values, values)
                     ? arg
                     : arg with { Values = values };
@@ -31,8 +36,8 @@ namespace Neo.BlockchainToolkit
                 var values = arg.Values.Update(
                 kvp =>
                 {
-                    var key = Visit(kvp.key);
-                    var value = Visit(kvp.value);
+                    var key = Visit(kvp.key) ?? kvp.key;
+                    var value = Visit(kvp.value) ?? kvp.value;
                     return ReferenceEquals(kvp.key, key)
                         && ReferenceEquals(kvp.value, value)
                             ? kvp
