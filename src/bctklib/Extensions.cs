@@ -62,6 +62,35 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        public static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> predicate, [MaybeNullWhen(false)] out T result)
+        {
+            if (@this is IReadOnlyList<T> list)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (predicate(list[i]))
+                    {
+                        result = list[i];
+                        return true;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var item in @this)
+                {
+                    if (predicate(item))
+                    {
+                        result = item;
+                        return true;
+                    }
+                }
+            }
+
+            result = default;
+            return false;
+        }
+
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
             if (fileSystem.Path.DirectorySeparatorChar == '\\')
@@ -135,7 +164,7 @@ namespace Neo.BlockchainToolkit
         static readonly Lazy<IReadOnlyDictionary<uint, string>> sysCallNames = new Lazy<IReadOnlyDictionary<uint, string>>(
             () => ApplicationEngine.Services.ToImmutableDictionary(kvp => kvp.Value.Hash, kvp => kvp.Value.Name));
 
-        public static string GetComment(this Instruction instruction, int ip, MethodToken[]? tokens = null)
+        public static string GetComment(this Instruction instruction, int ip, IReadOnlyList<MethodToken>? tokens = null)
         {
             tokens ??= Array.Empty<MethodToken>();
 
@@ -169,7 +198,7 @@ namespace Neo.BlockchainToolkit
                 case OpCode.CALLT:
                     {
                         int index = instruction.TokenU16;
-                        if (index >= tokens.Length)
+                        if (index >= tokens.Count)
                             return $"Unknown token {instruction.TokenU16}";
                         var token = tokens[index];
                         var contract = NativeContract.Contracts.SingleOrDefault(c => c.Hash == token.Hash);

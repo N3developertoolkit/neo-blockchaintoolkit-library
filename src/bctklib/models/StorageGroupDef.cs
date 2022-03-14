@@ -1,19 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OneOf;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    public readonly struct StorageDef : IEquatable<StorageDef>
-    {
-        public readonly record struct KeySegment(string Name, PrimitiveType Type);
+    public readonly record struct KeySegment(string Name, PrimitiveType Type);
 
+    public readonly struct StorageGroupDef : IEquatable<StorageGroupDef>
+    {
         public readonly string Name;
         public readonly ReadOnlyMemory<byte> KeyPrefix;
         public readonly IReadOnlyList<KeySegment> KeySegments;
         public readonly ContractType ValueType;
 
-        public StorageDef(string name, ReadOnlyMemory<byte> keyPrefix, IReadOnlyList<KeySegment> keySegments, ContractType valueType)
+        public StorageGroupDef(string name, byte keyPrefix, ContractType valueType)
+            : this(name, new[] { keyPrefix }, Array.Empty<KeySegment>(), valueType)
+        {
+        }
+
+        public StorageGroupDef(string name, byte keyPrefix, ContractType valueType, params KeySegment[] keySegments)
+            : this(name, new[] { keyPrefix }, keySegments, valueType)
+        {
+        }
+
+        public StorageGroupDef(string name, ReadOnlyMemory<byte> keyPrefix, IReadOnlyList<KeySegment> keySegments, ContractType valueType)
         {
             Name = name;
             KeyPrefix = keyPrefix;
@@ -21,7 +32,7 @@ namespace Neo.BlockchainToolkit.Models
             ValueType = valueType;
         }
 
-        public bool Equals(StorageDef other)
+        public bool Equals(StorageGroupDef other)
         {
             if (Name != other.Name) return false;
             if (!KeyPrefix.Span.SequenceEqual(other.KeyPrefix.Span)) return false;
