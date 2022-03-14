@@ -6,7 +6,7 @@ namespace Neo.BlockchainToolkit
 {
     public static partial class ContractInvocationParser
     {
-        class ValidationVisitor : ContractInvocationVisitor<bool>
+        internal class ValidationVisitor : ContractInvocationVisitor<bool>
         {
             bool isValid = true;
             readonly ICollection<Diagnostic> diagnostics;

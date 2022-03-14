@@ -171,41 +171,125 @@ namespace Neo.BlockchainToolkit
             bool valid = true;
             foreach (var invocation in invocations)
             {
-                if (invocation.Contract.IsT1)
-                {
-                    diagnostics.Add(Diagnostic.Error($"Unbound contract hash {invocation.Contract.AsT1}"));
-                    valid = false;
-                }
-
-                if (string.IsNullOrEmpty(invocation.Operation))
-                {
-                    diagnostics.Add(Diagnostic.Error("Invalid operation"));
-                    valid = false;
-                }
-
-                for (int i = 0; i < invocation.Args.Count; i++)
-                {
-                    valid &= visitor.Visit(invocation.Args[i]);
-                }
+                valid &= Validate(invocation, visitor, diagnostics);
             }
             return valid;
         }
 
-        public static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations,
-            ICollection<Diagnostic> diagnostics,
-            byte addressVersion = 0,
-            TryConvert<UInt160>? tryGetAccount = null,
-            TryConvert<UInt160>? tryGetContract = null,
-            IFileSystem? fileSystem = null)
+        public static bool Validate(ContractInvocation invocation, ICollection<Diagnostic> diagnostics)
         {
-            Action<string> reportError = msg => diagnostics.Add(Diagnostic.Error(msg));
-            addressVersion = addressVersion == 0
-                ? Neo.ProtocolSettings.Default.AddressVersion
-                : addressVersion;
+            var visitor = new ValidationVisitor(diagnostics);
+            return Validate(invocation, visitor, diagnostics);
+        }
 
+        static bool Validate(ContractInvocation invocation, ValidationVisitor visitor, ICollection<Diagnostic> diagnostics)
+        {
+            bool valid = true;
+            if (invocation.Contract.IsT1)
+            {
+                diagnostics.Add(Diagnostic.Error($"Unbound contract hash {invocation.Contract.AsT1}"));
+                valid = false;
+            }
+
+            if (string.IsNullOrEmpty(invocation.Operation))
+            {
+                diagnostics.Add(Diagnostic.Error("Invalid operation"));
+                valid = false;
+            }
+
+            for (int i = 0; i < invocation.Args.Count; i++)
+            {
+                valid &= visitor.Visit(invocation.Args[i]);
+            }
+            return valid;
+        }
+
+        public interface IBindingParameters
+        {
+            byte AddressVersion { get; }
+            TryConvert<UInt160>? TryGetAccount { get; }
+            TryConvert<UInt160>? TryGetContract { get; }
+        }
+
+        class DefaultBindingParameters : IBindingParameters
+        {
+            Models.ExpressChain? chain;
+
+            IReadOnlyDictionary<string, UInt160> contractNameMap;
+
+            public DefaultBindingParameters(ExpressChain? chain, IReadOnlyDictionary<string, UInt160> contracts)
+            {
+                this.chain = chain;
+                this.contractNameMap = contracts;
+            }
+
+            public byte AddressVersion => chain?.AddressVersion ?? ProtocolSettings.Default.AddressVersion;
+
+            public TryConvert<UInt160> TryGetAccount => (string name, [MaybeNullWhen(false)] out UInt160 scriptHash) =>
+                {
+                    if (chain is not null
+                        && chain.TryGetDefaultAccount(name, out var account))
+                    {
+                        scriptHash = Neo.Wallets.Helper.ToScriptHash(account.ScriptHash, AddressVersion);
+                        return true;
+                    }
+
+                    scriptHash = null!;
+                    return false;
+                };
+
+            public TryConvert<UInt160> TryGetContract => (string name, [MaybeNullWhen(false)] out UInt160 scriptHash) =>
+                {
+                    if (contractNameMap.TryGetValue(name, out scriptHash))
+                    {
+                        return true;
+                    }
+
+                    foreach (var kvp in contractNameMap)
+                    {
+                        if (name.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            scriptHash = kvp.Value;
+                            return true;
+                        }
+                    }
+
+                    return false;
+                };
+        }
+
+        public static IBindingParameters CreateBindingParameters(Models.ExpressChain? chain, Neo.Persistence.DataCache? snapshot)
+        {
+            IReadOnlyDictionary<string, UInt160> contractNameMap = snapshot is null
+                ? System.Collections.Immutable.ImmutableDictionary<string, UInt160>.Empty
+                : Neo.SmartContract.Native.NativeContract.ContractManagement.ListContracts(snapshot)
+                    .Where(cs => cs.Id >= 0)
+                    .ToDictionary(cs => cs.Manifest.Name, cs => cs.Hash);
+
+            return new DefaultBindingParameters(chain, contractNameMap);
+        }
+
+        static Lazy<IFileSystem> defaultFileSystem = new Lazy<IFileSystem>(() => new FileSystem());
+
+        public static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations, IBindingParameters bindingParams, Action<string>? reportError = null, IFileSystem? fileSystem = null)
+        {
+            reportError ??= _ => { };
+            fileSystem ??= defaultFileSystem.Value;
+
+            return Bind(invocations, reportError, bindingParams.AddressVersion, bindingParams.TryGetAccount, bindingParams.TryGetContract, fileSystem);
+        }
+
+        // Not sure this needs to broken out for test purposes, but leaving it separate from previous Bind method for now
+        internal static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations,
+            Action<string> reportError,
+            byte addressVersion,
+            TryConvert<UInt160>? tryGetAccount,
+            TryConvert<UInt160>? tryGetContract,
+            IFileSystem fileSystem)
+        {
             var contractBinder = CreateContractBinder(tryGetContract, reportError);
             var addressBinder = CreateAddressBinder(tryGetAccount, addressVersion, reportError);
-            var fileUriBinder = CreateFileUriBinder(fileSystem ?? new FileSystem(), reportError);
+            var fileUriBinder = CreateFileUriBinder(fileSystem, reportError);
             var stringBinder = CreateStringBinder(reportError);
 
             return invocations
@@ -216,7 +300,13 @@ namespace Neo.BlockchainToolkit
                 .Select(i => BindArguments(i, stringBinder));
         }
 
-        static ContractInvocation BindContract(ContractInvocation invocation, TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
+        public static ContractInvocation BindContract(ContractInvocation invocation, IBindingParameters bindingParams, Action<string>? reportError = null)
+        {
+            reportError ??= _ => { };
+            return BindContract(invocation, bindingParams.TryGetContract, reportError);
+        }
+
+        internal static ContractInvocation BindContract(ContractInvocation invocation, TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
         {
             if (invocation.Contract.TryPickT1(out var contract, out _))
             {
@@ -234,15 +324,19 @@ namespace Neo.BlockchainToolkit
             return invocation;
         }
 
-        static ContractInvocation BindArguments(ContractInvocation invocation, BindStringArgVisitor visitor)
+        public static ContractInvocation BindContractArgs(ContractInvocation invocation, IBindingParameters bindingParams, Action<string>? reportError = null)
         {
-            var args = invocation.Args.Update(visitor.NullCheckVisit);
-            return ReferenceEquals(args, invocation.Args)
-                ? invocation
-                : invocation with { Args = args };
+            reportError ??= _ => { };
+            return BindContractArgs(invocation, bindingParams.TryGetContract, reportError);
         }
 
-        static BindStringArgVisitor CreateContractBinder(TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
+        internal static ContractInvocation BindContractArgs(ContractInvocation invocation, TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
+        {
+            var binder = CreateContractBinder(tryGetContractHash, reportError);
+            return BindArguments(invocation, binder);
+        }
+
+        internal static BindStringArgVisitor CreateContractBinder(TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
         {
             BindingFunc func = (value, reportError) =>
             {
@@ -267,7 +361,19 @@ namespace Neo.BlockchainToolkit
             return new BindStringArgVisitor(func, reportError);
         }
 
-        static BindStringArgVisitor CreateAddressBinder(TryConvert<UInt160>? tryGetAddress, byte addressVersion, Action<string> reportError)
+        public static ContractInvocation BindAddressArgs(ContractInvocation invocation, IBindingParameters bindingParams, Action<string>? reportError = null)
+        {
+            reportError ??= _ => { };
+            return BindAddressArgs(invocation, bindingParams.TryGetAccount, bindingParams.AddressVersion, reportError);
+        }
+
+        internal static ContractInvocation BindAddressArgs(ContractInvocation invocation, TryConvert<UInt160>? tryGetAddress, byte addressVersion, Action<string> reportError)
+        {
+            var binder = CreateAddressBinder(tryGetAddress, addressVersion, reportError);
+            return BindArguments(invocation, binder);
+        }
+
+        internal static BindStringArgVisitor CreateAddressBinder(TryConvert<UInt160>? tryGetAddress, byte addressVersion, Action<string> reportError)
         {
             BindingFunc func = (value, reportError) =>
             {
@@ -295,7 +401,20 @@ namespace Neo.BlockchainToolkit
             return new BindStringArgVisitor(func, reportError);
         }
 
-        static BindStringArgVisitor CreateFileUriBinder(IFileSystem fileSystem, Action<string> reportError)
+        public static ContractInvocation BindFileUriArgs(ContractInvocation invocation, Action<string>? reportError = null, IFileSystem? fileSystem = null)
+        {
+            fileSystem ??= defaultFileSystem.Value;
+            reportError ??= _ => { };
+            return BindFileUriArgs(invocation, fileSystem, reportError);
+        }
+
+        internal static ContractInvocation BindFileUriArgs(ContractInvocation invocation, IFileSystem fileSystem, Action<string> reportError)
+        {
+            var binder = CreateFileUriBinder(fileSystem, reportError);
+            return BindArguments(invocation, binder);
+        }
+
+        internal static BindStringArgVisitor CreateFileUriBinder(IFileSystem fileSystem, Action<string> reportError)
         {
             BindingFunc func = (value, reportError) =>
             {
@@ -328,12 +447,20 @@ namespace Neo.BlockchainToolkit
             return new BindStringArgVisitor(func, reportError);
         }
 
-        static BindStringArgVisitor CreateStringBinder(Action<string> reportError)
+        public static ContractInvocation BindStringArgs(ContractInvocation invocation, Action<string>? reportError = null)
+        {
+            reportError ??= _ => { };
+            var binder = CreateStringBinder(reportError);
+            return BindArguments(invocation, binder);
+        }
+
+        internal static BindStringArgVisitor CreateStringBinder(Action<string> reportError)
         {
             BindingFunc func = (value, reportError) =>
             {
                 // TODO: Should we support base64 encocding here?
-                //       "data:application/octet-stream;base64," would be appropriate prefix
+                //       "data:application/octet-stream;base64," would be appropriate prefix,
+                //       but man that is LONG
 
                 if (PrimitiveContractArg.TryFromHexString(value, out var arg))
                 {
@@ -354,6 +481,14 @@ namespace Neo.BlockchainToolkit
             return new BindStringArgVisitor(func, reportError);
         }
 
+        static ContractInvocation BindArguments(ContractInvocation invocation, BindStringArgVisitor visitor)
+        {
+            var args = invocation.Args.Update(visitor.NullCheckVisit);
+            return ReferenceEquals(args, invocation.Args)
+                ? invocation
+                : invocation with { Args = args };
+        }
+
         static bool TryConvertContractHash(string contract, TryConvert<UInt160>? tryGetContractHash, out UInt160 hash)
         {
             if (tryGetContractHash is not null
@@ -364,7 +499,7 @@ namespace Neo.BlockchainToolkit
             }
 
             if (Neo.SmartContract.Native.NativeContract.Contracts.TryFind(
-                    nc => nc.Name.Equals(contract, StringComparison.InvariantCultureIgnoreCase),
+                    nc => nc.Name.Equals(contract, StringComparison.OrdinalIgnoreCase),
                     out var result))
             {
                 hash = result.Hash;

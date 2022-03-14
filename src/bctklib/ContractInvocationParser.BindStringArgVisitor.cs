@@ -12,7 +12,7 @@ namespace Neo.BlockchainToolkit
 
     public static partial class ContractInvocationParser
     {
-        class BindStringArgVisitor : ContractInvocationVisitor<ContractArg>
+        internal class BindStringArgVisitor : ContractInvocationVisitor<ContractArg>
         {
             readonly BindingFunc bindingFunc;
             readonly Action<string> recordError;
