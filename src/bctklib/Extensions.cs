@@ -121,7 +121,10 @@ namespace Neo.BlockchainToolkit
 
         public static ScriptBuilder EmitArgArray(this ScriptBuilder builder, IReadOnlyList<ContractArg> args)
         {
-            if (args.Count == 0) { return builder.Emit(OpCode.NEWARRAY0); }
+            if (args.Count == 0) 
+            { 
+                return builder.Emit(OpCode.NEWARRAY0); 
+            }
 
             for (int i = args.Count - 1; i >= 0; i --)
             {
@@ -133,6 +136,7 @@ namespace Neo.BlockchainToolkit
 
         public static ScriptBuilder EmitPush(this ScriptBuilder builder, ImmutableArray<byte> data)
         {
+            // workaround for https://github.com/neo-project/neo-vm/issues/451
             var array = System.Runtime.CompilerServices.Unsafe.As<ImmutableArray<byte>, byte[]>(ref data);
             return builder.EmitPush(array);
         }
@@ -155,6 +159,8 @@ namespace Neo.BlockchainToolkit
         internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update) where T : class
             => Update(@this, update, ReferenceEquals);
 
+        // Calls update for every item in @this, but only returns a new list if one or more of the items has actually
+        // been updated. If update returns an equal object for every item, Update returns the original list.
         internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update, Func<T, T, bool> equals)
         {
             // Lazily create updatedItems list when we first encounter an updated item

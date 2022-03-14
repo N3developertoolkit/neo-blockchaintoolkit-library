@@ -14,6 +14,9 @@ namespace Neo.BlockchainToolkit.Models
     // by later processing steps. However, the specific conversion of string -> byte array
     // is string content dependent
 
+    // Note, using ImmutableArray instead of ReadOnlyMemory as a workaround for
+    //       https://github.com/neo-project/neo-vm/issues/451
+
     using PrimitiveArg = OneOf<bool, BigInteger, ImmutableArray<byte>, string>;
 
     public readonly record struct ContractInvocation(
@@ -44,6 +47,7 @@ namespace Neo.BlockchainToolkit.Models
         public static PrimitiveContractArg FromArray(Func<byte[]> makeArray)
         {
             var array = makeArray();
+            // workaround for https://github.com/neo-project/neo-vm/issues/451
             var ia = System.Runtime.CompilerServices.Unsafe.As<byte[], ImmutableArray<byte>>(ref array);
             return new PrimitiveContractArg(ia);
         }
