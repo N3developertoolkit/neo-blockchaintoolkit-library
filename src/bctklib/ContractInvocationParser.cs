@@ -271,22 +271,27 @@ namespace Neo.BlockchainToolkit
 
         static Lazy<IFileSystem> defaultFileSystem = new Lazy<IFileSystem>(() => new FileSystem());
 
-        public static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations, IBindingParameters bindingParams, Action<string>? reportError = null, IFileSystem? fileSystem = null)
+        public static IEnumerable<ContractInvocation> Bind(
+            IEnumerable<ContractInvocation> invocations,
+            IBindingParameters bindingParams,
+            Action<string>? reportError = null,
+            IFileSystem? fileSystem = null)
+        {
+            return Bind(invocations, bindingParams.AddressVersion, bindingParams.TryGetAccount, bindingParams.TryGetContract, reportError, fileSystem);
+        }
+
+        // Not sure this needs to broken out for test purposes, but leaving it separate from previous Bind method for now
+        internal static IEnumerable<ContractInvocation> Bind(
+            IEnumerable<ContractInvocation> invocations,
+            byte addressVersion,
+            TryConvert<UInt160>? tryGetAccount,
+            TryConvert<UInt160>? tryGetContract,
+            Action<string>? reportError = null,
+            IFileSystem? fileSystem = null)
         {
             reportError ??= _ => { };
             fileSystem ??= defaultFileSystem.Value;
 
-            return Bind(invocations, reportError, bindingParams.AddressVersion, bindingParams.TryGetAccount, bindingParams.TryGetContract, fileSystem);
-        }
-
-        // Not sure this needs to broken out for test purposes, but leaving it separate from previous Bind method for now
-        internal static IEnumerable<ContractInvocation> Bind(IEnumerable<ContractInvocation> invocations,
-            Action<string> reportError,
-            byte addressVersion,
-            TryConvert<UInt160>? tryGetAccount,
-            TryConvert<UInt160>? tryGetContract,
-            IFileSystem fileSystem)
-        {
             var contractBinder = CreateContractBinder(tryGetContract, reportError);
             var addressBinder = CreateAddressBinder(tryGetAccount, addressVersion, reportError);
             var fileUriBinder = CreateFileUriBinder(fileSystem, reportError);
