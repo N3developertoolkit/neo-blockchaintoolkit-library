@@ -183,7 +183,7 @@ namespace Neo.BlockchainToolkit.Models
             if (variables.Any(t => t.Index.HasValue) 
                 && !variables.All(t => t.Index.HasValue))
             {
-                throw new JsonException("cannot mix and match optional slot index information");
+                throw new NotSupportedException("cannot mix and match optional slot index information");
             }
         }
 
