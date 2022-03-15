@@ -1,506 +1,517 @@
 {
   "version": 2,
-  "hash": "0xb578d7c652c98e925a4d7bed11d9067389c00570",
-  "checksum": 1317235069,
+  "hash": "0x120bb9a50f2bc22f7c5ecb21e6acc316271f798d",
+  "checksum": 2081900150,
   "documents": [
-    "C:\\Users\\harry\\Source\\neo\\seattle\\samples\\nft-sample\\token-contract\\NeoContributorToken.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\CallingConventionAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\ContractAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\ContractHashAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\ContractPermissionAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\ContractSourceCodeAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\ContractTrustAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\InitialValueAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\ManifestExtraAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\OpCodeAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\SafeAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\StorageGroupAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\StorageKeySegmentAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\StorageKeySegmentType.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\SupportedStandardsAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Attributes\\SyscallAttribute.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\ByteString.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\ContractParameterType.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\ECPoint.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\ExecutionEngine.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Helper.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\IApiInterface.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\List.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Map.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\ContractManagement.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\CryptoLib.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\GAS.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\Ledger.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\NamedCurve.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\NEO.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\NeoAccountState.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\Oracle.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\OracleResponseCode.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\Policy.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\Role.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\RoleManagement.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Native\\StdLib.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Nep11Token.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Nep11TokenState.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Nep17Token.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\OpCode.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Properties\\AssemblyInfo.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Block.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\CallFlags.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Contract.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractAbi.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractEventDescriptor.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractGroup.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractManifest.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractMethodDescriptor.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractParameterDefinition.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\ContractPermission.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Crypto.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\FindOptions.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Iterator.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Notification.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Runtime.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Storage.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\StorageContext.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\StorageMap.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\Transaction.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\Services\\TriggerType.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\SmartContract.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\StackItemType.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\TokenContract.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\UInt160.cs",
-    "C:\\Users\\harry\\Source\\neo\\official\\devpack\\src\\Neo.SmartContract.Framework\\UInt256.cs"
+      "c:\\Users\\harry\\Source\\neo\\seattle\\samples\\nft-sample\\token-contract\\NeoContributorToken.cs"
   ],
   "static-variables": [
-    "Empty,#String,0"
+      "Empty,#String,0"
   ],
   "methods": [
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Symbol",
-      "range": "0-10",
-      "return": "#String",
-      "sequence-points": [
-        "0[0]56:42-56:52"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Decimals",
-      "range": "11-12",
-      "return": "#Integer",
-      "sequence-points": [
-        "11[0]59:42-59:43"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,TotalSupply",
-      "range": "13-36",
-      "return": "#Integer",
-      "sequence-points": [
-        "13[0]62:51-62:133"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,BalanceOf",
-      "range": "58-162",
-      "params": [
-        "owner,#Hash160"
-      ],
-      "return": "#Integer",
-      "variables": [
-        "balanceMap,#Neo.StorageMap,0"
-      ],
-      "sequence-points": [
-        "61[0]67:17-67:48",
-        "86[0]68:17-68:75",
-        "121[0]69:24-69:80",
-        "137[0]70:13-70:50",
-        "162[0]71:9-71:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,OwnerOf",
-      "range": "197-240",
-      "params": [
-        "tokenId,#ByteArray"
-      ],
-      "return": "#Hash160",
-      "variables": [
-        "tokenMap,#Neo.StorageMap,0",
-        "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,1"
-      ],
-      "sequence-points": [
-        "200[0]76:24-76:76",
-        "216[0]77:24-77:81",
-        "235[0]78:13-78:32",
-        "240[0]79:9-79:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Properties",
-      "range": "245-353",
-      "params": [
-        "tokenId,#ByteArray"
-      ],
-      "return": "#Map<#String:#Unspecified>",
-      "variables": [
-        "tokenMap,#Neo.StorageMap,0",
-        "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,1",
-        "map,#Map<#String:#Unspecified>,2"
-      ],
-      "sequence-points": [
-        "248[0]84:24-84:76",
-        "264[0]85:24-85:81",
-        "283[0]86:33-86:44",
-        "285[0]87:13-87:40",
-        "300[0]88:13-88:38",
-        "314[0]89:13-89:52",
-        "335[0]90:13-90:40",
-        "350[0]91:13-91:24",
-        "353[0]92:9-92:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Tokens",
-      "range": "358-392",
-      "return": "#Interop<#Neo.Iterator>",
-      "variables": [
-        "tokenMap,#Neo.StorageMap,0"
-      ],
-      "sequence-points": [
-        "361[0]97:24-97:76",
-        "377[0]98:13-98:83",
-        "392[0]99:9-99:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,TokensOf",
-      "range": "405-501",
-      "params": [
-        "owner,#Hash160"
-      ],
-      "return": "#Interop<#Neo.Iterator>",
-      "variables": [
-        "accountMap,#Neo.StorageMap,0"
-      ],
-      "sequence-points": [
-        "408[0]104:17-104:48",
-        "433[0]105:17-105:74",
-        "467[0]106:24-106:85",
-        "483[0]107:13-107:92",
-        "501[0]108:9-108:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Transfer",
-      "range": "516-799",
-      "params": [
-        "to,#Hash160",
-        "tokenId,#ByteArray",
-        "data,#Unspecified"
-      ],
-      "return": "#Boolean",
-      "variables": [
-        "tokenMap,#Neo.StorageMap,0",
-        "tokenData,#ByteArray,1",
-        "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,2",
-        "from,#Hash160,3"
-      ],
-      "sequence-points": [
-        "519[0]112:17-112:42",
-        "544[0]112:44-112:99",
-        "576[0]114:24-114:76",
-        "592[0]115:17-115:46",
-        "608[0]116:17-116:34",
-        "613[0]118:17-118:48",
-        "635[0]119:17-119:30",
-        "643[0]122:24-122:73",
-        "648[0]123:21-123:39",
-        "652[0]124:17-124:68",
-        "692[0]126:17-126:69",
-        "735[0]127:17-127:30",
-        "740[0]130:17-130:27",
-        "745[0]132:17-132:34",
-        "752[0]133:17-133:61",
-        "775[0]134:17-134:50",
-        "780[0]135:17-135:48",
-        "785[0]137:13-137:51",
-        "794[0]138:13-138:25",
-        "799[0]139:9-139:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,UpdateBalance",
-      "range": "854-1008",
-      "params": [
-        "owner,#Hash160",
-        "tokenId,#ByteArray",
-        "increment,#Integer"
-      ],
-      "variables": [
-        "balanceMap,#Neo.StorageMap,0",
-        "balance,#Integer,1",
-        "accountMap,#Neo.StorageMap,2",
-        "key,#ByteArray,3"
-      ],
-      "sequence-points": [
-        "857[0]228:24-228:80",
-        "873[0]229:24-229:63",
-        "897[0]230:13-230:34",
-        "903[0]231:17-231:29",
-        "908[0]233:21-233:35",
-        "913[0]234:21-234:46",
-        "930[0]236:21-236:52",
-        "947[0]239:24-239:85",
-        "963[0]240:24-240:45",
-        "969[0]241:17-241:30",
-        "974[0]242:17-242:40",
-        "993[0]244:17-244:40",
-        "1008[0]245:9-245:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,PostTransfer",
-      "range": "1038-1123",
-      "params": [
-        "from,#Hash160",
-        "to,#Hash160",
-        "tokenId,#ByteArray",
-        "data,#Unspecified"
-      ],
-      "sequence-points": [
-        "1041[0]249:13-249:46",
-        "1069[0]250:17-250:81",
-        "1093[0]251:17-251:92",
-        "1123[0]252:9-252:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Mint",
-      "range": "1134-1389",
-      "params": [
-        "name,#String",
-        "description,#String",
-        "image,#String"
-      ],
-      "return": "#Hash256",
-      "variables": [
-        "context,#Interop<#Neo.StorageContext>,0",
-        "key,#ByteArray,1",
-        "id,#Integer,2",
-        "tokenIdString,#String,3",
-        "tokenId,#Hash256,4",
-        "tokenState,NgdEnterprise.Samples.NeoContributorToken.TokenState,5",
-        "tokenMap,#Neo.StorageMap,6"
-      ],
-      "sequence-points": [
-        "1137[0]143:17-143:41",
-        "1145[0]143:43-143:106",
-        "1187[0]146:28-146:60",
-        "1193[0]147:20-147:55",
-        "1199[0]148:17-148:59",
-        "1215[0]149:13-149:47",
-        "1225[0]151:17-151:65",
-        "1254[0]152:17-152:67",
-        "1270[0]154:17-160:14",
-        "1320[0]162:24-162:76",
-        "1336[0]163:13-163:62",
-        "1359[0]164:13-164:58",
-        "1369[0]165:13-165:35",
-        "1375[0]166:13-166:65",
-        "1386[0]168:13-168:28",
-        "1389[0]169:9-169:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,ValidateContractOwner",
-      "range": "1390-1448",
-      "return": "#Boolean",
-      "variables": [
-        "key,#ByteArray,0",
-        "contractOwner,#Hash160,1",
-        "tx,#Neo.Transaction,2"
-      ],
-      "sequence-points": [
-        "1393[0]256:17-256:58",
-        "1399[0]257:17-257:82",
-        "1422[0]258:17-258:58",
-        "1428[0]259:13-259:91",
-        "1448[0]260:9-260:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,UpdateTotalSupply",
-      "range": "1506-1551",
-      "params": [
-        "increment,#Integer"
-      ],
-      "variables": [
-        "context,#Interop<#Neo.StorageContext>,0",
-        "key,#ByteArray,1",
-        "totalSupply,#Integer,2"
-      ],
-      "sequence-points": [
-        "1509[0]219:28-219:60",
-        "1515[0]220:20-220:59",
-        "1521[0]221:24-221:75",
-        "1537[0]222:13-222:38",
-        "1543[0]223:13-223:52",
-        "1551[0]224:9-224:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Withdraw",
-      "range": "1552-1711",
-      "params": [
-        "#this,NgdEnterprise.Samples.NeoContributorToken",
-        "to,#Hash160"
-      ],
-      "return": "#Boolean",
-      "variables": [
-        "balance,#Integer,0"
-      ],
-      "sequence-points": [
-        "1555[0]173:17-173:41",
-        "1563[0]173:43-173:107",
-        "1606[0]174:17-174:50",
-        "1650[0]174:52-174:102",
-        "1679[0]176:17-176:69",
-        "1688[0]177:17-177:29",
-        "1693[0]177:31-177:44",
-        "1698[0]179:13-179:75",
-        "1711[0]180:9-180:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,OnNEP17Payment",
-      "range": "1737-1992",
-      "params": [
-        "from,#Hash160",
-        "amount,#Integer",
-        "data,#Unspecified"
-      ],
-      "variables": [
-        "tokenId,#ByteArray,0",
-        "tokenMap,#Neo.StorageMap,1",
-        "tokenData,#ByteArray,2",
-        "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,3"
-      ],
-      "sequence-points": [
-        "1740[0]184:17-184:29",
-        "1748[0]186:21-186:47",
-        "1750[0]187:21-187:58",
-        "1780[0]187:60-187:109",
-        "1808[0]188:21-188:32",
-        "1813[0]188:34-188:84",
-        "1842[0]190:28-190:80",
-        "1858[0]191:21-191:50",
-        "1874[0]192:21-192:38",
-        "1879[0]192:40-192:80",
-        "1898[0]193:21-193:90",
-        "1903[0]194:21-194:48",
-        "1931[0]194:50-194:103",
-        "1963[0]196:21-196:51",
-        "1974[0]196:53-196:92",
-        "1992[0]198:9-198:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Deploy",
-      "range": "2022-2056",
-      "params": [
-        "data,#Unspecified",
-        "update,#Boolean"
-      ],
-      "variables": [
-        "tx,#Neo.Transaction,0",
-        "key,#ByteArray,1"
-      ],
-      "sequence-points": [
-        "2025[0]203:17-203:23",
-        "2028[0]203:25-203:32",
-        "2030[0]205:17-205:58",
-        "2036[0]206:17-206:58",
-        "2042[0]207:13-207:65",
-        "2056[0]208:9-208:10"
-      ]
-    },
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,Update",
-      "range": "2063-2130",
-      "params": [
-        "nefFile,#ByteArray",
-        "manifest,#String"
-      ],
-      "sequence-points": [
-        "2066[0]212:17-212:41",
-        "2074[0]212:43-212:114",
-        "2124[0]214:13-214:64",
-        "2130[0]215:9-215:10"
-      ]
-    }
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Symbol",
+          "range": "0-10",
+          "return": "#String",
+          "sequence-points": [
+              "0[0]56:42-56:52"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Decimals",
+          "range": "11-12",
+          "return": "#Integer",
+          "sequence-points": [
+              "11[0]59:42-59:43"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,TotalSupply",
+          "range": "13-36",
+          "return": "#Integer",
+          "sequence-points": [
+              "13[0]62:51-62:133"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,BalanceOf",
+          "range": "58-178",
+          "params": [
+              "owner,#Hash160"
+          ],
+          "return": "#Integer",
+          "variables": [
+              "balanceMap,#Neo.StorageMap,1"
+          ],
+          "sequence-points": [
+              "61[0]66:9-66:10",
+              "62[0]67:17-67:48",
+              "98[0]68:17-68:75",
+              "134[0]69:24-69:80",
+              "150[0]70:13-70:50",
+              "178[0]71:9-71:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,OwnerOf",
+          "range": "213-260",
+          "params": [
+              "tokenId,#Hash256"
+          ],
+          "return": "#Hash160",
+          "variables": [
+              "tokenMap,#Neo.StorageMap,0",
+              "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,1"
+          ],
+          "sequence-points": [
+              "216[0]75:9-75:10",
+              "217[0]76:24-76:76",
+              "233[0]77:24-77:81",
+              "252[0]78:13-78:32",
+              "260[0]79:9-79:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Properties",
+          "range": "265-377",
+          "params": [
+              "tokenId,#ByteArray"
+          ],
+          "return": "#Map<#String:#Unspecified>",
+          "variables": [
+              "tokenMap,#Neo.StorageMap,0",
+              "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,1",
+              "map,#Map<#String:#Unspecified>,2"
+          ],
+          "sequence-points": [
+              "268[0]83:9-83:10",
+              "269[0]84:24-84:76",
+              "285[0]85:24-85:81",
+              "304[0]86:33-86:44",
+              "306[0]87:13-87:40",
+              "321[0]88:13-88:38",
+              "335[0]89:13-89:52",
+              "356[0]90:13-90:40",
+              "371[0]91:13-91:24",
+              "377[0]92:9-92:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Tokens",
+          "range": "382-420",
+          "return": "#Interop<#Neo.Iterator>",
+          "variables": [
+              "tokenMap,#Neo.StorageMap,0"
+          ],
+          "sequence-points": [
+              "385[0]96:9-96:10",
+              "386[0]97:24-97:76",
+              "402[0]98:13-98:83",
+              "420[0]99:9-99:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,TokenList",
+          "range": "433-505",
+          "return": "#Array<NgdEnterprise.Samples.NeoContributorToken.TokenState>",
+          "variables": [
+              "tokens,#Array<NgdEnterprise.Samples.NeoContributorToken.TokenState>,0",
+              "tokenMap,#Neo.StorageMap,1",
+              "iterator,#Interop<#Neo.Iterator>,2",
+              "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,3"
+          ],
+          "sequence-points": [
+              "436[0]103:9-103:10",
+              "437[0]104:30-104:44",
+              "439[0]106:24-106:76",
+              "455[0]107:17-107:97",
+              "470[0]108:20-108:35",
+              "481[0]109:13-109:14",
+              "482[0]110:21-110:55",
+              "489[0]111:17-111:35",
+              "492[0]112:13-112:14",
+              "499[0]114:13-114:27",
+              "505[0]115:9-115:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,TokenMap",
+          "range": "522-606",
+          "return": "#Map<#Hash256:NgdEnterprise.Samples.NeoContributorToken.TokenState>",
+          "variables": [
+              "tokens,#Map<#Hash256:NgdEnterprise.Samples.NeoContributorToken.TokenState>,0",
+              "tokenMap,#Neo.StorageMap,1",
+              "iterator,#Interop<#Neo.Iterator>,2",
+              "kvp,#Array<#Unspecified>,3",
+              "tokenId,#Hash256,4",
+              "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,5"
+          ],
+          "sequence-points": [
+              "525[0]119:9-119:10",
+              "526[0]120:38-120:52",
+              "528[0]122:24-122:76",
+              "544[0]123:17-123:99",
+              "559[0]124:20-124:35",
+              "570[0]125:13-125:14",
+              "571[0]126:21-126:51",
+              "578[0]127:21-127:46",
+              "582[0]128:21-128:47",
+              "586[0]129:17-129:41",
+              "593[0]130:13-130:14",
+              "600[0]132:13-132:27",
+              "606[0]133:9-133:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,TokensOf",
+          "range": "611-723",
+          "params": [
+              "owner,#Hash160"
+          ],
+          "return": "#Interop<#Neo.Iterator>",
+          "variables": [
+              "accountMap,#Neo.StorageMap,1"
+          ],
+          "sequence-points": [
+              "614[0]138:9-138:10",
+              "615[0]139:17-139:48",
+              "651[0]140:17-140:74",
+              "686[0]141:24-141:85",
+              "702[0]142:13-142:92",
+              "723[0]143:9-143:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Transfer",
+          "range": "738-1072",
+          "params": [
+              "to,#Hash160",
+              "tokenId,#Hash256",
+              "data,#Unspecified"
+          ],
+          "return": "#Boolean",
+          "variables": [
+              "tokenMap,#Neo.StorageMap,1",
+              "tokenData,#ByteArray,2",
+              "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,3",
+              "from,#Hash160,4"
+          ],
+          "sequence-points": [
+              "741[0]146:9-146:10",
+              "742[0]147:17-147:42",
+              "778[0]147:44-147:99",
+              "811[0]149:24-149:76",
+              "827[0]150:17-150:46",
+              "843[0]151:17-151:34",
+              "851[0]152:13-152:14",
+              "852[0]153:17-153:48",
+              "874[0]154:17-154:30",
+              "882[0]155:13-155:14",
+              "884[0]157:24-157:73",
+              "889[0]158:21-158:39",
+              "893[0]159:17-159:68",
+              "944[0]160:13-160:14",
+              "945[0]161:17-161:69",
+              "988[0]162:17-162:30",
+              "996[0]163:13-163:14",
+              "998[0]165:17-165:27",
+              "1006[0]166:13-166:14",
+              "1007[0]167:17-167:34",
+              "1014[0]168:17-168:61",
+              "1037[0]169:17-169:50",
+              "1045[0]170:17-170:48",
+              "1053[0]171:13-171:14",
+              "1055[0]172:13-172:51",
+              "1064[0]173:13-173:25",
+              "1072[0]174:9-174:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,UpdateBalance",
+          "range": "1127-1304",
+          "params": [
+              "owner,#Hash160",
+              "tokenId,#Hash256",
+              "increment,#Integer"
+          ],
+          "variables": [
+              "balanceMap,#Neo.StorageMap,0",
+              "balance,#Integer,1",
+              "accountMap,#Neo.StorageMap,2",
+              "key,#ByteArray,3"
+          ],
+          "sequence-points": [
+              "1130[0]262:9-262:10",
+              "1131[0]263:24-263:80",
+              "1147[0]264:24-264:63",
+              "1171[0]265:13-265:34",
+              "1177[0]266:17-266:29",
+              "1185[0]267:13-267:14",
+              "1186[0]268:21-268:35",
+              "1194[0]269:21-269:46",
+              "1215[0]271:21-271:52",
+              "1233[0]272:13-272:14",
+              "1235[0]274:24-274:85",
+              "1251[0]275:24-275:45",
+              "1257[0]276:17-276:30",
+              "1265[0]277:17-277:40",
+              "1288[0]279:17-279:40",
+              "1304[0]280:9-280:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,PostTransfer",
+          "range": "1334-1432",
+          "params": [
+              "from,#Hash160",
+              "to,#Hash160",
+              "tokenId,#Hash256",
+              "data,#Unspecified"
+          ],
+          "sequence-points": [
+              "1337[0]283:9-283:10",
+              "1338[0]284:13-284:46",
+              "1366[0]285:17-285:81",
+              "1401[0]286:17-286:92",
+              "1432[0]287:9-287:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Mint",
+          "range": "1443-1713",
+          "params": [
+              "name,#String",
+              "description,#String",
+              "image,#String"
+          ],
+          "return": "#Hash256",
+          "variables": [
+              "context,#Interop<#Neo.StorageContext>,0",
+              "key,#ByteArray,1",
+              "id,#Integer,2",
+              "tokenIdString,#String,3",
+              "tokenId,#Hash256,4",
+              "tokenState,NgdEnterprise.Samples.NeoContributorToken.TokenState,5",
+              "tokenMap,#Neo.StorageMap,6"
+          ],
+          "sequence-points": [
+              "1446[0]177:9-177:10",
+              "1447[0]178:17-178:41",
+              "1458[0]178:43-178:106",
+              "1501[0]181:28-181:60",
+              "1507[0]182:20-182:55",
+              "1513[0]183:17-183:59",
+              "1529[0]184:13-184:47",
+              "1539[0]186:17-186:65",
+              "1568[0]187:17-187:67",
+              "1591[0]189:17-195:14",
+              "1641[0]197:24-197:76",
+              "1657[0]198:13-198:62",
+              "1680[0]199:13-199:58",
+              "1690[0]200:13-200:35",
+              "1696[0]201:13-201:65",
+              "1707[0]203:13-203:28",
+              "1713[0]204:9-204:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,ValidateContractOwner",
+          "range": "1714-1791",
+          "return": "#Boolean",
+          "variables": [
+              "key,#ByteArray,0",
+              "contractOwner,#Hash160,1",
+              "tx,#Neo.Transaction,2"
+          ],
+          "sequence-points": [
+              "1717[0]290:9-290:10",
+              "1718[0]291:17-291:58",
+              "1724[0]292:17-292:82",
+              "1754[0]293:17-293:58",
+              "1760[0]294:13-294:91",
+              "1791[0]295:9-295:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,UpdateTotalSupply",
+          "range": "1849-1895",
+          "params": [
+              "increment,#Integer"
+          ],
+          "variables": [
+              "context,#Interop<#Neo.StorageContext>,0",
+              "key,#ByteArray,1",
+              "totalSupply,#Integer,2"
+          ],
+          "sequence-points": [
+              "1852[0]253:9-253:10",
+              "1853[0]254:28-254:60",
+              "1859[0]255:20-255:59",
+              "1865[0]256:24-256:75",
+              "1881[0]257:13-257:38",
+              "1887[0]258:13-258:52",
+              "1895[0]259:9-259:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Withdraw",
+          "range": "1896-2082",
+          "params": [
+              "#this,NgdEnterprise.Samples.NeoContributorToken",
+              "to,#Hash160"
+          ],
+          "return": "#Boolean",
+          "variables": [
+              "balance,#Integer,0"
+          ],
+          "sequence-points": [
+              "1899[0]207:9-207:10",
+              "1900[0]208:17-208:41",
+              "1911[0]208:43-208:107",
+              "1955[0]209:17-209:50",
+              "2010[0]209:52-209:102",
+              "2040[0]211:17-211:69",
+              "2049[0]212:17-212:29",
+              "2057[0]212:31-212:44",
+              "2066[0]214:13-214:75",
+              "2082[0]215:9-215:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,OnNEP17Payment",
+          "range": "2111-2390",
+          "params": [
+              "from,#Hash160",
+              "amount,#Integer",
+              "data,#Unspecified"
+          ],
+          "variables": [
+              "tokenId,#Hash256,0",
+              "tokenMap,#Neo.StorageMap,1",
+              "tokenData,#ByteArray,2",
+              "token,NgdEnterprise.Samples.NeoContributorToken.TokenState,3"
+          ],
+          "sequence-points": [
+              "2114[0]218:9-218:10",
+              "2115[0]219:17-219:29",
+              "2123[0]220:13-220:14",
+              "2124[0]221:21-221:44",
+              "2126[0]222:21-222:58",
+              "2159[0]222:60-222:109",
+              "2188[0]223:21-223:32",
+              "2196[0]223:34-223:84",
+              "2226[0]225:28-225:80",
+              "2242[0]226:21-226:50",
+              "2258[0]227:21-227:38",
+              "2266[0]227:40-227:80",
+              "2286[0]228:21-228:90",
+              "2291[0]229:21-229:48",
+              "2322[0]229:50-229:103",
+              "2355[0]231:21-231:51",
+              "2369[0]231:53-231:92",
+              "2388[0]232:13-232:14",
+              "2390[0]233:9-233:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Deploy",
+          "range": "2420-2462",
+          "params": [
+              "data,#Unspecified",
+              "update,#Boolean"
+          ],
+          "variables": [
+              "tx,#Neo.Transaction,0",
+              "key,#ByteArray,1"
+          ],
+          "sequence-points": [
+              "2423[0]237:9-237:10",
+              "2424[0]238:17-238:23",
+              "2430[0]238:25-238:32",
+              "2436[0]240:17-240:58",
+              "2442[0]241:17-241:58",
+              "2448[0]242:13-242:65",
+              "2462[0]243:9-243:10"
+          ]
+      },
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,Update",
+          "range": "2469-2541",
+          "params": [
+              "nefFile,#ByteArray",
+              "manifest,#String"
+          ],
+          "sequence-points": [
+              "2472[0]246:9-246:10",
+              "2473[0]247:17-247:41",
+              "2484[0]247:43-247:114",
+              "2535[0]249:13-249:64",
+              "2541[0]250:9-250:10"
+          ]
+      }
   ],
   "events": [
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,OnTransfer",
-      "params": [
-        "from,#Hash160",
-        "to,#Hash160",
-        "amount,#Integer",
-        "tokenId,#ByteArray"
-      ]
-    }
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,OnTransfer",
+          "params": [
+              "from,#Hash160",
+              "to,#Hash160",
+              "amount,#Integer",
+              "tokenId,#Hash256"
+          ]
+      }
   ],
   "structs": [
-    {
-      "name": "NgdEnterprise.Samples.NeoContributorToken,TokenState",
-      "fields": [
-        "Owner,#Hash160",
-        "Name,#String",
-        "Description,#String",
-        "Image,#String"
-      ]
-    }
+      {
+          "name": "NgdEnterprise.Samples.NeoContributorToken,TokenState",
+          "fields": [
+              "Owner,#Hash160",
+              "Name,#String",
+              "Description,#String",
+              "Image,#String"
+          ]
+      }
   ],
   "storages": [
-    {
-      "name": ",TotalSupply",
-      "type": "#Integer",
-      "prefix": "00"
-    },
-    {
-      "name": ",Balances",
-      "type": "#Integer",
-      "prefix": "01",
-      "segments": [
-        "owner,#Address"
-      ]
-    },
-    {
-      "name": ",TokenId",
-      "type": "#Integer",
-      "prefix": "02"
-    },
-    {
-      "name": ",Tokens",
-      "type": "NgdEnterprise.Samples.NeoContributorToken.TokenState",
-      "prefix": "03",
-      "segments": [
-        "tokenId,#Hash256"
-      ]
-    },
-    {
-      "name": ",AccountToken",
-      "type": "#Integer",
-      "prefix": "04",
-      "segments": [
-        "owner,#Address",
-        "tokenId,#Hash256"
-      ]
-    },
-    {
-      "name": ",ContractOwner",
-      "type": "#Hash160",
-      "prefix": "FF"
-    }
+      {
+          "name": ",TotalSupply",
+          "type": "#Integer",
+          "prefix": "00"
+      },
+      {
+          "name": ",Balances",
+          "type": "#Integer",
+          "prefix": "01",
+          "segments": [
+              "owner,#Address"
+          ]
+      },
+      {
+          "name": ",TokenId",
+          "type": "#Integer",
+          "prefix": "02"
+      },
+      {
+          "name": ",Tokens",
+          "type": "NgdEnterprise.Samples.NeoContributorToken.TokenState",
+          "prefix": "03",
+          "segments": [
+              "tokenId,#Hash256"
+          ]
+      },
+      {
+          "name": ",AccountToken",
+          "type": "#Integer",
+          "prefix": "04",
+          "segments": [
+              "owner,#Address",
+              "tokenId,#Hash256"
+          ]
+      },
+      {
+          "name": ",ContractOwner",
+          "type": "#Hash160",
+          "prefix": "FF"
+      }
   ]
 }

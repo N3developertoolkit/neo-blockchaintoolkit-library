@@ -265,7 +265,7 @@ namespace Neo.BlockchainToolkit.Models
 
         internal static StorageGroupDef ParseStorage(JToken storageToken, StructMap structMap)
         {
-            var name = storageToken.Value<string>("name") ?? "";
+            var (ns, name) = SplitCommaPair(storageToken.Value<string>("name"));
             if (string.IsNullOrEmpty(name)) throw new JsonException("invalid storage name");
             var type = ContractType.TryParse(storageToken.Value<string>("type") ?? "", structMap, out var _type)
                 ? _type : ContractType.Unspecified;
