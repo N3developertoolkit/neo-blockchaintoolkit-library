@@ -75,7 +75,7 @@ stages:
         packagesToPack: 'src/bctklib/bctklib.csproj'
         includesymbols: true
         versioningScheme: 'off'
-        buildProperties: '/p:SourceLinkCreate=true'
+        buildProperties: ' /p:SourceLinkCreate=true'
     - publish: '$(Build.ArtifactStagingDirectory)'
       displayName: 'publish build artifact'
       artifact: NugetPackage
