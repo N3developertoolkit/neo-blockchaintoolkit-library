@@ -50,8 +50,7 @@ stages:
       inputs:
         command: 'build'
         projects: '**/*.csproj'
-        versioningScheme: 'off'
-        arguments: -c $(buildConfiguration)
+        arguments: '-c $(buildConfiguration) /p:ContinuousIntegrationBuild=true'
     - task: DotNetCoreCLI@2
       displayName: 'dotnet test'
       inputs:
@@ -76,6 +75,7 @@ stages:
         packagesToPack: 'src/bctklib/bctklib.csproj'
         includesymbols: true
         versioningScheme: 'off'
+        buildProperties: '/p:SourceLinkCreate=true'
     - publish: '$(Build.ArtifactStagingDirectory)'
       displayName: 'publish build artifact'
       artifact: NugetPackage
@@ -87,3 +87,8 @@ stages:
         packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
         nuGetFeedType: 'internal'
         publishVstsFeed: 'c96908c2-e4b5-4c77-b955-4b690f24380b/9e84eb49-63f0-4b48-a8c4-039901073643'
+    - task: PublishSymbols@2
+      inputs:
+        SearchPattern: 'src/bctklib/bin/**/*.pdb'
+        IndexSources: false
+        SymbolServerType: 'TeamServices'
