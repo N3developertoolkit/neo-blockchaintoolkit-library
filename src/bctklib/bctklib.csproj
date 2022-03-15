@@ -4,6 +4,7 @@
     <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
     <Copyright>2015-2021 The Neo Project</Copyright>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>10</LangVersion>
     <Nullable>enable</Nullable>
