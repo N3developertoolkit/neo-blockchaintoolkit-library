@@ -15,6 +15,7 @@ on:
       - 'docs/**'
 
 env:
+  AZURE_ARTIFACTS_FEED_URL: https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
   CONFIGURATION: 'Release'
   DOTNET_VERSION: '6.0.x'
 
@@ -38,12 +39,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libsnappy-dev libc6-dev librocksdb-dev -y
-    - name: Install dependencies
-      run: dotnet restore
-    - name: Build 
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
-    - name: Test
-      run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
+    - name: Build and Test
+      run: |
+        dotnet restore
+        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+        dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
     - name: cobertura-report
       uses: 5monkeys/cobertura-action@v12
       with:
@@ -62,15 +62,14 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
-    - name: Nerdbank.GitVersioning
-      uses: dotnet/nbgv@v0.4.0
-      id: nbgv
-    - name: Install dependencies
-      run: dotnet restore
-    - name: Build 
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+        source-url: ${{ env.AZURE_ARTIFACTS_FEED_URL }}
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.AZURE_ARTIFACTS_PAT }} 
     - name: Pack
-      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --output ./out --no-build --verbosity normal
+      run: |
+        dotnet restore
+        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+        dotnet pack --configuration ${{ env.CONFIGURATION }} --output ./out --no-build --verbosity normal
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
@@ -78,4 +77,4 @@ jobs:
         path: ./out
     - name: Push to Azure Artifacts
       if: ${{ (github.ref == 'refs/heads/master') && (github.event_name == 'push') }}
-      run: dotnet nuget push ${{ format('./out/Neo.BlockchainToolkit.Library.{0}.nupkg', steps.nbgv.outputs.NuGetPackageVersion) }} --api-key ${{ secrets.AZURE_ARTIFACTS_PAT }} --source https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
+      run: dotnet nuget push --api-key AzureArtifacts out/*.nupkg
