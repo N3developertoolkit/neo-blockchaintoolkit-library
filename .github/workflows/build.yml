@@ -39,6 +39,7 @@ jobs:
     - name: Test
       run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal
   package:
+    needs: build
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
