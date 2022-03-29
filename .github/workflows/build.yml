@@ -62,6 +62,9 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Nerdbank.GitVersioning
+      uses: dotnet/nbgv@v0.4.0
+      id: nbgv
     - name: Install dependencies
       run: dotnet restore
     - name: Build 
@@ -73,5 +76,6 @@ jobs:
       with:
         name: packages
         path: ./out
-
-# TODO: upload to azure artifacts
+    - name: Push to Azure Artifacts
+      if: ${{ (github.ref == 'refs/heads/master') && (github.event_name == 'push') }}
+      run: dotnet nuget push ${{ format('./out/Neo.BlockchainToolkit.Library.{0}.nupkg', steps.nbgv.outputs.NuGetPackageVersion) }} --api-key ${{ secrets.AZURE_ARTIFACTS_PAT }} --source https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
