@@ -16,9 +16,24 @@ may not exactly match a publicly released version.
 ## [Unreleased]
 
 ### Added
+
 * ContractType models (#60)
-* Contract Storage Schema JSON parser (#60)
-* ContractType definitions for Transaction and Trimmed Block (#60)
+* <del>Contract Storage Schema JSON parser (#60)</del>
+  * Removed in (#61) in favor of including storage schema in debug info
+* <del>ContractType definitions for Transaction and Trimmed Block (#60)</del>
+  * Removed in (#61) in favor of generated definitions
+* InteropContractType (#61)
+* ContractType Parsing (#61)
+* v2 DebugInfo model + parsing support  (#61)
+  * V2 Debug Info documented here during preview:
+    https://github.com/devhawk/proposals/blob/devhawk/cd2l/nep-19.md 
+* Generated definitions of Neo Core platform structures (block, transaction, etc)
+  from Smart Contract Framework source (#61)
+  * scfx-gen tool to generate Neo Core platform structure definitions
+
+### Changed
+
+* Changed definitions of some DebugInfo types to use `readonly record struct`
 
 ## [3.1.35] - 2022-02-25
 
