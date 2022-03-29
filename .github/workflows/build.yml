@@ -49,6 +49,7 @@ jobs:
       with:
         path: test/test.bctklib\TestResults/*/coverage.cobertura.xml
         repo_token: ${{ secrets.GITHUB_TOKEN }}
+        minimum_coverage: 0
   package:
     needs: build
     runs-on: ubuntu-latest
