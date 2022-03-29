@@ -3,6 +3,10 @@ name: Release
 on:
   workflow_dispatch:
 
+env:
+  CONFIGURATION: 'Release'
+  DOTNET_VERSION: '6.0.x'
+
 jobs:
   build:
     if: startsWith(github.ref, 'refs/heads/release/')
@@ -18,10 +22,11 @@ jobs:
     - name: Nerdbank.GitVersioning
       uses: dotnet/nbgv@v0.4.0
       id: nbgv
-    - name: Install dependencies
-      run: dotnet restore
-    - name: Pack 
-      run: dotnet pack --output ./out --configuration Release --no-restore --verbosity normal
+    - name: Pack
+      run: |
+        dotnet restore
+        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+        dotnet pack --configuration ${{ env.CONFIGURATION }} --output ./out --no-build --verbosity normal
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
@@ -37,4 +42,4 @@ jobs:
         files: |
           ./out/*
     - name: Push to Nuget.org
-      run: dotnet nuget push ${{ format('./out/Neo.BlockchainToolkit.Library.{0}.nupkg', steps.nbgv.outputs.NuGetPackageVersion) }} --api-key ${{ secrets.NUGET_ORG_TOKEN }} --source https://api.nuget.org/v3/index.json
+      run: dotnet nuget push out/*.nupkg --api-key ${{ secrets.NUGET_ORG_TOKEN }} --source https://api.nuget.org/v3/index.json
