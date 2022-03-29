@@ -38,7 +38,7 @@ jobs:
       run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
     - name: Test
       run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal
-  build:
+  package:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
