@@ -1,0 +1,69 @@
+name: Build libBCTK
+
+on:
+  pull_request:
+    branches:
+      - master
+      - 'release/**'
+  push:
+    branches:
+      - master
+      - 'release/**'
+    paths-ignore:
+      - 'readme.md'
+      - 'CHANGELOG.md'
+      - 'docs/**'
+
+env:
+  CONFIGURATION: 'Release'
+  DOTNET_VERSION: '6.0.x'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy: 
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build 
+      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+    - name: Test
+      run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Install RocksDB Dependencies
+      if: ${{ runner.os == 'Linux'}}
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsnappy-dev libc6-dev librocksdb-dev -y
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build 
+      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+    - name: Pack
+      run: dotnet pack --configuration ${{ env.CONFIGURATION }} --output ./out --no-build --verbosity normal
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: packages
+        path: ./out
+
+# TODO: upload to azure artifacts
