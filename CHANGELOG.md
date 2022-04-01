@@ -17,6 +17,9 @@ may not exactly match a publicly released version.
 
 ### Added
 
+* CreateGenesisContract extension method (#60)
+* IRocksDbStorageProvider abstraction (#62)
+
 * ContractType models (#60)
 * <del>Contract Storage Schema JSON parser (#60)</del>
   * Removed in (#61) in favor of including storage schema in debug info
@@ -33,7 +36,8 @@ may not exactly match a publicly released version.
 
 ### Changed
 
-* Changed definitions of some DebugInfo types to use `readonly record struct`
+* Changed definitions of some DebugInfo types to use `readonly record struct` (#61)
+
 ## [3.1.35] - 2022-02-25
 
 * ContractParameterParser.ConvertObject and ContractParameterParser.ConvertStackItem static methods (#56)
