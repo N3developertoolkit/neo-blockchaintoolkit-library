@@ -17,8 +17,8 @@ may not exactly match a publicly released version.
 
 ### Added
 
-* CreateGenesisContract extension method
-* IRocksDbStorageProvider abstraction
+* CreateGenesisContract extension method (#60)
+* IRocksDbStorageProvider abstraction (#62)
 
 * ContractType models (#60)
 * <del>Contract Storage Schema JSON parser (#60)</del>
