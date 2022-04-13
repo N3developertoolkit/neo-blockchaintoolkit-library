@@ -1,0 +1,397 @@
+{
+  "IInteroperable": [
+    {
+      "name": "Neo.Network.P2P.Payloads.Transaction",
+      "fields": [
+        {
+          "name": "Hash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Version",
+          "type": "#Integer"
+        },
+        {
+          "name": "Nonce",
+          "type": "#Integer"
+        },
+        {
+          "name": "Sender",
+          "type": "#Hash160"
+        },
+        {
+          "name": "SystemFee",
+          "type": "#Integer"
+        },
+        {
+          "name": "NetworkFee",
+          "type": "#Integer"
+        },
+        {
+          "name": "ValidUntilBlock",
+          "type": "#Integer"
+        },
+        {
+          "name": "Script",
+          "type": "#ByteArray"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.ContractState",
+      "fields": [
+        {
+          "name": "Id",
+          "type": "#Integer"
+        },
+        {
+          "name": "UpdateCounter",
+          "type": "#Integer"
+        },
+        {
+          "name": "Hash",
+          "type": "#Hash160"
+        },
+        {
+          "name": "Nef",
+          "type": "#ByteArray"
+        },
+        {
+          "name": "Manifest",
+          "type": "Neo.SmartContract.Manifest.ContractManifest"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractAbi",
+      "fields": [
+        {
+          "name": "Methods",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractMethodDescriptor>"
+        },
+        {
+          "name": "Events",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractEventDescriptor>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractEventDescriptor",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Parameters",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractParameterDefinition>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractGroup",
+      "fields": [
+        {
+          "name": "PubKey",
+          "type": "#PublicKey"
+        },
+        {
+          "name": "Signature",
+          "type": "#ByteArray"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractManifest",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Groups",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractGroup>"
+        },
+        {
+          "name": "Reserved",
+          "type": "#Unspecified"
+        },
+        {
+          "name": "SupportedStandards",
+          "type": "#Array<#String>"
+        },
+        {
+          "name": "Abi",
+          "type": "Neo.SmartContract.Manifest.ContractAbi"
+        },
+        {
+          "name": "Permissions",
+          "type": "#Array<NNeo.SmartContract.Manifest.ContractPermission>"
+        },
+        {
+          "name": "Trusts",
+          "type": "#Unspecified"
+        },
+        {
+          "name": "Extra",
+          "type": "#String"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractMethodDescriptor",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Parameters",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractParameterDefinition>"
+        },
+        {
+          "name": "ReturnType",
+          "type": "#Integer"
+        },
+        {
+          "name": "Offset",
+          "type": "#Integer"
+        },
+        {
+          "name": "Safe",
+          "type": "#Boolean"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractParameterDefinition",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Type",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractPermission",
+      "fields": [
+        {
+          "name": "Contract",
+          "type": "#Unspecified"
+        },
+        {
+          "name": "Methods",
+          "type": "#Unspecified"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.AccountState",
+      "fields": [
+        {
+          "name": "Balance",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.HashIndexState",
+      "fields": [
+        {
+          "name": "Hash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Index",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.NeoAccountState",
+      "fields": [
+        {
+          "name": "Balance",
+          "type": "#Integer"
+        },
+        {
+          "name": "BalanceHeight",
+          "type": "#Integer"
+        },
+        {
+          "name": "VoteTo",
+          "type": "#PublicKey"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.CandidateState",
+      "fields": [
+        {
+          "name": "Registered",
+          "type": "#Boolean"
+        },
+        {
+          "name": "Votes",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.CommitteeMember",
+      "fields": [
+        {
+          "name": "PublicKey",
+          "type": "#PublicKey"
+        },
+        {
+          "name": "Votes",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.CachedCommittee",
+      "fields": [
+        {
+          "name": "Members",
+          "type": "#Array<Neo.SmartContract.Native.NeoToken.CommitteeMember>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.OracleContract.IdList",
+      "fields": [
+        {
+          "name": "Ids",
+          "type": "#Array<#Integer>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.OracleRequest",
+      "fields": [
+        {
+          "name": "OriginalTxid",
+          "type": "#Hash256"
+        },
+        {
+          "name": "GasForResponse",
+          "type": "#Integer"
+        },
+        {
+          "name": "Url",
+          "type": "#String"
+        },
+        {
+          "name": "Filter",
+          "type": "#String"
+        },
+        {
+          "name": "CallbackContract",
+          "type": "#Hash160"
+        },
+        {
+          "name": "CallbackMethod",
+          "type": "#String"
+        },
+        {
+          "name": "UserData",
+          "type": "#ByteArray"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.RoleManagement.NodeList",
+      "fields": [
+        {
+          "name": "Nodes",
+          "type": "#Array<#PublicKey>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.TransactionState",
+      "fields": [
+        {
+          "name": "BlockIndex",
+          "type": "#Integer"
+        },
+        {
+          "name": "RawTransaction",
+          "type": "#ByteArray"
+        },
+        {
+          "name": "VMState",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.TrimmedBlock",
+      "fields": [
+        {
+          "name": "Hash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Version",
+          "type": "#Integer"
+        },
+        {
+          "name": "PrevHash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "MerkleRoot",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Timestamp",
+          "type": "#Integer"
+        },
+        {
+          "name": "Nonce",
+          "type": "#Integer"
+        },
+        {
+          "name": "Index",
+          "type": "#Integer"
+        },
+        {
+          "name": "PrimaryIndex",
+          "type": "#Integer"
+        },
+        {
+          "name": "NextConsensus",
+          "type": "#Hash160"
+        },
+        {
+          "name": "TransactionsCount",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.NotifyEventArgs",
+      "fields": [
+        {
+          "name": "ScriptHash",
+          "type": "#Hash160"
+        },
+        {
+          "name": "EventName",
+          "type": "#String"
+        },
+        {
+          "name": "State",
+          "type": "#Array<#Unspecified>"
+        }
+      ]
+    }
+  ]
+}

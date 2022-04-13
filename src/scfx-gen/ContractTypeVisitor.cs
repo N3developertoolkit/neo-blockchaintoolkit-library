@@ -1,7 +1,13 @@
 using Microsoft.CodeAnalysis;
 using Neo.BlockchainToolkit.Models;
 
-record SymbolContractType(INamedTypeSymbol Symbol) : ContractType;
+record SymbolContractType(INamedTypeSymbol Symbol) : ContractType
+{
+    public override string ToString()
+    {
+        return Symbol.ToString() ?? throw new Exception();
+    }
+}
 
 class ContractTypeVisitor : SymbolVisitor<ContractType>
 {

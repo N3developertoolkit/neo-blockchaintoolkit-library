@@ -14,6 +14,17 @@ static class Extensions
             _ => throw new NotImplementedException($"{nameof(AsSource)} {type.GetType().Name}"),
         };
 
+    public static string AsString(this ContractType type) 
+        => type switch
+        {
+            PrimitiveContractType p => $"PrimitiveContractType.{p.Type}",
+            SymbolContractType s => $"NativeStructs.{s.Symbol.Name}",
+            ArrayContractType a => $"new ArrayContractType({a.Type.AsSource()})",
+            UnspecifiedContractType => "ContractType.Unspecified",
+            InteropContractType i => $"new InteropContractType(\"{i.Type}\")",
+            _ => throw new NotImplementedException($"{nameof(AsSource)} {type.GetType().Name}"),
+        };
+
     public static INamedTypeSymbol FindType(this Compilation compilation, string name)
         => compilation.GetTypeByMetadataName(name) ?? throw new Exception($"{name} type not found");
 
