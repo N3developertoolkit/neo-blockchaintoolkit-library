@@ -1,1 +1,0 @@
-dotnet run > ..\bctklib\models\NativeStructs.cs
