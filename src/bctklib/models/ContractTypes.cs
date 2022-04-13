@@ -21,10 +21,10 @@ namespace Neo.BlockchainToolkit.Models
     {
         public readonly static ContractType Unspecified = new UnspecifiedContractType();
 
-        const string UNSPECIFIED = "#Unspecified";
-        const string ARRAY_PREFIX = "#Array<";
-        const string MAP_PREFIX = "#Map<";
-        const string INTEROP_PREFIX = "#Interop<";
+        protected const string UNSPECIFIED = "#Unspecified";
+        protected const string ARRAY_PREFIX = "#Array<";
+        protected const string MAP_PREFIX = "#Map<";
+        protected const string INTEROP_PREFIX = "#Interop<";
         protected const string NEO_NAMESPACE = "#Neo.";
 
 #if (!SCFXGEN)
@@ -128,10 +128,15 @@ namespace Neo.BlockchainToolkit.Models
 #endif
     }
 
-    public record UnspecifiedContractType() : ContractType;
+    public record UnspecifiedContractType() : ContractType
+    {
+        public override string ToString() => UNSPECIFIED;
+    }
 
     public record PrimitiveContractType(PrimitiveType Type) : ContractType
     {
+        public override string ToString() => $"#{Type}";
+
         public static PrimitiveContractType AsContractType(PrimitiveType type)
             => type switch
             {
@@ -193,10 +198,20 @@ namespace Neo.BlockchainToolkit.Models
                 && !typeName.Contains('>');
     }
 
-    public record ArrayContractType(ContractType Type) : ContractType;
-    public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
+    public record ArrayContractType(ContractType Type) : ContractType
+    {
+        public override string ToString() => $"{ARRAY_PREFIX}{Type}>";
+
+    }
+
+    public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType
+    {
+        public override string ToString() => $"{MAP_PREFIX}{KeyType},{ValueType}>";
+    }
+
     public record InteropContractType(string Type) : ContractType
     {
+        public override string ToString() => $"{INTEROP_PREFIX}{Type}>";
         public readonly static InteropContractType Unknown = new InteropContractType(string.Empty);
     }
 }
