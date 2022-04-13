@@ -1,5 +1,242 @@
 {
-  "IInteroperable": [
+  "NativeContracts": [
+    {
+      "id": -1,
+      "hash": "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd",
+      "name": "ContractManagement",
+      "storages": [
+        {
+          "name": "Contracts",
+          "type": "Neo.SmartContract.ContractState",
+          "prefix": "08",
+          "segments": [
+            "contractHash,#Hash160"
+          ]
+        },
+        {
+          "name": "NextAvailableId",
+          "type": "#Integer",
+          "prefix": "0F"
+        },
+        {
+          "name": "MinimumDeploymentFee",
+          "type": "#Integer",
+          "prefix": "14"
+        }
+      ]
+    },
+    {
+      "id": -4,
+      "hash": "0xda65b600f7124ce6c79950c1772a36403104f2be",
+      "name": "LedgerContract",
+      "storages": [
+        {
+          "name": "Block",
+          "type": "Neo.SmartContract.Native.TrimmedBlock",
+          "prefix": "05",
+          "segments": [
+            "blockHash,#Hash256"
+          ]
+        },
+        {
+          "name": "BlockHash",
+          "type": "#Hash256",
+          "prefix": "09",
+          "segments": [
+            "index,#Integer"
+          ]
+        },
+        {
+          "name": "Transaction",
+          "type": "Neo.SmartContract.Native.TransactionState",
+          "prefix": "11",
+          "segments": [
+            "txHash,#Hash256"
+          ]
+        },
+        {
+          "name": "CurrentBlock",
+          "type": "Neo.SmartContract.Native.HashIndexState",
+          "prefix": "12"
+        }
+      ]
+    },
+    {
+      "id": -5,
+      "hash": "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5",
+      "name": "NeoToken",
+      "storages": [
+        {
+          "name": "TotalSupply",
+          "type": "#Integer",
+          "prefix": "11"
+        },
+        {
+          "name": "Account",
+          "type": "Neo.SmartContract.Native.NeoToken.NeoAccountState",
+          "prefix": "09",
+          "segments": [
+            "account,#Hash160"
+          ]
+        },
+        {
+          "name": "VotersCount",
+          "type": "#Integer",
+          "prefix": "01"
+        },
+        {
+          "name": "Candidate",
+          "type": "Neo.SmartContract.Native.NeoToken.CandidateState",
+          "prefix": "21",
+          "segments": [
+            "publicKey,#PublicKey"
+          ]
+        },
+        {
+          "name": "Committee",
+          "type": "Neo.SmartContract.Native.NeoToken.CachedCommittee",
+          "prefix": "0E"
+        },
+        {
+          "name": "GasPerBlock",
+          "type": "#Integer",
+          "prefix": "1D",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "RegisterPrice",
+          "type": "#Integer",
+          "prefix": "0D"
+        },
+        {
+          "name": "VoterRewardPerCommittee",
+          "type": "#Integer",
+          "prefix": "17",
+          "segments": [
+            "publicKey,#PublicKey",
+            "index,#BigEndianU32"
+          ]
+        }
+      ]
+    },
+    {
+      "id": -6,
+      "hash": "0xd2a4cff31913016155e38e474a2c06d08be276cf",
+      "name": "GasToken",
+      "storages": [
+        {
+          "name": "TotalSupply",
+          "type": "#Integer",
+          "prefix": "11"
+        },
+        {
+          "name": "Account",
+          "type": "Neo.SmartContract.Native.AccountState",
+          "prefix": "09",
+          "segments": [
+            "account,#Hash160"
+          ]
+        }
+      ]
+    },
+    {
+      "id": -7,
+      "hash": "0xcc5e4edd9f5f8dba8bb65734541df7a1c081c67b",
+      "name": "PolicyContract",
+      "storages": [
+        {
+          "name": "BlockedAccount",
+          "type": "#ByteArray",
+          "prefix": "0F",
+          "segments": [
+            "account,#Hash160"
+          ]
+        },
+        {
+          "name": "FeePerByte",
+          "type": "#Integer",
+          "prefix": "0A"
+        },
+        {
+          "name": "ExecFeeFactor",
+          "type": "#Integer",
+          "prefix": "12"
+        },
+        {
+          "name": "StoragePrice",
+          "type": "#Integer",
+          "prefix": "13"
+        }
+      ]
+    },
+    {
+      "id": -8,
+      "hash": "0x49cf4e5378ffcd4dec034fd98a174c5491e395e2",
+      "name": "RoleManagement",
+      "storages": [
+        {
+          "name": "StateValidator",
+          "type": "Neo.SmartContract.Native.RoleManagement.NodeList",
+          "prefix": "04",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "Oracle",
+          "type": "#Integer",
+          "prefix": "08",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "NeoFSAlphabetNode",
+          "type": "#BigEndianU32",
+          "prefix": "10",
+          "segments": [
+            "index,#Index"
+          ]
+        }
+      ]
+    },
+    {
+      "id": -9,
+      "hash": "0xfe924b7cfe89ddd271abaf7210a80a7e11178758",
+      "name": "OracleContract",
+      "storages": [
+        {
+          "name": "Price",
+          "type": "#Integer",
+          "prefix": "05"
+        },
+        {
+          "name": "RequestId",
+          "type": "#Integer",
+          "prefix": "09"
+        },
+        {
+          "name": "Request",
+          "type": "Neo.SmartContract.Native.OracleRequest",
+          "prefix": "07",
+          "segments": [
+            "id,#BigEndianU64"
+          ]
+        },
+        {
+          "name": "IdList",
+          "type": "Neo.SmartContract.Native.OracleContract.IdList",
+          "prefix": "06",
+          "segments": [
+            "urlHash,#Hash160"
+          ]
+        }
+      ]
+    }
+  ],
+  "InteroperableTypes": [
     {
       "name": "Neo.Network.P2P.Payloads.Transaction",
       "fields": [
@@ -318,7 +555,7 @@
       "name": "Neo.SmartContract.Native.TransactionState",
       "fields": [
         {
-          "name": "BlockIndex",
+          "name": "BigEndianU32",
           "type": "#Integer"
         },
         {

@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Neo.BlockchainToolkit.Models
 {
+    // TODO: Enum Type
+    // TODO: BigEndian Integer BlockIndex (used in NeoToken GasPerBlock and VoterRewardPerCommittee segments)
+
     public enum PrimitiveType : byte
     {
         Boolean,
@@ -28,7 +30,7 @@ namespace Neo.BlockchainToolkit.Models
         protected const string NEO_NAMESPACE = "#Neo.";
 
 #if (!SCFXGEN)
-        public static bool TryParsePrimitive(ReadOnlySpan<char> typeName, [MaybeNullWhen(false)] out PrimitiveType type)
+        public static bool TryParsePrimitive(ReadOnlySpan<char> typeName, out PrimitiveType type)
         {
             if (typeName[0] == '#'
                 && Enum.TryParse<PrimitiveType>(typeName.Slice(1), out var primitive))
