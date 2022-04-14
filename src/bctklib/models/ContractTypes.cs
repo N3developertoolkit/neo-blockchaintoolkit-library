@@ -43,6 +43,9 @@ namespace Neo.BlockchainToolkit.Models
             return false;
         }
 
+        public static ContractType Parse(string typeName, IReadOnlyDictionary<string, StructContractType> structs)
+            => TryParse(typeName, structs, out var type) ? type : throw new Exception($"Could not parse {typeName}");
+
         public static bool TryParse(string typeName, IReadOnlyDictionary<string, StructContractType> structs, out ContractType type)
         {
             if (typeName.Length > 0)
@@ -71,10 +74,11 @@ namespace Neo.BlockchainToolkit.Models
                         return true;
                     }
 
-                    var arrayType = TryParse(new string(arrayArg), structs, out var _type)
-                        ? _type : ContractType.Unspecified;
-                    type = new ArrayContractType(arrayType);
-                    return true;
+                    if (TryParse(new string(arrayArg), structs, out var arrayType))
+                    {
+                        type = new ArrayContractType(arrayType);
+                        return true;
+                    }
                 }
 
                 if (typeName.StartsWith(MAP_PREFIX)
@@ -92,12 +96,12 @@ namespace Neo.BlockchainToolkit.Models
                     var colonIndex = mapArgs.IndexOf(':');
                     if (colonIndex != -1)
                     {
-                        var keyType = TryParsePrimitive(mapArgs.Slice(0, colonIndex), out var _key)
-                            ? _key : PrimitiveType.ByteArray;
-                        var valueType = TryParse(new string(mapArgs.Slice(colonIndex + 1)), structs, out var _value)
-                            ? _value : ContractType.Unspecified;
-                        type = new MapContractType(keyType, valueType);
-                        return true;
+                        if (TryParsePrimitive(mapArgs.Slice(0, colonIndex), out var keyType)
+                            && TryParse(new string(mapArgs.Slice(colonIndex + 1)), structs, out var valueType))
+                        {
+                            type = new MapContractType(keyType, valueType);
+                            return true;
+                        }
                     }
                 }
 

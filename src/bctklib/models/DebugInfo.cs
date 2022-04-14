@@ -297,10 +297,10 @@ namespace Neo.BlockchainToolkit.Models
                     return (nsqName, (IReadOnlyList<(string, string)>)fields);
                 });
 
-        internal static StructMap BindStructs(IEnumerable<(string name, IReadOnlyList<(string name, string type)> fields)> unboundStructs)
+        public static StructMap BindStructs(IEnumerable<(string name, IReadOnlyList<(string name, string type)> fields)> unboundStructs)
         {
             // cache unboundStructs if not already a read only list under the hood
-            unboundStructs = unboundStructs as IReadOnlyList<(string, IReadOnlyList<(string, string)>)> ?? unboundStructs.ToArray();
+            unboundStructs = unboundStructs as IReadOnlyList<(string, IReadOnlyList<(string, string)>)> ?? unboundStructs.ToList();
 
             // loop thru the unbound structs, attempting to bind any unbound fields, until all structs are bound
             var boundStructMap = new Dictionary<string, StructContractType>();

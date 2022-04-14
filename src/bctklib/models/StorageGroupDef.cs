@@ -5,7 +5,11 @@ using OneOf;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    public readonly record struct KeySegment(string Name, PrimitiveType Type);
+    // native contracts can use fixed-width big endian key segments
+    public readonly record struct BigEndianUInt32;
+    public readonly record struct BigEndianUInt64;
+
+    public readonly record struct KeySegment(string Name, OneOf<PrimitiveType, BigEndianUInt32, BigEndianUInt64> Type);
 
     public readonly struct StorageGroupDef : IEquatable<StorageGroupDef>
     {
