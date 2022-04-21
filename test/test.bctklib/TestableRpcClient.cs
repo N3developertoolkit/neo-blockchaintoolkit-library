@@ -7,19 +7,25 @@ namespace test.bctklib
 {
     class TestableRpcClient : Neo.Network.RPC.RpcClient
     {
-        Stack<Func<JObject>> funcStack = new();
+        Queue<Func<JObject>> responseQueue = new();
 
         public TestableRpcClient(params Func<JObject>[] functions) : base(null)
         {
             foreach (var func in functions.Reverse())
             {
-                funcStack.Push(func);
+                responseQueue.Enqueue(func);
             }
-
         }
+
+
+        public void QueueResource(string resourceName)
+        {
+            responseQueue.Enqueue(() => JObject.Parse(Utility.GetResource(resourceName)));
+        }
+
         public override JObject RpcSend(string method, params JObject[] paraArgs)
         {
-            return funcStack.Pop()();
+            return responseQueue.Dequeue()();
         }
     }
 }

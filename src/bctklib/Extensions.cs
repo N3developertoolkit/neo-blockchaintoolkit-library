@@ -3,10 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using Neo.BlockchainToolkit.Models;
+using Neo.BlockchainToolkit.Persistence;
+using Neo.Cryptography.MPTTrie;
+using Neo.IO;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
@@ -60,6 +64,38 @@ namespace Neo.BlockchainToolkit
 
             chain = null;
             return false;
+        }
+
+        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
+            ProtocolSettings settings, UInt160 scriptHash)
+                => @this.CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
+
+        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
+            Models.ExpressChain chain, UInt160 scriptHash)
+                => @this.CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
+
+        public static (StorageKey key, StorageItem item) VerifyProof(this byte[]? proof, UInt256 rootHash)
+        {
+            ArgumentNullException.ThrowIfNull(proof);
+
+            var proofs = new HashSet<byte[]>();
+
+            using MemoryStream stream = new(proof, false);
+            using BinaryReader reader = new(stream, Utility.StrictUTF8);
+
+            var key = reader.ReadVarBytes(Node.MaxKeyLength);
+            var count = reader.ReadVarInt();
+            for (ulong i = 0; i < count; i++)
+            {
+                proofs.Add(reader.ReadVarBytes());
+            }
+
+            var storageKey = key.AsSerializable<StorageKey>();
+            if (storageKey is null) throw new Exception($"Invalid {nameof(StorageKey)}");
+            var storageItem = Trie<StorageKey, StorageItem>.VerifyProof(rootHash, storageKey, proofs);
+            if (storageItem is null) throw new Exception("Verification failed");
+
+            return (storageKey, storageItem);
         }
 
         internal static string NormalizePath(this IFileSystem fileSystem, string path)

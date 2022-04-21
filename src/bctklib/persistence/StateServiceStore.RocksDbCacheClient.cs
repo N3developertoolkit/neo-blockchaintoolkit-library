@@ -79,11 +79,25 @@ namespace Neo.BlockchainToolkit.Persistence
             static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter =
                 MessagePackSerializerOptions.Standard.Resolver.GetFormatter<byte[]?>();
 
-            public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
+            ColumnFamilyHandle GetColumnFamily(UInt256 rootHash, UInt160 scriptHash)
             {
                 var familyName = $"{nameof(GetState)}{rootHash}{scriptHash}";
-                var family = db.GetOrCreateColumnFamily(familyName);
-                var cachedState = db.Get(key.Span, family);
+                return db.GetOrCreateColumnFamily(familyName);
+            }
+
+            // method used for testing
+            internal byte[]? GetCachedState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
+            {
+                var family = GetColumnFamily(rootHash, scriptHash);
+                return GetCachedState(key.Span, family);
+            }
+
+            byte[]? GetCachedState(ReadOnlySpan<byte> key, ColumnFamilyHandle family) => db.Get(key, family);
+
+            public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
+            {
+                var family = GetColumnFamily(rootHash, scriptHash);
+                var cachedState = GetCachedState(key.Span, family);
 
                 if (cachedState != null)
                 {
@@ -92,11 +106,11 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 else
                 {
-                    var state = rpcClient.GetState(rootHash, scriptHash, key.Span);
+                    var state = rpcClient.GetProvenState(rootHash, scriptHash, key.Span);
 
                     var buffer = new ArrayBufferWriter<byte>();
                     var writer = new MessagePackWriter(buffer);
-                    writer.Write(state);
+                    byteArrayFormatter.Serialize(ref writer, state, MessagePackSerializerOptions.Standard);
                     writer.Flush();
                     db.Put(key.Span, buffer.WrittenSpan, family);
 

@@ -32,18 +32,37 @@ namespace Neo.BlockchainToolkit.Persistence
             return RpcStateRoot.FromJson(result);
         }
 
-        public static byte[]? GetState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             try
             {
-                var result = rpcClient.RpcSend(RpcClient.GetRpcName(),
-                    rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
-                return Convert.FromBase64String(result.AsString());
+                var result = rpcClient.RpcSend("getproof",
+                    rootHash.ToString(),
+                    scriptHash.ToString(),
+                    Convert.ToBase64String(key));
+                var proof = Convert.FromBase64String(result.AsString());
+                return proof.VerifyProof(rootHash).item.Value;
             }
-            catch (RpcException ex)
+            // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
+            // which returns null for invalid keys instead of throwing an exception.
+            catch (RpcException ex) when (ex.HResult == COR_E_KEYNOTFOUND)
             {
-                if (ex.HResult == COR_E_KEYNOTFOUND) return null;
-                throw;
+                // Trie class throws KeyNotFoundException if key is not in the trie.
+                // RpcClient/Server converts the KeyNotFoundException into an
+                // RpcException with code == COR_E_KEYNOTFOUND.
+
+                return null;
+            }
+            catch (RpcException ex) when (ex.HResult == -100 && ex.Message == "Unknown value")
+            {
+                // Unfortunately, StateService GetProof method throws a custom exception 
+                // instead of KeyNotFoundException like GetState. 
+                // https://github.com/neo-project/neo-modules/pull/706 tracks changing
+                // exception thrown by GetProof. 
+                // Until this is changed, also look for the the custom exception thrown
+                // by GetProof
+
+                return null;
             }
         }
 
@@ -51,7 +70,23 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
-            return RpcFoundStates.FromJson(result);
+            var foundStates = RpcFoundStates.FromJson(result);
+            if (foundStates.Results.Length > 0)
+            {
+                ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
+            }
+            if (foundStates.Results.Length > 1)
+            {
+                ValidateProof(rootHash, foundStates.LastProof, foundStates.Results[^1]);
+            }
+            return foundStates;
+
+            static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
+            {
+                var (storageKey, storageItem) = proof.VerifyProof(rootHash);
+                if (!result.key.AsSpan().SequenceEqual(storageKey.Key)) throw new Exception("Incorrect StorageKey");
+                if (!result.value.AsSpan().SequenceEqual(storageItem.Value)) throw new Exception("Incorrect StorageItem");
+            }
         }
     }
 }
