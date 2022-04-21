@@ -19,6 +19,7 @@ may not exactly match a publicly released version.
 
 * CreateGenesisContract extension method (#60)
 * IRocksDbStorageProvider abstraction (#62)
+* Verify proofs in StateServiceStore
 
 * ContractType models (#60)
 * <del>Contract Storage Schema JSON parser (#60)</del>
