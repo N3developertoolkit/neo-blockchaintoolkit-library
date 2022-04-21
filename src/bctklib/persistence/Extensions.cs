@@ -13,6 +13,14 @@ namespace Neo.BlockchainToolkit.Persistence
 
     static class Extensions
     {
+        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
+            ProtocolSettings settings, UInt160 scriptHash)
+                => @this.CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
+
+        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
+            Models.ExpressChain chain, UInt160 scriptHash)
+                => @this.CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
+
         readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
         public static ColumnFamilyHandle GetOrCreateColumnFamily(this RocksDb db, string familyName, ColumnFamilyOptions? options = null)
         {
