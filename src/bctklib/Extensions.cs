@@ -76,7 +76,7 @@ namespace Neo.BlockchainToolkit
 
         public static (StorageKey key, StorageItem item) VerifyProof(this byte[]? proof, UInt256 rootHash)
         {
-            if (proof is null) throw new ArgumentNullException(nameof(proof));
+            ArgumentNullException.ThrowIfNull(proof);
 
             var proofs = new HashSet<byte[]>();
 
