@@ -56,7 +56,9 @@ namespace Neo.BlockchainToolkit.Persistence
             key ??= Array.Empty<byte>();
             if (trackingMap.TryGetValue(key, out var mapValue))
             {
-                return mapValue.Match<byte[]?>(v => v.ToArray(), _ => null);
+                return mapValue.TryPickT0(out var value, out var _)
+                    ? value.ToArray()
+                    : null;
             }
 
             return store.TryGet(key);
