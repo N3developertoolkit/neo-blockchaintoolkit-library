@@ -37,7 +37,8 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Put(byte[]? key, byte[]? value)
         {
-            AtomicUpdate(ref trackingMap, key, value);
+            if (value is null) throw new NullReferenceException(nameof(value));
+            AtomicUpdate(ref trackingMap, key, (ReadOnlyMemory<byte>)value);
         }
 
         public void Delete(byte[]? key)
@@ -45,17 +46,17 @@ namespace Neo.BlockchainToolkit.Persistence
             AtomicUpdate(ref trackingMap, key, default(None));
         }
 
-        static void AtomicUpdate(ref TrackingMap trackingMap, byte[]? key, OneOf<byte[]?, None> value)
+        static void AtomicUpdate(ref TrackingMap trackingMap, byte[]? key, OneOf<ReadOnlyMemory<byte>, None> value)
         {
-            key = key == null ? Array.Empty<byte>() : key.AsSpan().ToArray();
-            var _value = value.Match<OneOf<ReadOnlyMemory<byte>, None>>(
-                v => v == null ? default(ReadOnlyMemory<byte>) : v.AsSpan().ToArray(),
-                n => n);
+            key = key is null ? Array.Empty<byte>() : key.AsSpan().ToArray();
+            value = value.TryPickT0(out var buffer, out var none)
+                ? (ReadOnlyMemory<byte>)buffer.ToArray()
+                : none;
 
             var priorCollection = Volatile.Read(ref trackingMap);
             do
             {
-                var updatedCollection = priorCollection.SetItem(key, _value);
+                var updatedCollection = priorCollection.SetItem(key, value);
                 var interlockedResult = Interlocked.CompareExchange(ref trackingMap, updatedCollection, priorCollection);
                 if (object.ReferenceEquals(priorCollection, interlockedResult)) break;
                 priorCollection = interlockedResult;

@@ -155,9 +155,23 @@ namespace test.bctklib
                 Populate(path, (key, hello));
 
                 using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+                store.Contains(key).Should().BeTrue();
                 store.Delete(key);
                 store.Contains(key).Should().BeFalse();
                 store.TryGet(key).Should().BeNull();
+            });
+        }
+
+        [Fact]
+        public void cant_put_null_value()
+        {
+            RunTestWithCleanup(path =>
+            {
+                Populate(path);
+
+                using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+                var key = Bytes(0);
+                Assert.Throws<NullReferenceException>(() => store.Put(key, null));
             });
         }
 
@@ -200,6 +214,22 @@ namespace test.bctklib
                 store.TryGet(key).Should().BeEquivalentTo(hello);
             });
         }
+
+        [Fact]
+        public void cant_put_null_value_to_snapshot()
+        {
+            RunTestWithCleanup(path =>
+            {
+                Populate(path);
+
+                using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+                using var snapshot = store.GetSnapshot();
+
+                var key = Bytes(0);
+                Assert.Throws<NullReferenceException>(() => snapshot.Put(key, null));
+            });
+        }
+
 
         [Fact]
         public void can_seek_forward_no_prefix()

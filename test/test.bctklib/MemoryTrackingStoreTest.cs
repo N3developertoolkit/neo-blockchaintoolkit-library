@@ -173,6 +173,24 @@ namespace test.bctklib
             Assert.Null(store.TryGet(key));
         }
 
+        
+        [Fact]
+        public void cant_put_null_value()
+        {
+            using var store = new MemoryTrackingStore(NullStore.Instance);
+            var key = Bytes(0);
+            Assert.Throws<NullReferenceException>(() => store.Put(key, null));
+        }
+
+        [Fact]
+        public void cant_put_null_value_to_snapshot()
+        {
+            using var store = new MemoryTrackingStore(NullStore.Instance);
+            using var snapshot = store.GetSnapshot();
+            var key = Bytes(0);
+            Assert.Throws<NullReferenceException>(() => snapshot.Put(key, null));
+        }
+
         static IStore GetSeekStore()
         {
             var memoryStore = new MemoryStore();
