@@ -19,25 +19,18 @@ may not exactly match a publicly released version.
 
 * CreateGenesisContract extension method (#60)
 * IRocksDbStorageProvider abstraction (#62)
-* Verify proofs in StateServiceStore (#64)
-
-* ContractType models (#60)
-* <del>Contract Storage Schema JSON parser (#60)</del>
-  * Removed in (#61) in favor of including storage schema in debug info
-* <del>ContractType definitions for Transaction and Trimmed Block (#60)</del>
-  * Removed in (#61) in favor of generated definitions
-* InteropContractType (#61)
-* ContractType Parsing (#61)
-* v2 DebugInfo model + parsing support  (#61)
-  * V2 Debug Info documented here during preview:
-    https://github.com/devhawk/proposals/blob/devhawk/cd2l/nep-19.md 
-* Generated definitions of Neo Core platform structures (block, transaction, etc)
-  from Smart Contract Framework source (#61)
-  * scfx-gen tool to generate Neo Core platform structure definitions
 
 ### Changed
 
-* Changed definitions of some DebugInfo types to use `readonly record struct`
+* Verify state service proofs in StateServiceStore methods (#64)
+* MemoryTrackingStore throws NullReferenceException when `Put` a null value to match RocksDB behavior
+* Moved `RocksDbStorageProvider.CreateCheckpoint` overloads to be extension methods
+
+### Engineering
+
+* Changed to embedded debug symbols
+* Replaced all Azure DevOps Pipelines with GitHub Actions 
+* Updated build definition to run tests on MacOS as well as Windows and Ubuntu
 
 ## [3.1.35] - 2022-02-25
 
