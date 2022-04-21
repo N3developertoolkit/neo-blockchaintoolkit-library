@@ -1,5 +1,4 @@
 using System;
-using Neo.BlockchainToolkit.Models;
 using Neo.Plugins;
 
 namespace Neo.BlockchainToolkit.Persistence

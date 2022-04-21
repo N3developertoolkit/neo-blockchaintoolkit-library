@@ -85,6 +85,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 return db.GetOrCreateColumnFamily(familyName);
             }
 
+            // method used for testing
             internal byte[]? GetCachedState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
                 var family = GetColumnFamily(rootHash, scriptHash);
