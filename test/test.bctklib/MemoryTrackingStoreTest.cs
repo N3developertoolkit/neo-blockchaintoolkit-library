@@ -173,7 +173,6 @@ namespace test.bctklib
             Assert.Null(store.TryGet(key));
         }
 
-        
         [Fact]
         public void cant_put_null_value()
         {
