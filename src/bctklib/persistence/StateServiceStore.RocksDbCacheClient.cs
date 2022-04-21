@@ -94,9 +94,9 @@ namespace Neo.BlockchainToolkit.Persistence
                 {
                     var state = rpcClient.GetProvenState(rootHash, scriptHash, key.Span);
 
-                    var buffer = new ArrayBufferWriter<byte>();
+                    var buffer = new ArrayBufferWriter<byte>(10 + state?.Length ?? 0);
                     var writer = new MessagePackWriter(buffer);
-                    writer.Write(state);
+                    byteArrayFormatter.Serialize(ref writer, state, MessagePackSerializerOptions.Standard);
                     writer.Flush();
                     db.Put(key.Span, buffer.WrittenSpan, family);
 
