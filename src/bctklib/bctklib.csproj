@@ -44,7 +44,7 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
     <PackageReference Include="Nerdbank.Streams" Version="2.8.57" />
     <PackageReference Include="OneOf" Version="3.0.216" />
-    <PackageReference Include="rocksdb" Version="6.29.3.26014" />
+    <PackageReference Include="rocksdb" Version="7.1.2.28620" />
     <PackageReference Include="System.IO.Abstractions" Version="16.1.25" />
   </ItemGroup>
 
