@@ -1,11 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using Neo.Cryptography.MPTTrie;
-using Neo.IO;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
-using Neo.SmartContract;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -37,7 +32,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return RpcStateRoot.FromJson(result);
         }
 
-        public static byte[]? GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        static byte[]? GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             try
             {
@@ -54,8 +49,18 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            var proof = rpcClient.GetProof(rootHash, scriptHash, key);
-            return proof is null ? null : proof.VerifyProof(rootHash).item.Value;
+            try
+            {
+                var result = rpcClient.RpcSend("getproof",
+                    rootHash.ToString(), scriptHash.ToString(), Convert.ToBase64String(key));
+                var proof = Convert.FromBase64String(result.AsString());
+                return proof.VerifyProof(rootHash).item.Value;
+            }
+            catch (RpcException ex)
+            {
+                if (ex.HResult == COR_E_KEYNOTFOUND) return null;
+                throw;
+            }
         }
 
         public static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)

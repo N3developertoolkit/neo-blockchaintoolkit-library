@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
@@ -79,8 +80,8 @@ namespace Neo.BlockchainToolkit
 
             var proofs = new HashSet<byte[]>();
 
-            using System.IO.MemoryStream stream = new(proof, false);
-            using System.IO.BinaryReader reader = new(stream, Utility.StrictUTF8);
+            using MemoryStream stream = new(proof, false);
+            using BinaryReader reader = new(stream, Utility.StrictUTF8);
 
             var key = reader.ReadVarBytes(Node.MaxKeyLength);
             var count = reader.ReadVarInt();
