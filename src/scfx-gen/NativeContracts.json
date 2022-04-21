@@ -1,0 +1,628 @@
+{
+  "native-contract-storage": [
+    {
+      "hash": "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd",
+      "storages": [
+        {
+          "name": "Contracts",
+          "type": "Neo.SmartContract.ContractState",
+          "prefix": "08",
+          "segments": [
+            "contractHash,#Hash160"
+          ]
+        },
+        {
+          "name": "NextAvailableId",
+          "type": "#Integer",
+          "prefix": "0F"
+        },
+        {
+          "name": "MinimumDeploymentFee",
+          "type": "#Integer",
+          "prefix": "14"
+        }
+      ]
+    },
+    {
+      "hash": "0xacce6fd80d44e1796aa0c2c625e9e4e0ce39efc0",
+      "storages": []
+    },
+    {
+      "hash": "0x726cb6e0cd8628a1350a611384688911ab75f51b",
+      "storages": []
+    },
+    {
+      "hash": "0xda65b600f7124ce6c79950c1772a36403104f2be",
+      "storages": [
+        {
+          "name": "Block",
+          "type": "Neo.SmartContract.Native.TrimmedBlock",
+          "prefix": "05",
+          "segments": [
+            "blockHash,#Hash256"
+          ]
+        },
+        {
+          "name": "BlockHash",
+          "type": "#Hash256",
+          "prefix": "09",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "Transaction",
+          "type": "Neo.SmartContract.Native.TransactionState",
+          "prefix": "11",
+          "segments": [
+            "txHash,#Hash256"
+          ]
+        },
+        {
+          "name": "CurrentBlock",
+          "type": "Neo.SmartContract.Native.HashIndexState",
+          "prefix": "12"
+        }
+      ]
+    },
+    {
+      "hash": "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5",
+      "storages": [
+        {
+          "name": "TotalSupply",
+          "type": "#Integer",
+          "prefix": "11"
+        },
+        {
+          "name": "Account",
+          "type": "Neo.SmartContract.Native.NeoToken.NeoAccountState",
+          "prefix": "09",
+          "segments": [
+            "account,#Hash160"
+          ]
+        },
+        {
+          "name": "VotersCount",
+          "type": "#Integer",
+          "prefix": "01"
+        },
+        {
+          "name": "Candidate",
+          "type": "Neo.SmartContract.Native.NeoToken.CandidateState",
+          "prefix": "21",
+          "segments": [
+            "publicKey,#PublicKey"
+          ]
+        },
+        {
+          "name": "Committee",
+          "type": "Neo.SmartContract.Native.NeoToken.CachedCommittee",
+          "prefix": "0E"
+        },
+        {
+          "name": "GasPerBlock",
+          "type": "#Integer",
+          "prefix": "1D",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "RegisterPrice",
+          "type": "#Integer",
+          "prefix": "0D"
+        },
+        {
+          "name": "VoterRewardPerCommittee",
+          "type": "#Integer",
+          "prefix": "17",
+          "segments": [
+            "publicKey,#PublicKey",
+            "index,#BigEndianU32"
+          ]
+        }
+      ]
+    },
+    {
+      "hash": "0xd2a4cff31913016155e38e474a2c06d08be276cf",
+      "storages": [
+        {
+          "name": "TotalSupply",
+          "type": "#Integer",
+          "prefix": "11"
+        },
+        {
+          "name": "Account",
+          "type": "Neo.SmartContract.Native.AccountState",
+          "prefix": "09",
+          "segments": [
+            "account,#Hash160"
+          ]
+        }
+      ]
+    },
+    {
+      "hash": "0xcc5e4edd9f5f8dba8bb65734541df7a1c081c67b",
+      "storages": [
+        {
+          "name": "BlockedAccount",
+          "type": "#ByteArray",
+          "prefix": "0F",
+          "segments": [
+            "account,#Hash160"
+          ]
+        },
+        {
+          "name": "FeePerByte",
+          "type": "#Integer",
+          "prefix": "0A"
+        },
+        {
+          "name": "ExecFeeFactor",
+          "type": "#Integer",
+          "prefix": "12"
+        },
+        {
+          "name": "StoragePrice",
+          "type": "#Integer",
+          "prefix": "13"
+        }
+      ]
+    },
+    {
+      "hash": "0x49cf4e5378ffcd4dec034fd98a174c5491e395e2",
+      "storages": [
+        {
+          "name": "StateValidator",
+          "type": "Neo.SmartContract.Native.RoleManagement.NodeList",
+          "prefix": "04",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "Oracle",
+          "type": "#Integer",
+          "prefix": "08",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        },
+        {
+          "name": "NeoFSAlphabetNode",
+          "type": "#Integer",
+          "prefix": "10",
+          "segments": [
+            "index,#BigEndianU32"
+          ]
+        }
+      ]
+    },
+    {
+      "hash": "0xfe924b7cfe89ddd271abaf7210a80a7e11178758",
+      "storages": [
+        {
+          "name": "Price",
+          "type": "#Integer",
+          "prefix": "05"
+        },
+        {
+          "name": "RequestId",
+          "type": "#Integer",
+          "prefix": "09"
+        },
+        {
+          "name": "Request",
+          "type": "Neo.SmartContract.Native.OracleRequest",
+          "prefix": "07",
+          "segments": [
+            "id,#BigEndianU64"
+          ]
+        },
+        {
+          "name": "IdList",
+          "type": "Neo.SmartContract.Native.OracleContract.IdList",
+          "prefix": "06",
+          "segments": [
+            "urlHash,#Hash160"
+          ]
+        }
+      ]
+    }
+  ],
+  "interoperable-types": [
+    {
+      "name": "Neo.Network.P2P.Payloads.Transaction",
+      "fields": [
+        {
+          "name": "Hash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Version",
+          "type": "#Integer"
+        },
+        {
+          "name": "Nonce",
+          "type": "#Integer"
+        },
+        {
+          "name": "Sender",
+          "type": "#Hash160"
+        },
+        {
+          "name": "SystemFee",
+          "type": "#Integer"
+        },
+        {
+          "name": "NetworkFee",
+          "type": "#Integer"
+        },
+        {
+          "name": "ValidUntilBlock",
+          "type": "#Integer"
+        },
+        {
+          "name": "Script",
+          "type": "#ByteArray"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.ContractState",
+      "fields": [
+        {
+          "name": "Id",
+          "type": "#Integer"
+        },
+        {
+          "name": "UpdateCounter",
+          "type": "#Integer"
+        },
+        {
+          "name": "Hash",
+          "type": "#Hash160"
+        },
+        {
+          "name": "Nef",
+          "type": "#ByteArray"
+        },
+        {
+          "name": "Manifest",
+          "type": "Neo.SmartContract.Manifest.ContractManifest"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractAbi",
+      "fields": [
+        {
+          "name": "Methods",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractMethodDescriptor>"
+        },
+        {
+          "name": "Events",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractEventDescriptor>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractEventDescriptor",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Parameters",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractParameterDefinition>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractGroup",
+      "fields": [
+        {
+          "name": "PubKey",
+          "type": "#PublicKey"
+        },
+        {
+          "name": "Signature",
+          "type": "#ByteArray"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractManifest",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Groups",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractGroup>"
+        },
+        {
+          "name": "Reserved",
+          "type": "#Unspecified"
+        },
+        {
+          "name": "SupportedStandards",
+          "type": "#Array<#String>"
+        },
+        {
+          "name": "Abi",
+          "type": "Neo.SmartContract.Manifest.ContractAbi"
+        },
+        {
+          "name": "Permissions",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractPermission>"
+        },
+        {
+          "name": "Trusts",
+          "type": "#Unspecified"
+        },
+        {
+          "name": "Extra",
+          "type": "#String"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractMethodDescriptor",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Parameters",
+          "type": "#Array<Neo.SmartContract.Manifest.ContractParameterDefinition>"
+        },
+        {
+          "name": "ReturnType",
+          "type": "#Integer"
+        },
+        {
+          "name": "Offset",
+          "type": "#Integer"
+        },
+        {
+          "name": "Safe",
+          "type": "#Boolean"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractParameterDefinition",
+      "fields": [
+        {
+          "name": "Name",
+          "type": "#String"
+        },
+        {
+          "name": "Type",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Manifest.ContractPermission",
+      "fields": [
+        {
+          "name": "Contract",
+          "type": "#Unspecified"
+        },
+        {
+          "name": "Methods",
+          "type": "#Unspecified"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.AccountState",
+      "fields": [
+        {
+          "name": "Balance",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.HashIndexState",
+      "fields": [
+        {
+          "name": "Hash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Index",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.NeoAccountState",
+      "fields": [
+        {
+          "name": "Balance",
+          "type": "#Integer"
+        },
+        {
+          "name": "BalanceHeight",
+          "type": "#Integer"
+        },
+        {
+          "name": "VoteTo",
+          "type": "#PublicKey"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.CandidateState",
+      "fields": [
+        {
+          "name": "Registered",
+          "type": "#Boolean"
+        },
+        {
+          "name": "Votes",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.CommitteeMember",
+      "fields": [
+        {
+          "name": "PublicKey",
+          "type": "#PublicKey"
+        },
+        {
+          "name": "Votes",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.NeoToken.CachedCommittee",
+      "fields": [
+        {
+          "name": "Members",
+          "type": "#Array<Neo.SmartContract.Native.NeoToken.CommitteeMember>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.OracleContract.IdList",
+      "fields": [
+        {
+          "name": "Ids",
+          "type": "#Array<#Integer>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.OracleRequest",
+      "fields": [
+        {
+          "name": "OriginalTxid",
+          "type": "#Hash256"
+        },
+        {
+          "name": "GasForResponse",
+          "type": "#Integer"
+        },
+        {
+          "name": "Url",
+          "type": "#String"
+        },
+        {
+          "name": "Filter",
+          "type": "#String"
+        },
+        {
+          "name": "CallbackContract",
+          "type": "#Hash160"
+        },
+        {
+          "name": "CallbackMethod",
+          "type": "#String"
+        },
+        {
+          "name": "UserData",
+          "type": "#ByteArray"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.RoleManagement.NodeList",
+      "fields": [
+        {
+          "name": "Nodes",
+          "type": "#Array<#PublicKey>"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.TransactionState",
+      "fields": [
+        {
+          "name": "BlockIndex",
+          "type": "#Integer"
+        },
+        {
+          "name": "RawTransaction",
+          "type": "#ByteArray"
+        },
+        {
+          "name": "VMState",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.Native.TrimmedBlock",
+      "fields": [
+        {
+          "name": "Hash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Version",
+          "type": "#Integer"
+        },
+        {
+          "name": "PrevHash",
+          "type": "#Hash256"
+        },
+        {
+          "name": "MerkleRoot",
+          "type": "#Hash256"
+        },
+        {
+          "name": "Timestamp",
+          "type": "#Integer"
+        },
+        {
+          "name": "Nonce",
+          "type": "#Integer"
+        },
+        {
+          "name": "Index",
+          "type": "#Integer"
+        },
+        {
+          "name": "PrimaryIndex",
+          "type": "#Integer"
+        },
+        {
+          "name": "NextConsensus",
+          "type": "#Hash160"
+        },
+        {
+          "name": "TransactionsCount",
+          "type": "#Integer"
+        }
+      ]
+    },
+    {
+      "name": "Neo.SmartContract.NotifyEventArgs",
+      "fields": [
+        {
+          "name": "ScriptHash",
+          "type": "#Hash160"
+        },
+        {
+          "name": "EventName",
+          "type": "#String"
+        },
+        {
+          "name": "State",
+          "type": "#Array<#Unspecified>"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>scfx_gen</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+     <EmbeddedResource Include="NativeContracts.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\bctklib\bctklib.csproj" />
+  </ItemGroup>
+</Project>
