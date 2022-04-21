@@ -33,9 +33,10 @@ namespace Neo.BlockchainToolkit.Persistence
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
                 => trackingMap.Seek(store, key, direction);
 
-            public void Put(byte[]? key, byte[] value)
+            public void Put(byte[]? key, byte[]? value)
             {
-                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key, value);
+                if (value is null) throw new NullReferenceException(nameof(value));
+                MemoryTrackingStore.AtomicUpdate(ref writeBatchMap, key, (ReadOnlyMemory<byte>)value);
             }
 
             public void Delete(byte[]? key)
