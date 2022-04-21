@@ -7,6 +7,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using Neo.BlockchainToolkit.Models;
+using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
@@ -61,6 +62,15 @@ namespace Neo.BlockchainToolkit
             chain = null;
             return false;
         }
+
+        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
+            ProtocolSettings settings, UInt160 scriptHash)
+                => @this.CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
+
+        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
+            Models.ExpressChain chain, UInt160 scriptHash)
+                => @this.CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
+
 
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
