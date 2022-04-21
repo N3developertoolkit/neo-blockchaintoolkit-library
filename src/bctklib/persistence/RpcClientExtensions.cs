@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using Neo.Cryptography.MPTTrie;
+using Neo.IO;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
+using Neo.SmartContract;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -41,7 +46,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     scriptHash.ToString(),
                     Convert.ToBase64String(key));
                 var proof = Convert.FromBase64String(result.AsString());
-                return proof.VerifyProof(rootHash).item.Value;
+                return VerifyProof(proof, rootHash).item.Value;
             }
             // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
             // which returns null for invalid keys instead of throwing an exception.
@@ -83,10 +88,34 @@ namespace Neo.BlockchainToolkit.Persistence
 
             static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
             {
-                var (storageKey, storageItem) = proof.VerifyProof(rootHash);
+                var (storageKey, storageItem) = VerifyProof(proof, rootHash);
                 if (!result.key.AsSpan().SequenceEqual(storageKey.Key)) throw new Exception("Incorrect StorageKey");
                 if (!result.value.AsSpan().SequenceEqual(storageItem.Value)) throw new Exception("Incorrect StorageItem");
             }
+        }
+
+        static (StorageKey key, StorageItem item) VerifyProof(byte[]? proof, UInt256 rootHash)
+        {
+            ArgumentNullException.ThrowIfNull(proof);
+
+            var proofs = new HashSet<byte[]>();
+
+            using MemoryStream stream = new(proof, false);
+            using BinaryReader reader = new(stream, Utility.StrictUTF8);
+
+            var key = reader.ReadVarBytes(Node.MaxKeyLength);
+            var count = reader.ReadVarInt();
+            for (ulong i = 0; i < count; i++)
+            {
+                proofs.Add(reader.ReadVarBytes());
+            }
+
+            var storageKey = key.AsSerializable<StorageKey>();
+            if (storageKey is null) throw new Exception($"Invalid {nameof(StorageKey)}");
+            var storageItem = Trie<StorageKey, StorageItem>.VerifyProof(rootHash, storageKey, proofs);
+            if (storageItem is null) throw new Exception("Verification failed");
+
+            return (storageKey, storageItem);
         }
     }
 }
