@@ -50,7 +50,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 var doo = new Dictionary<int, RpcFoundStates>();
 
                 var hash = HashCode.Combine(rootHash, scriptHash, ReadOnlyMemoryComparer.GetHashCode(key.Span));
-                return retrievedStates.GetOrAdd(hash, _ => rpcClient.GetState(rootHash, scriptHash, key.Span));
+                return retrievedStates.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
             }
 
             public RpcStateRoot GetStateRoot(uint index)

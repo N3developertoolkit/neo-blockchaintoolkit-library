@@ -1,6 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using Neo.Cryptography.MPTTrie;
+using Neo.IO;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
+using Neo.SmartContract;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -32,7 +37,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return RpcStateRoot.FromJson(result);
         }
 
-        public static byte[]? GetState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        public static byte[]? GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             try
             {
@@ -47,11 +52,40 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
+        public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        {
+            var proof = rpcClient.GetProof(rootHash, scriptHash, key);
+            return proof is null ? null : VerifyProof(rootHash, proof);
+        }
+
         public static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
         {
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
-            return RpcFoundStates.FromJson(result);
+            var foundStates = RpcFoundStates.FromJson(result);
+            var first = VerifyProof(rootHash, foundStates.FirstProof);
+            var last = VerifyProof(rootHash, foundStates.LastProof);
+            return foundStates;
+        }
+
+        static byte[] VerifyProof(UInt256 rootHash, byte[] proof)
+        {
+            var proofs = new HashSet<byte[]>();
+
+            using MemoryStream stream = new(proof, false);
+            using BinaryReader reader = new(stream, Utility.StrictUTF8);
+
+            var key = reader.ReadVarBytes(Node.MaxKeyLength);
+            var count = reader.ReadVarInt();
+            for (ulong i = 0; i < count; i++)
+            {
+                proofs.Add(reader.ReadVarBytes());
+            }
+
+            var storageKey = key.AsSerializable<StorageKey>();
+            var storageItem = Trie<StorageKey, StorageItem>.VerifyProof(rootHash, storageKey, proofs);
+            if (storageItem is null) throw new Exception("Verification failed");
+            return storageItem.Value;
         }
     }
 }

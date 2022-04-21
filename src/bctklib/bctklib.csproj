@@ -55,11 +55,13 @@
   <Choose>
     <When Condition=" '$(NeoModulesVersion)' == 'local'">
       <ItemGroup>
-        <ProjectReference Include="..\..\..\..\official\3neo-monorepo\modules\src\RpcClient\RpcClient.csproj" />
+        <ProjectReference Include="$(NeoModuleLocalPath)\src\MPTTrie\MPTTrie.csproj" />
+        <ProjectReference Include="$(NeoModuleLocalPath)\src\RpcClient\RpcClient.csproj" />
       </ItemGroup>
     </When>
     <Otherwise>
       <ItemGroup>
+        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoModulesVersion)" />
         <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoModulesVersion)" />
       </ItemGroup>
     </Otherwise>

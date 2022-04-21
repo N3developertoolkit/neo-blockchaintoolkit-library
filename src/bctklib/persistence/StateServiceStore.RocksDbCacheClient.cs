@@ -92,7 +92,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 else
                 {
-                    var state = rpcClient.GetState(rootHash, scriptHash, key.Span);
+                    var state = rpcClient.GetProvenState(rootHash, scriptHash, key.Span);
 
                     var buffer = new ArrayBufferWriter<byte>();
                     var writer = new MessagePackWriter(buffer);
