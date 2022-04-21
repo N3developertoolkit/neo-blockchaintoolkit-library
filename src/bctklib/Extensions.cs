@@ -8,6 +8,8 @@ using System.Linq;
 using System.Numerics;
 using Neo.BlockchainToolkit.Models;
 using Neo.BlockchainToolkit.Persistence;
+using Neo.Cryptography.MPTTrie;
+using Neo.IO;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
@@ -71,6 +73,29 @@ namespace Neo.BlockchainToolkit
             Models.ExpressChain chain, UInt160 scriptHash)
                 => @this.CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
 
+        public static (StorageKey key, StorageItem item) VerifyProof(this byte[]? proof, UInt256 rootHash)
+        {
+            if (proof is null) throw new ArgumentNullException(nameof(proof));
+
+            var proofs = new HashSet<byte[]>();
+
+            using System.IO.MemoryStream stream = new(proof, false);
+            using System.IO.BinaryReader reader = new(stream, Utility.StrictUTF8);
+
+            var key = reader.ReadVarBytes(Node.MaxKeyLength);
+            var count = reader.ReadVarInt();
+            for (ulong i = 0; i < count; i++)
+            {
+                proofs.Add(reader.ReadVarBytes());
+            }
+
+            var storageKey = key.AsSerializable<StorageKey>();
+            if (storageKey is null) throw new Exception($"Invalid {nameof(StorageKey)}");
+            var storageItem = Trie<StorageKey, StorageItem>.VerifyProof(rootHash, storageKey, proofs);
+            if (storageItem is null) throw new Exception("Verification failed");
+
+            return (storageKey, storageItem);
+        }
 
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {

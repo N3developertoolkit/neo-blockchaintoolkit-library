@@ -55,7 +55,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             var proof = rpcClient.GetProof(rootHash, scriptHash, key);
-            return proof is null ? null : VerifyProof(rootHash, proof);
+            return proof is null ? null : proof.VerifyProof(rootHash).item.Value;
         }
 
         public static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
@@ -63,29 +63,22 @@ namespace Neo.BlockchainToolkit.Persistence
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
             var foundStates = RpcFoundStates.FromJson(result);
-            var first = VerifyProof(rootHash, foundStates.FirstProof);
-            var last = VerifyProof(rootHash, foundStates.LastProof);
-            return foundStates;
-        }
-
-        static byte[] VerifyProof(UInt256 rootHash, byte[] proof)
-        {
-            var proofs = new HashSet<byte[]>();
-
-            using MemoryStream stream = new(proof, false);
-            using BinaryReader reader = new(stream, Utility.StrictUTF8);
-
-            var key = reader.ReadVarBytes(Node.MaxKeyLength);
-            var count = reader.ReadVarInt();
-            for (ulong i = 0; i < count; i++)
+            if (foundStates.Results.Length > 0)
             {
-                proofs.Add(reader.ReadVarBytes());
+                ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
             }
+            if (foundStates.Results.Length > 1)
+            {
+                ValidateProof(rootHash, foundStates.LastProof, foundStates.Results[^1]);
+            }
+            return foundStates;
 
-            var storageKey = key.AsSerializable<StorageKey>();
-            var storageItem = Trie<StorageKey, StorageItem>.VerifyProof(rootHash, storageKey, proofs);
-            if (storageItem is null) throw new Exception("Verification failed");
-            return storageItem.Value;
+            static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
+            {
+                var (storageKey, storageItem) = proof.VerifyProof(rootHash);
+                if (!result.key.AsSpan().SequenceEqual(storageKey.Key)) throw new Exception("Incorrect StorageKey");
+                if (!result.value.AsSpan().SequenceEqual(storageItem.Value)) throw new Exception("Incorrect StorageItem");
+            }
         }
     }
 }
