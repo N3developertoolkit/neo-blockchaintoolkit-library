@@ -1,14 +1,12 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using Neo.BlockchainToolkit.Models;
 using Neo.Persistence;
 using Neo.Plugins;
 using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class RocksDbStorageProvider : IStorageProvider, IDisposable
+    public partial class RocksDbStorageProvider : IRocksDbStorageProvider
     {
         static readonly ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
 
@@ -64,12 +62,6 @@ namespace Neo.BlockchainToolkit.Persistence
 
             throw new InvalidOperationException("invalid store path");
         }
-
-        public void CreateCheckpoint(string checkPointFileName, ProtocolSettings settings, UInt160 scriptHash)
-            => CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
-
-        public void CreateCheckpoint(string checkPointFileName, ExpressChain chain, UInt160 scriptHash)
-            => CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
 
         public void CreateCheckpoint(string checkPointFileName, uint network, byte addressVersion, UInt160 scriptHash)
             => RocksDbUtility.CreateCheckpoint(db, checkPointFileName, network, addressVersion, scriptHash);

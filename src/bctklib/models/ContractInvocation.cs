@@ -53,7 +53,7 @@ namespace Neo.BlockchainToolkit.Models
         }
 
         public static PrimitiveContractArg FromString(string value)
-            => FromArray(() => Utility.StrictUTF8.GetBytes(value));
+            => FromArray(() => Neo.Utility.StrictUTF8.GetBytes(value));
 
         public static bool TryFromHexString(string hexString, [MaybeNullWhen(false)] out PrimitiveContractArg arg)
         {

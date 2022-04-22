@@ -16,9 +16,21 @@ may not exactly match a publicly released version.
 ## [Unreleased]
 
 ### Added
-* ContractType models (#60)
-* Contract Storage Schema JSON parser (#60)
-* ContractType definitions for Transaction and Trimmed Block (#60)
+
+* CreateGenesisContract extension method (#60)
+* IRocksDbStorageProvider abstraction (#62)
+
+### Changed
+
+* Verify state service proofs in StateServiceStore methods (#64)
+* MemoryTrackingStore throws NullReferenceException when `Put` a null value to match RocksDB behavior
+* Moved `RocksDbStorageProvider.CreateCheckpoint` overloads to be extension methods
+
+### Engineering
+
+* Changed to embedded debug symbols
+* Replaced all Azure DevOps Pipelines with GitHub Actions 
+* Updated build definition to run tests on MacOS as well as Windows and Ubuntu
 
 ## [3.1.35] - 2022-02-25
 

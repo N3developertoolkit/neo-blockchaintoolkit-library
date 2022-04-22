@@ -4,6 +4,8 @@
     <Authors>The Neo Project</Authors>
     <Company>The Neo Project</Company>
     <Copyright>2015-2021 The Neo Project</Copyright>
+    <DebugType>Embedded</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>10</LangVersion>
     <Nullable>enable</Nullable>
@@ -20,7 +22,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NeoModulesVersion>3.1.0</NeoModulesVersion>
+    <NeoModulesVersion>3.2.1</NeoModulesVersion>
     <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath>
     <!-- <NeoModulesVersion>local</NeoModulesVersion> -->
   </PropertyGroup>
@@ -38,26 +40,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="InternalsVisibleTo.MSBuild" Version="1.0.5">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="MessagePack" Version="2.3.85" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
     <PackageReference Include="Nerdbank.Streams" Version="2.8.57" />
-    <PackageReference Include="OneOf" Version="3.0.211" />
-    <PackageReference Include="rocksdb" Version="6.28.2.25302" />
-    <PackageReference Include="System.IO.Abstractions" Version="16.1.15" />
+    <PackageReference Include="OneOf" Version="3.0.216" />
+    <PackageReference Include="rocksdb" Version="7.1.2.28620" />
+    <PackageReference Include="System.IO.Abstractions" Version="16.1.25" />
   </ItemGroup>
 
   <Choose>
     <When Condition=" '$(NeoModulesVersion)' == 'local'">
       <ItemGroup>
-        <ProjectReference Include="..\..\..\..\official\3neo-monorepo\modules\src\RpcClient\RpcClient.csproj" />
+        <ProjectReference Include="$(NeoModuleLocalPath)\src\MPTTrie\MPTTrie.csproj" />
+        <ProjectReference Include="$(NeoModuleLocalPath)\src\RpcClient\RpcClient.csproj" />
       </ItemGroup>
     </When>
     <Otherwise>
       <ItemGroup>
+        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoModulesVersion)" />
         <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoModulesVersion)" />
       </ItemGroup>
     </Otherwise>
