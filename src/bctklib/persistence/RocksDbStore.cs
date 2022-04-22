@@ -64,14 +64,14 @@ namespace Neo.BlockchainToolkit.Persistence
             return db.Seek(columnFamily, key, direction, readOptions);
         }
 
-        public void Put(byte[]? key, byte[] value)
+        public void Put(byte[]? key, byte[]? value)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
             db.Put(key ?? Array.Empty<byte>(), value, columnFamily, writeOptions);
         }
 
-        public void PutSync(byte[]? key, byte[] value)
+        public void PutSync(byte[]? key, byte[]? value)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");

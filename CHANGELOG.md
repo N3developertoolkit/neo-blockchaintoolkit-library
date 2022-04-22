@@ -13,13 +13,9 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [Unreleased]
+## [Develop branch]
 
-### Added
-
-* CreateGenesisContract extension method (#60)
-* IRocksDbStorageProvider abstraction (#62)
-
+* Changed definitions of some DebugInfo types to use `readonly record struct` (#61)
 * ContractType models (#60)
 * <del>Contract Storage Schema JSON parser (#60)</del>
   * Removed in (#61) in favor of including storage schema in debug info
@@ -34,9 +30,24 @@ may not exactly match a publicly released version.
   from Smart Contract Framework source (#61)
   * scfx-gen tool to generate Neo Core platform structure definitions
 
+## [Unreleased]
+
+### Added
+
+* CreateGenesisContract extension method (#60)
+* IRocksDbStorageProvider abstraction (#62)
+
 ### Changed
 
-* Changed definitions of some DebugInfo types to use `readonly record struct` (#61)
+* Verify state service proofs in StateServiceStore methods (#64)
+* MemoryTrackingStore throws NullReferenceException when `Put` a null value to match RocksDB behavior
+* Moved `RocksDbStorageProvider.CreateCheckpoint` overloads to be extension methods
+
+### Engineering
+
+* Changed to embedded debug symbols
+* Replaced all Azure DevOps Pipelines with GitHub Actions 
+* Updated build definition to run tests on MacOS as well as Windows and Ubuntu
 
 ## [3.1.35] - 2022-02-25
 

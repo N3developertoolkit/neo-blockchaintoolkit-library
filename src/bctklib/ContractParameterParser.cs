@@ -26,6 +26,8 @@ namespace Neo.BlockchainToolkit
         private readonly TryGetUInt160? tryGetContract;
         private readonly IFileSystem fileSystem;
 
+        public byte AddressVersion => addressVersion;
+
         public ContractParameterParser(ProtocolSettings protocolSettings, TryGetUInt160? tryGetAccount = null, TryGetUInt160? tryGetContract = null, IFileSystem? fileSystem = null)
             : this(protocolSettings.AddressVersion, tryGetAccount, tryGetContract, fileSystem)
         {

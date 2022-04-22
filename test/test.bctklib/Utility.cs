@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Neo.Cryptography.MPTTrie;
+using Neo.IO;
 using Neo.Persistence;
+using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Nito.Disposables;
@@ -67,6 +70,58 @@ namespace test.bctklib
                     yield return (new[] { i, j }, BitConverter.GetBytes(i * 10 + j));
                 }
             }
+        }
+
+        public static StorageKey MakeTestTrieKey(int value, int id = 1)
+        {
+            return new StorageKey() { Id = id, Key = BitConverter.GetBytes(value) };
+        }
+
+        public static Trie<StorageKey, StorageItem> GetTestTrie(Neo.Persistence.IStore store, int id = 1, uint count = 100)
+        {
+            using var snapshot = store.GetSnapshot();
+            var trie = new Trie<StorageKey, StorageItem>(snapshot, null);
+            for (var i = 0; i < count; i++)
+            {
+                var key = MakeTestTrieKey(i, id);
+                var value = new StorageItem(Neo.Utility.StrictUTF8.GetBytes($"{i}"));
+                trie.Put(key, value);
+            }
+            trie.Commit();
+            snapshot.Commit();
+            return trie;
+        }
+
+        public static StorageItem GetValue(this Trie<StorageKey, StorageItem> trie, StorageKey key)
+        {
+            return trie.TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
+        }
+
+        public static byte[] GetSerializedProof(this Trie<StorageKey, StorageItem> trie, StorageKey key)
+        {
+            if (trie.TryGetProof(key, out var proof))
+            {
+                return SerializeProof(key, proof);
+            }
+            else
+            {
+                throw new KeyNotFoundException();
+            }
+        }
+
+        public static byte[] SerializeProof(StorageKey key, HashSet<byte[]> proof)
+        {
+            using MemoryStream ms = new();
+            using BinaryWriter writer = new(ms, Neo.Utility.StrictUTF8);
+
+            writer.WriteVarBytes(key.ToArray());
+            writer.WriteVarInt(proof.Count);
+            foreach (var item in proof)
+            {
+                writer.WriteVarBytes(item);
+            }
+            writer.Flush();
+            return ms.ToArray();
         }
     }
 }
