@@ -1,7 +1,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
@@ -133,13 +132,6 @@ namespace Neo.BlockchainToolkit
             }
             builder.EmitPush(args.Count);
             return builder.Emit(OpCode.PACK);
-        }
-
-        public static ScriptBuilder EmitPush(this ScriptBuilder builder, ImmutableArray<byte> data)
-        {
-            // workaround for https://github.com/neo-project/neo-vm/issues/451
-            var array = System.Runtime.CompilerServices.Unsafe.As<ImmutableArray<byte>, byte[]>(ref data);
-            return builder.EmitPush(array);
         }
 
         internal static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> func, [MaybeNullWhen(false)] out T result)
@@ -279,7 +271,7 @@ namespace Neo.BlockchainToolkit
         }
 
         static readonly Lazy<IReadOnlyDictionary<uint, string>> sysCallNames = new Lazy<IReadOnlyDictionary<uint, string>>(
-            () => ApplicationEngine.Services.ToImmutableDictionary(kvp => kvp.Value.Hash, kvp => kvp.Value.Name));
+            () => ApplicationEngine.Services.ToDictionary(kvp => kvp.Value.Hash, kvp => kvp.Value.Name));
 
         public static string GetComment(this Instruction instruction, int ip, MethodToken[]? tokens = null)
         {

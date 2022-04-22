@@ -1,7 +1,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Neo.IO;
@@ -14,10 +13,7 @@ namespace Neo.BlockchainToolkit.Models
     // by later processing steps. However, the specific conversion of string -> byte array
     // is string content dependent
 
-    // Note, using ImmutableArray instead of ReadOnlyMemory as a workaround for
-    //       https://github.com/neo-project/neo-vm/issues/451
-
-    using PrimitiveArg = OneOf<bool, BigInteger, ImmutableArray<byte>, string>;
+    using PrimitiveArg = OneOf<bool, BigInteger, ReadOnlyMemory<byte>, string>;
 
     public readonly record struct ContractInvocation(
         OneOf<UInt160, string> Contract,
@@ -47,9 +43,7 @@ namespace Neo.BlockchainToolkit.Models
         public static PrimitiveContractArg FromArray(Func<byte[]> makeArray)
         {
             var array = makeArray();
-            // workaround for https://github.com/neo-project/neo-vm/issues/451
-            var ia = System.Runtime.CompilerServices.Unsafe.As<byte[], ImmutableArray<byte>>(ref array);
-            return new PrimitiveContractArg(ia);
+            return new PrimitiveContractArg((ReadOnlyMemory<byte>)array);
         }
 
         public static PrimitiveContractArg FromString(string value)
