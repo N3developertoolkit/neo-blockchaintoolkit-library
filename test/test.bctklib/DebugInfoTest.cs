@@ -25,7 +25,7 @@ namespace test.bctklib
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
-            fileSystem.AddFile(nefPath, MockFileData.NullObject);
+            fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
             var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
@@ -38,7 +38,7 @@ namespace test.bctklib
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
-            fileSystem.AddFile(nefPath, MockFileData.NullObject);
+            fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
             var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
@@ -52,7 +52,7 @@ namespace test.bctklib
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
-            fileSystem.AddFile(nefPath, MockFileData.NullObject);
+            fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.nefdbgnfo"), new MockFileData(compressedDebugInfo));
             var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
@@ -100,8 +100,8 @@ namespace test.bctklib
             var srcPath = fileSystem.Path.Combine(rootPath, "src");
             fileSystem.Directory.SetCurrentDirectory(srcPath);
             var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
-            fileSystem.AddFile(apocPath, MockFileData.NullObject);
-            fileSystem.AddFile(fileSystem.Path.Combine(srcPath, "Apoc.Crowdsale.cs"), MockFileData.NullObject);
+            fileSystem.AddFile(apocPath, new MockFileData(string.Empty));
+            fileSystem.AddFile(fileSystem.Path.Combine(srcPath, "Apoc.Crowdsale.cs"), new MockFileData(string.Empty));
 
             var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
             var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
@@ -117,7 +117,7 @@ namespace test.bctklib
             var srcPath = fileSystem.Path.Combine(rootPath, "neo", "token-sample", "src");
             fileSystem.Directory.SetCurrentDirectory(srcPath);
             var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
-            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+            fileSystem.AddFile(apocPath, new MockFileData(string.Empty));
 
             var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
             var actual = resolver.ResolveDocument(apocPath);
@@ -147,7 +147,7 @@ namespace test.bctklib
             var rootPath = fileSystem.AllDirectories.First();
             var srcPath = fileSystem.Path.Combine(rootPath, "neo", "token-sample", "src");
             var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
-            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+            fileSystem.AddFile(apocPath, new MockFileData(string.Empty));
 
             var sourceMap = new Dictionary<string, string>
             {
@@ -166,7 +166,7 @@ namespace test.bctklib
             var rootPath = fileSystem.AllDirectories.First();
             var tokenSamplePath = fileSystem.Path.Combine(rootPath, "neo", "token-sample");
             var apocPath = fileSystem.Path.Combine(tokenSamplePath, "src", "Apoc.cs");
-            fileSystem.AddFile(apocPath, MockFileData.NullObject);
+            fileSystem.AddFile(apocPath, new MockFileData(string.Empty));
 
             var sourceMap = new Dictionary<string, string>
             {
