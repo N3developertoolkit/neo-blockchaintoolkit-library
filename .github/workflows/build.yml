@@ -5,12 +5,12 @@ on:
     branches:
       - master
       - develop
-      - 'release/**'
+      - release/*
   push:
     branches:
       - master
       - develop
-      - 'release/**'
+      - release/*
     paths-ignore:
       - 'readme.md'
       - 'CHANGELOG.md'
