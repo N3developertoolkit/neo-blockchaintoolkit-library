@@ -157,8 +157,8 @@ namespace Neo.BlockchainToolkit
                 case OpCode.PUSHINT128:
                 case OpCode.PUSHINT256:
                     return $"{new BigInteger(instruction.Operand.Span)}";
-                case OpCode.PUSHM1:
-                    return $"{(int)instruction.OpCode - (int)OpCode.PUSH0}";
+                case OpCode.PUSHA:
+                    return $"{checked(ip + instruction.TokenI32)}";
                 case OpCode.PUSHDATA1:
                 case OpCode.PUSHDATA2:
                 case OpCode.PUSHDATA4:
@@ -171,10 +171,28 @@ namespace Neo.BlockchainToolkit
                         }
                         return $"as text: \"{text}\"";
                     }
-                case OpCode.SYSCALL:
-                    return sysCallNames.Value.TryGetValue(instruction.TokenU32, out var name)
-                        ? $"{name} SysCall"
-                        : $"Unknown SysCall {instruction.TokenU32}";
+                case OpCode.JMP:
+                case OpCode.JMPIF:
+                case OpCode.JMPIFNOT:
+                case OpCode.JMPEQ:
+                case OpCode.JMPNE:
+                case OpCode.JMPGT:
+                case OpCode.JMPGE:
+                case OpCode.JMPLT:
+                case OpCode.JMPLE:
+                case OpCode.CALL:
+                    return OffsetComment(instruction.TokenI8);
+                case OpCode.JMP_L:
+                case OpCode.JMPIF_L:
+                case OpCode.JMPIFNOT_L:
+                case OpCode.JMPEQ_L:
+                case OpCode.JMPNE_L:
+                case OpCode.JMPGT_L:
+                case OpCode.JMPGE_L:
+                case OpCode.JMPLT_L:
+                case OpCode.JMPLE_L:
+                case OpCode.CALL_L:
+                    return OffsetComment(instruction.TokenI32);
                 case OpCode.CALLT:
                     {
                         int index = instruction.TokenU16;
@@ -185,35 +203,45 @@ namespace Neo.BlockchainToolkit
                         var tokenName = contract is null ? $"{token.Hash}" : contract.Name;
                         return $"{tokenName}.{token.Method} token call";
                     }
+                case OpCode.TRY:
+                    return TryComment(instruction.TokenI8, instruction.TokenI8_1);
+                case OpCode.TRY_L:
+                    return TryComment(instruction.TokenI32, instruction.TokenI32);
+                case OpCode.ENDTRY:
+                    return OffsetComment(instruction.TokenI8);
+                case OpCode.ENDTRY_L:
+                    return OffsetComment(instruction.TokenI32);
+                case OpCode.SYSCALL:
+                    return sysCallNames.Value.TryGetValue(instruction.TokenU32, out var name)
+                        ? $"{name} SysCall"
+                        : $"Unknown SysCall {instruction.TokenU32}";
+                case OpCode.INITSSLOT:
+                    return $"{instruction.TokenU8} static variables";
                 case OpCode.INITSLOT:
                     return $"{instruction.TokenU8} local variables, {instruction.TokenU8_1} arguments";
-                case OpCode.JMP_L:
-                case OpCode.JMPEQ_L:
-                case OpCode.JMPGE_L:
-                case OpCode.JMPGT_L:
-                case OpCode.JMPIF_L:
-                case OpCode.JMPIFNOT_L:
-                case OpCode.JMPLE_L:
-                case OpCode.JMPLT_L:
-                case OpCode.JMPNE_L:
-                case OpCode.CALL_L:
-                    return OffsetComment(instruction.TokenI32);
-                case OpCode.JMP:
-                case OpCode.JMPEQ:
-                case OpCode.JMPGE:
-                case OpCode.JMPGT:
-                case OpCode.JMPIF:
-                case OpCode.JMPIFNOT:
-                case OpCode.JMPLE:
-                case OpCode.JMPLT:
-                case OpCode.JMPNE:
-                case OpCode.CALL:
-                    return OffsetComment(instruction.TokenI8);
+                case OpCode.LDSFLD:
+                case OpCode.STSFLD:
+                case OpCode.LDLOC:
+                case OpCode.STLOC:
+                case OpCode.LDARG:
+                case OpCode.STARG:
+                    return $"Slot index {instruction.TokenU8}";
+                case OpCode.NEWARRAY_T:
+                case OpCode.ISTYPE:
+                case OpCode.CONVERT:
+                    return $"{(VM.Types.StackItemType)instruction.TokenU8} type";
                 default:
                     return string.Empty;
             }
 
-            string OffsetComment(int offset) => $"pos: {ip + offset}, offset: {offset}";
+            string OffsetComment(int offset) => $"pos: {ip + offset} (offset: {offset})";
+            string TryComment(int catchOffset, int finallyOffset)
+            {
+                var builder = new System.Text.StringBuilder();
+                builder.Append(catchOffset == 0 ? "no catch block, " : $"catch {OffsetComment(catchOffset)}, ");
+                builder.Append(finallyOffset == 0 ? "no finally block" : $"finally {OffsetComment(finallyOffset)}");
+                return builder.ToString();
+            }
         }
 
         // replicated logic from Blockchain.OnInitialized + Blockchain.Persist
