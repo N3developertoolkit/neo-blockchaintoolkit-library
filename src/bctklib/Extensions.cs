@@ -206,7 +206,7 @@ namespace Neo.BlockchainToolkit
                 case OpCode.TRY:
                     return TryComment(instruction.TokenI8, instruction.TokenI8_1);
                 case OpCode.TRY_L:
-                    return TryComment(instruction.TokenI32, instruction.TokenI32);
+                    return TryComment(instruction.TokenI32, instruction.TokenI32_1);
                 case OpCode.ENDTRY:
                     return OffsetComment(instruction.TokenI8);
                 case OpCode.ENDTRY_L:
@@ -234,7 +234,7 @@ namespace Neo.BlockchainToolkit
                     return string.Empty;
             }
 
-            string OffsetComment(int offset) => $"pos: {ip + offset} (offset: {offset})";
+            string OffsetComment(int offset) => $"pos: {checked(ip + offset)} (offset: {offset})";
             string TryComment(int catchOffset, int finallyOffset)
             {
                 var builder = new System.Text.StringBuilder();
