@@ -28,10 +28,10 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public bool Contains(byte[]? key) => TryGet(key) != null;
 
-            public byte[]? TryGet(byte[]? key) => trackingMap.TryGet(store, key);
+            public byte[]? TryGet(byte[]? key) => MemoryTrackingStore.TryGet(key, trackingMap, store);
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
-                => trackingMap.Seek(store, key, direction);
+                => MemoryTrackingStore.Seek(key, direction, trackingMap, store);
 
             public void Put(byte[]? key, byte[]? value)
             {

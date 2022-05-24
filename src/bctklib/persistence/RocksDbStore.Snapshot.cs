@@ -7,7 +7,7 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class RocksDbStore
     {
-        public class Snapshot : ISnapshot
+        class Snapshot : ISnapshot
         {
             readonly RocksDb db;
             readonly ColumnFamilyHandle columnFamily;
@@ -46,7 +46,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
             {
                 if (snapshot.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Snapshot));
-                return db.Seek(columnFamily, key, direction, readOptions);
+                return RocksDbStore.Seek(key, direction, db, columnFamily, readOptions);
             }
 
             public void Put(byte[]? key, byte[] value)

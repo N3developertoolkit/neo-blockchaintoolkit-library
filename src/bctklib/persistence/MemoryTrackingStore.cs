@@ -30,10 +30,48 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public bool Contains(byte[]? key) => TryGet(key) != null;
 
-        public byte[]? TryGet(byte[]? key) => trackingMap.TryGet(store, key);
+        public byte[]? TryGet(byte[]? key) => TryGet(key, trackingMap, store);
+
+        static byte[]? TryGet(byte[]? key, TrackingMap trackingMap, IReadOnlyStore store)
+        {
+            key ??= Array.Empty<byte>();
+            if (trackingMap.TryGetValue(key, out var mapValue))
+            {
+                return mapValue.TryPickT0(out var value, out var _)
+                    ? value.ToArray()
+                    : null;
+            }
+
+            return store.TryGet(key);
+        }
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
-            => trackingMap.Seek(store, key, direction);
+            => Seek(key, direction, trackingMap, store);
+
+        static IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction, TrackingMap trackingMap, IReadOnlyStore store)
+        {
+            key ??= Array.Empty<byte>();
+
+            if (key.Length == 0 && direction == SeekDirection.Backward)
+            {
+                return Enumerable.Empty<(byte[] key, byte[] value)>();
+            }
+
+            var comparer = direction == SeekDirection.Forward
+                ? ReadOnlyMemoryComparer.Default
+                : ReadOnlyMemoryComparer.Reverse;
+
+            var memoryItems = trackingMap
+                .Where(kvp => kvp.Value.IsT0)
+                .Where(kvp => key.Length == 0 || comparer.Compare(kvp.Key, key) >= 0)
+                .Select(kvp => (Key: kvp.Key.ToArray(), Value: kvp.Value.AsT0.ToArray()));
+
+            var storeItems = store
+                .Seek(key, direction)
+                .Where<(byte[] Key, byte[] Value)>(kvp => !trackingMap.ContainsKey(kvp.Key));
+
+            return memoryItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
+        }
 
         public void Put(byte[]? key, byte[]? value)
         {

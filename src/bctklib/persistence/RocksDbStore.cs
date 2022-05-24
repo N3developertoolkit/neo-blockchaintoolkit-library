@@ -12,8 +12,6 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly bool readOnly;
         readonly bool shared;
         bool disposed;
-        readonly ReadOptions readOptions = new ReadOptions();
-        readonly WriteOptions writeOptions = new WriteOptions();
         readonly WriteOptions writeSyncOptions = new WriteOptions().SetSync(true);
 
         internal RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false)
@@ -49,7 +47,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public byte[]? TryGet(byte[]? key)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
-            return db.Get(key ?? Array.Empty<byte>(), columnFamily, readOptions);
+            return db.Get(key ?? Array.Empty<byte>(), columnFamily);
         }
 
         public bool Contains(byte[]? key)
@@ -61,14 +59,45 @@ namespace Neo.BlockchainToolkit.Persistence
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
-            return db.Seek(columnFamily, key, direction, readOptions);
+            return Seek(key, direction, db, columnFamily);
         }
+
+        static IEnumerable<(byte[] key, byte[] value)> Seek(
+            ReadOnlySpan<byte> prefix, SeekDirection direction, RocksDb db, 
+            ColumnFamilyHandle columnFamily, ReadOptions? readOptions = null
+        ) {
+            var iterator = db.NewIterator(columnFamily, readOptions);
+
+            if (direction == SeekDirection.Forward)
+            {
+                iterator.Seek(prefix);
+                return SeekInternal(iterator, iterator.Next);
+            }
+            else
+            {
+                iterator.SeekForPrev(prefix);
+                return SeekInternal(iterator, iterator.Prev);
+            }
+
+            IEnumerable<(byte[] key, byte[] value)> SeekInternal(Iterator iterator, Func<Iterator> nextAction)
+            {
+                using (iterator)
+                {
+                    while (iterator.Valid())
+                    {
+                        yield return (iterator.Key(), iterator.Value());
+                        nextAction();
+                    }
+                }
+            }
+        }
+
 
         public void Put(byte[]? key, byte[]? value)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
-            db.Put(key ?? Array.Empty<byte>(), value, columnFamily, writeOptions);
+            db.Put(key ?? Array.Empty<byte>(), value, columnFamily);
         }
 
         public void PutSync(byte[]? key, byte[]? value)
@@ -82,7 +111,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
-            db.Remove(key ?? Array.Empty<byte>(), columnFamily, writeOptions);
+            db.Remove(key ?? Array.Empty<byte>(), columnFamily);
         }
 
         public ISnapshot GetSnapshot()
