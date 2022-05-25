@@ -2,18 +2,38 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Neo.BlockchainToolkit.Persistence;
 using Neo.Cryptography.MPTTrie;
 using Neo.IO;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Nito.Disposables;
 
 namespace test.bctklib
 {
     static class Utility
     {
+        public static byte[] Bytes(int value) => BitConverter.GetBytes(value);
+        public static byte[] Bytes(string value) => System.Text.Encoding.UTF8.GetBytes(value);
+
+        public struct CleanupPath : IDisposable
+        {
+            public readonly string Path;
+
+            public CleanupPath()
+            {
+                Path = RocksDbUtility.GetTempPath();
+            }
+
+            public static implicit operator string(CleanupPath @this) => @this.Path;
+
+            public void Dispose()
+            {
+                if (Directory.Exists(Path)) Directory.Delete(Path, true);
+            }
+        }
+
         public static Stream GetResourceStream(string name)
         {
             var assembly = typeof(DebugInfoTest).Assembly;
@@ -35,17 +55,6 @@ namespace test.bctklib
             using var resource = GetResourceStream(name);
             using var streamReader = new System.IO.StreamReader(resource);
             return streamReader.ReadToEnd();
-        }
-
-        public static IDisposable GetDeleteDirectoryDisposable(string path)
-        {
-            return AnonymousDisposable.Create(() =>
-            {
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, true);
-                }
-            });
         }
 
         public static void PutSeekData(this IStore store, (byte start, byte end) one, (byte start, byte end) two)
