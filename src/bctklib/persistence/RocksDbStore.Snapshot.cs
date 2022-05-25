@@ -40,7 +40,9 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public bool Contains(byte[]? key)
             {
-                return TryGet(key) != null;
+                if (snapshot.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Snapshot));
+                using var slice = db.GetSlice(key, columnFamily, readOptions);
+                return slice.Valid;
             }
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)

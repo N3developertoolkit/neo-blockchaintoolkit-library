@@ -109,8 +109,22 @@ namespace test.bctklib
                 Populate(path, (key, hello));
 
                 using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-                store.Contains(key).Should().BeTrue();
                 store.TryGet(key).Should().BeEquivalentTo(hello);
+            });
+        }
+
+        [Fact]
+        public void contains_true_for_valid_key()
+        {
+            RunTestWithCleanup(path =>
+            {
+                var key = Bytes(0);
+                var hello = Bytes("hello");
+
+                Populate(path, (key, hello));
+
+                using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+                store.Contains(key).Should().BeTrue();
             });
         }
 
