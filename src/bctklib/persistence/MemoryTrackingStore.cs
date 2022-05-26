@@ -11,12 +11,10 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     using TrackingMap = ImmutableDictionary<ReadOnlyMemory<byte>, OneOf<ReadOnlyMemory<byte>, None>>;
 
-    public partial class MemoryTrackingStore : ITrackingStore
+    public partial class MemoryTrackingStore : IStore
     {
         readonly IReadOnlyStore store;
         TrackingMap trackingMap = TrackingMap.Empty.WithComparers(ReadOnlyMemoryComparer.Default);
-
-        IReadOnlyStore ITrackingStore.UnderlyingStore => store;
 
         public MemoryTrackingStore(IReadOnlyStore store)
         {

@@ -24,17 +24,10 @@ public class TrackingStoreTests : IDisposable
     }
 
     [Theory, CombinatorialData]
-    public void tracking_store_disposes_underlying_store(
-        [CombinatorialValues(StoreType.MemoryTracking, StoreType.PersistentTracking)] StoreType storeType)
+    public void tracking_store_disposes_underlying_store(StoreType storeType)
     {
         var disposableStore = new DisposableStore();
-        using ITrackingStore trackingStore = storeType switch
-        {
-            StoreType.MemoryTracking => new MemoryTrackingStore(disposableStore),
-            StoreType.PersistentTracking =>
-                new PersistentTrackingStore(RocksDbUtility.OpenDb(path), disposableStore),
-            _ => throw new ArgumentException(nameof(storeType)),
-        };
+        var trackingStore = GetTrackingStore(storeType, disposableStore);
         disposableStore.Disposed.Should().BeFalse();
         trackingStore.Dispose();
         disposableStore.Disposed.Should().BeTrue();
@@ -207,17 +200,10 @@ public class TrackingStoreTests : IDisposable
         test_delete_missing_value_no_effect(store);
     }
 
-    internal ITrackingStore GetStore(StoreType type)
+    internal IStore GetStore(StoreType type)
     {
         var memoryStore = new MemoryStore();
-        ITrackingStore trackingStore = type switch
-        {
-            StoreType.MemoryTracking => new MemoryTrackingStore(memoryStore),
-            StoreType.PersistentTracking =>
-                new PersistentTrackingStore(RocksDbUtility.OpenDb(path), memoryStore),
-            _ => throw new ArgumentException(nameof(type))
-        };
-
+        var trackingStore = GetTrackingStore(type, memoryStore);
         var array = TestData.ToArray();
         var overwritten = Bytes("overwritten");
 
@@ -233,6 +219,15 @@ public class TrackingStoreTests : IDisposable
 
         return trackingStore;
     }
+
+    IStore GetTrackingStore(StoreType storeType, IReadOnlyStore store) 
+        => storeType switch
+        {
+            StoreType.MemoryTracking => new MemoryTrackingStore(store),
+            StoreType.PersistentTracking =>
+                new PersistentTrackingStore(RocksDbUtility.OpenDb(path), store),
+            _ => throw new ArgumentException(nameof(storeType)),
+        };
 
     class DisposableStore : IReadOnlyStore, IDisposable
     {

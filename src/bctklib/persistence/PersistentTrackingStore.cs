@@ -6,7 +6,7 @@ using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence;
 
-public partial class PersistentTrackingStore : ITrackingStore
+public partial class PersistentTrackingStore : IStore
 {
     const byte UPDATED_KEY = 1;
     const byte DELETED_KEY = 0;
@@ -16,8 +16,6 @@ public partial class PersistentTrackingStore : ITrackingStore
     readonly IReadOnlyStore store;
     readonly bool shared;
     bool disposed;
-
-    IReadOnlyStore ITrackingStore.UnderlyingStore => store;
 
     public PersistentTrackingStore(RocksDb db, IReadOnlyStore store, bool shared = false)
         : this(db, db.GetDefaultColumnFamily(), store, false)
