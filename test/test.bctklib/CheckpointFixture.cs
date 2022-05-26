@@ -24,7 +24,7 @@ public class CheckpointFixture : IDisposable
         {
             using var db = RocksDbUtility.OpenDb(dbPath);
             using var store = new RocksDbStore(db);
-            foreach (var (key, value) in SeekTestData)
+            foreach (var (key, value) in TestData)
             {
                 store.Put(key, value);
             }

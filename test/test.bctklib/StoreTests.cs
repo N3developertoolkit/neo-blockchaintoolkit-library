@@ -11,9 +11,9 @@ using static Utility;
 
 public static class StoreTests
 {
-    public static void can_get_value_from_store(IReadOnlyStore store, int index = 0)
+    public static void tryget_value_for_valid_key(IReadOnlyStore store, int index = 0)
     {
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         store.TryGet(key).Should().BeEquivalentTo(value);
     }
 
@@ -24,7 +24,7 @@ public static class StoreTests
 
     public static void tryget_null_for_deleted_key(IStore store, int index = 0)
     {
-        var (key, _) = SeekTestData.ElementAt(index);
+        var (key, _) = TestData.ElementAt(index);
         store.TryGet(key).Should().NotBeNull();
         store.Delete(key);
         store.TryGet(key).Should().BeNull();
@@ -32,7 +32,7 @@ public static class StoreTests
 
     public static void contains_true_for_valid_key(IReadOnlyStore store, int index = 0)
     {
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         store.Contains(key).Should().BeTrue();
     }
 
@@ -43,41 +43,41 @@ public static class StoreTests
 
     public static void contains_false_for_deleted_key(IStore store, int index = 0)
     {
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         store.Contains(key).Should().BeTrue();
         store.Delete(key);
         store.Contains(key).Should().BeFalse();
     }
 
-    public static void can_seek_forward_no_prefix(IReadOnlyStore store)
+    public static void seek_forward_no_prefix(IReadOnlyStore store)
     {
         store.Seek(Array.Empty<byte>(), SeekDirection.Forward)
-            .Should().BeEquivalentTo(SeekTestData);
+            .Should().BeEquivalentTo(TestData);
     }
 
-    public static void can_seek_backwards_no_prefix(IReadOnlyStore store)
+    public static void seek_backward_no_prefix(IReadOnlyStore store)
     {
         store.Seek(Array.Empty<byte>(), SeekDirection.Backward).Should().BeEmpty();
     }
 
-    public static void seek_forwards_with_prefix(IReadOnlyStore store)
+    public static void seek_forward_with_prefix(IReadOnlyStore store)
     {
         var key = new byte[] { 1, 0 };
-        var expected = SeekTestData
+        var expected = TestData
             .Where(kvp => ReadOnlyMemoryComparer.Default.Compare(kvp.key, key) >= 0);
         store.Seek(key, SeekDirection.Forward).Should().BeEquivalentTo(expected);
     }
 
-    public static void seek_backwards_with_prefix(IReadOnlyStore store)
+    public static void seek_backward_with_prefix(IReadOnlyStore store)
     {
         var key = new byte[] { 2, 0 };
-        var expected = SeekTestData
+        var expected = TestData
             .Where(kvp => ReadOnlyMemoryComparer.Reverse.Compare(kvp.key, key) >= 0)
             .Reverse();
         store.Seek(key, SeekDirection.Backward).Should().BeEquivalentTo(expected);
     }
 
-    public static void can_add_new_value(IStore store, int index = 0)
+    public static void put_new_value(IStore store, int index = 0)
     {
         var key = Bytes(0);
         var value = Bytes("test-value");
@@ -86,22 +86,31 @@ public static class StoreTests
         store.TryGet(key).Should().BeEquivalentTo(value);
     }
 
-    public static void can_overwrite_existing_value(IStore store, int index = 0)
+    public static void put_overwrite_existing_value(IStore store, int index = 0)
     {
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         var newValue = Bytes("test-value");
         store.TryGet(key).Should().BeEquivalentTo(value);
         store.Put(key, newValue);
         store.TryGet(key).Should().BeEquivalentTo(newValue);
     }
 
-    public static void cant_put_null_value(IStore store)
+    public static void put_null_value_throws(IStore store)
     {
         var key = Bytes(0);
         Assert.Throws<NullReferenceException>(() => store.Put(key, null));
     }
 
-    public static void snapshot_doesnt_see_store_addition(IStore store)
+    // delete existing value tested by other TryGet & Contains tests
+    public static void delete_missing_value_no_effect(IStore store)
+    {
+        var key = Bytes(0);
+        store.TryGet(key).Should().BeNull();
+        store.Delete(key);
+        store.TryGet(key).Should().BeNull();
+    }
+
+    public static void snapshot_isolation_addition(IStore store)
     {
         using var snapshot = store.GetSnapshot();
         var key = Bytes(0);
@@ -111,26 +120,26 @@ public static class StoreTests
         snapshot.TryGet(key).Should().BeNull();
     }
 
-    public static void snapshot_doesnt_see_store_update(IStore store, int index = 0)
+    public static void snapshot_isolation_update(IStore store, int index = 0)
     {
         using var snapshot = store.GetSnapshot();
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         var newValue = Bytes("test-value");
         store.Put(key, newValue);
         snapshot.Contains(key).Should().BeTrue();
         snapshot.TryGet(key).Should().BeEquivalentTo(value);
     }
 
-    public static void snapshot_doesnt_see_store_delete(IStore store, int index = 0)
+    public static void snapshot_isolation_delete(IStore store, int index = 0)
     {
         using var snapshot = store.GetSnapshot();
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         store.Delete(key);
         snapshot.Contains(key).Should().BeTrue();
         snapshot.TryGet(key).Should().BeEquivalentTo(value);
     }
 
-    public static void can_add_to_store_via_snapshot(IStore store)
+    public static void snapshot_commit_add(IStore store)
     {
         var key = Bytes(0);
         var value = Bytes("test-value");
@@ -143,9 +152,9 @@ public static class StoreTests
         store.TryGet(key).Should().BeEquivalentTo(value);
     }
 
-    public static void can_update_store_via_snapshot(IStore store, int index = 0)
+    public static void snapshot_commit_update(IStore store, int index = 0)
     {
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         var newValue = Bytes("test-value");
 
         using var snapshot = store.GetSnapshot();
@@ -156,9 +165,9 @@ public static class StoreTests
         store.TryGet(key).Should().BeEquivalentTo(newValue);
     }
 
-    public static void can_delete_from_store_via_snapshot(IStore store, int index = 0)
+    public static void snapshot_commit_delete(IStore store, int index = 0)
     {
-        var (key, value) = SeekTestData.ElementAt(index);
+        var (key, value) = TestData.ElementAt(index);
         using var snapshot = store.GetSnapshot();
         snapshot.Delete(key);
 
@@ -167,14 +176,20 @@ public static class StoreTests
         store.TryGet(key).Should().BeNull();
     }
 
-    public static void cant_put_null_value_to_snapshot(IStore store)
+    public static void snapshot_put_null_value_throws(IStore store)
     {
         using var snapshot = store.GetSnapshot();
         var key = Bytes(0);
         Assert.Throws<NullReferenceException>(() => snapshot.Put(key, null));
     }
 
-    public static void update_key_array_doesnt_affect_store(IStore store)
+    // key/value_instance_isolation tests ensure the store has it's own copies
+    // of keys and values so that changes to provided instances do not causes
+    // changes in the underlying store. This is important as some of the IStore
+    // implementations store keys & values in memory where they could be subject
+    // to changes if copies aren't made
+ 
+    public static void key_instance_isolation(IStore store)
     {
         var key = Bytes(0);
         var value = Bytes("test-value");
@@ -184,4 +199,15 @@ public static class StoreTests
         store.TryGet(Bytes(0)).Should().BeEquivalentTo(value);
         store.TryGet(key).Should().BeNull();
     }
+
+    public static void value_instance_isolation(IStore store)
+    {
+        var key = Bytes(0);
+        var value = Bytes("test-value");
+        store.Put(key, value);
+
+        value[0] = 0xff;
+        store.TryGet(key).Should().BeEquivalentTo(Bytes("test-value"));
+    }
+
 }

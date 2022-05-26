@@ -12,9 +12,8 @@ using static Utility;
 
 public class TrackingStoreTests : IDisposable
 {
-    static readonly byte[] zeroKey = Bytes(0);
-    static readonly byte[] helloValue = Bytes("Hello");
-    static readonly byte[] worldValue = Bytes("World");
+    public enum TrackingStoreType { Memory, Persistent }
+
 
     readonly CleanupPath path = new CleanupPath();
 
@@ -23,280 +22,181 @@ public class TrackingStoreTests : IDisposable
         path.Dispose();
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void disposes_underlying_store_if_disposable(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void disposes_underlying_store_if_disposable(TrackingStoreType storeType)
     {
         var disposableStore = new DisposableStore();
-        using var trackingStore = storeFactory(disposableStore, path);
+        using var trackingStore = GetStore(storeType, disposableStore);
         disposableStore.Disposed.Should().BeFalse();
         trackingStore.Dispose();
         disposableStore.Disposed.Should().BeTrue();
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_get_underlying_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    // index combinatorial enables test of three different scenarios:
+    //  * all even indexes (including zero) have a value in the underlying store with no updates in tracking store
+    //  * all odd indexes (including 1 and 5) have an updated value in the tracking store
+    //  * odd indexes that are also factors of 5 (including 5) have an overwritten value in the underlying store
+    //    and an updated value in the tracking store
+
+    [Theory, CombinatorialData]
+    public void tryget_value_for_valid_key(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_get_value_from_store(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.tryget_value_for_valid_key(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_get_tracking_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void tryget_null_for_missing_value(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_get_value_from_store(store, 1);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_get_overwritten_value(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_get_value_from_store(store, 5);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void tryget_null_for_missing_value(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
+        using var store = GetPopulatedStore(storeType);
         StoreTests.tryget_null_for_missing_key(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void tryget_null_for_deleted_underlying_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void tryget_null_for_deleted_key(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.tryget_null_for_deleted_key(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.tryget_null_for_deleted_key(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void tryget_null_for_deleted_tracking_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void contains_true_for_valid_key(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.tryget_null_for_deleted_key(store, 1);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.contains_true_for_valid_key(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void tryget_null_for_deleted_overwritten_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void contains_false_for_missing_key(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.tryget_null_for_deleted_key(store, 5);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_true_for_valid_underlying_key(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.contains_true_for_valid_key(store, 0);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_true_for_valid_tracking_key(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.contains_true_for_valid_key(store, 1);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_true_for_valid_overwritten_key(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.contains_true_for_valid_key(store, 5);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_false_for_missing_key(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
+        using var store = GetPopulatedStore(storeType);
         StoreTests.contains_false_for_missing_key(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_false_for_deleted_underlying_key(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void contains_false_for_deleted_key(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.contains_false_for_deleted_key(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.contains_false_for_deleted_key(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_false_for_deleted_tracking_key(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void put_new_value(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.contains_false_for_deleted_key(store, 1);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.put_new_value(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void contains_false_for_deleted_overwritten_key(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void put_overwrite_existing_value(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.contains_false_for_deleted_key(store, 5);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.put_overwrite_existing_value(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_add_new_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void snapshot_commit_add(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_add_new_value(store);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_commit_add(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_overwrite_existing_underlying_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void snapshot_commit_update(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_overwrite_existing_value(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_commit_update(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_overwrite_existing_tracking_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void snapshot_commit_delete(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_overwrite_existing_value(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_commit_delete(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_overwrite_existing_overwritten_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void snapshot_isolation_addition(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_overwrite_existing_value(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_isolation_addition(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_add_to_store_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void snapshot_isolation_update(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_add_to_store_via_snapshot(store);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_isolation_update(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_update_underlying_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void snapshot_isolation_delete(TrackingStoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_update_store_via_snapshot(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_isolation_delete(store, index);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_update_tracking_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void key_instance_isolation(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_update_store_via_snapshot(store, 1);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.key_instance_isolation(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_update_overwritten_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void value_instance_isolation(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_update_store_via_snapshot(store, 5);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.value_instance_isolation(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_delete_underlying_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void cant_put_null_value(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_delete_from_store_via_snapshot(store, 0);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.put_null_value_throws(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_delete_tracking_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void cant_put_null_value_to_snapshot(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_delete_from_store_via_snapshot(store, 1);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.snapshot_put_null_value_throws(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_delete_overwritten_via_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void can_seek_forward_no_prefix(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_delete_from_store_via_snapshot(store, 5);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.seek_forward_no_prefix(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void update_key_array_doesnt_affect_store(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void can_seek_backwards_no_prefix(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.update_key_array_doesnt_affect_store(store);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.seek_backward_no_prefix(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void cant_put_null_value(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void seek_forwards_with_prefix(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.cant_put_null_value(store);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.seek_forward_with_prefix(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void cant_put_null_value_to_snapshot(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void seek_backwards_with_prefix(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.cant_put_null_value_to_snapshot(store);
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.seek_backward_with_prefix(store);
     }
 
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_seek_forward_no_prefix(Func<IReadOnlyStore, string, IStore> storeFactory)
+    [Theory, CombinatorialData]
+    public void delete_missing_value_no_effect(TrackingStoreType storeType)
     {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_seek_forward_no_prefix(store);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void can_seek_backwards_no_prefix(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.can_seek_backwards_no_prefix(store);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void seek_forwards_with_prefix(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.seek_forwards_with_prefix(store);
-    }
-
-    [Theory]
-    [MemberData(nameof(TrackingStoreFactories))]
-    public void seek_backwards_with_prefix(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        using var store = PopulateSeekData(storeFactory);
-        StoreTests.seek_backwards_with_prefix(store);
-    }
-
-    public static IEnumerable<object[]> TrackingStoreFactories()
-    {
-        Func<IReadOnlyStore, string, IStore> memoryFactory = (store, path) => new MemoryTrackingStore(store);
-        Func<IReadOnlyStore, string, IStore> persistentFactory = (store, path) => new PersistentTrackingStore(RocksDbUtility.OpenDb(path), store);
-
-        yield return new object[] { memoryFactory };
-        yield return new object[] { persistentFactory };
+        using var store = GetPopulatedStore(storeType);
+        StoreTests.delete_missing_value_no_effect(store);
     }
 
     class DisposableStore : IReadOnlyStore, IDisposable
@@ -314,23 +214,42 @@ public class TrackingStoreTests : IDisposable
             => Enumerable.Empty<(byte[], byte[])>();
     }
 
-    IStore PopulateSeekData(Func<IReadOnlyStore, string, IStore> storeFactory)
-    {
-        var memoryStore = new MemoryStore();
-        var trackingStore = storeFactory(memoryStore, path);
 
-        var array = SeekTestData.ToArray();
-        var oldData = Bytes("overwritten");
+    ITrackingStore GetStore(TrackingStoreType type, IReadOnlyStore? readOnlyStore = null)
+    {
+        readOnlyStore ??= new MemoryStore();
+        return type switch
+        {
+            TrackingStoreType.Memory => new MemoryTrackingStore(readOnlyStore),
+            TrackingStoreType.Persistent =>
+                new PersistentTrackingStore(RocksDbUtility.OpenDb(path), readOnlyStore),
+            _ => throw new ArgumentException(nameof(type))
+        };
+    }
+
+    IStore GetPopulatedStore(TrackingStoreType type)
+    {
+        var trackingStore = GetStore(type);
+        PopulateStore(trackingStore);
+        return trackingStore;
+    }
+
+    void PopulateStore(ITrackingStore trackingStore)
+    {
+        var underlyingStore = trackingStore.UnderlyingStore as IStore;
+        if (underlyingStore is null) throw new ArgumentException(nameof(trackingStore));
+
+        var array = TestData.ToArray();
+        var overwritten = Bytes("overwritten");
 
         for (var i = 0; i < array.Length; i++)
         {
-            // write value to be overwritten to underlying store 
-            if (i % 2 == 1 && i % 5 == 0) memoryStore.Put(array[i].key, oldData);
+            // put value to be overwritten to underlying store for odd, factor of five indexes
+            if (i % 2 == 1 && i % 5 == 0) underlyingStore.Put(array[i].key, overwritten);
 
-            // write correct value to alternating memory and tracking store
-            var store = i % 2 == 0 ? memoryStore : trackingStore;
+            // put value to underlying store for even indexes, tracking store for odd indexes
+            var store = i % 2 == 0 ? underlyingStore : trackingStore;
             store.Put(array[i].key, array[i].value);
         }
-        return trackingStore;
     }
 }
