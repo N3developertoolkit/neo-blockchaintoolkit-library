@@ -59,7 +59,6 @@ namespace Neo.BlockchainToolkit.Persistence
         static IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction, TrackingMap trackingMap, IReadOnlyStore store)
         {
             key ??= Array.Empty<byte>();
-
             if (key.Length == 0 && direction == SeekDirection.Backward)
             {
                 return Enumerable.Empty<(byte[] key, byte[] value)>();

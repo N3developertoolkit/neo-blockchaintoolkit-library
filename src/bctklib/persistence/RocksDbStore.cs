@@ -79,21 +79,21 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
-            db.Put(key ??= Array.Empty<byte>(), value, columnFamily);
+            db.Put(key ?? Array.Empty<byte>(), value, columnFamily);
         }
 
         public void PutSync(byte[]? key, byte[]? value)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
-            db.Put(key ??= Array.Empty<byte>(), value, columnFamily, RocksDbUtility.WriteSyncOptions);
+            db.Put(key ?? Array.Empty<byte>(), value, columnFamily, RocksDbUtility.WriteSyncOptions);
         }
 
         public void Delete(byte[]? key)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
             if (readOnly) throw new InvalidOperationException("read only");
-            db.Remove(key ??= Array.Empty<byte>(), columnFamily);
+            db.Remove(key ?? Array.Empty<byte>(), columnFamily);
         }
 
         public ISnapshot GetSnapshot()
