@@ -75,7 +75,7 @@ static class Utility
         return new byte[] { (byte) tens, (byte) ones };
     }
 
-    public static IEnumerable<(byte[] key, byte[] value)> TestSeekData => 
+    public static IEnumerable<(byte[] key, byte[] value)> SeekTestData => 
         GreekLetters.Select((s, i) => (IndexToKey(i + 1), Bytes(s)));
 
 

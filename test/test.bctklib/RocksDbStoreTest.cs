@@ -11,31 +11,6 @@ namespace test.bctklib;
 
 using static Utility;
 
-public class StoreTest : IDisposable
-{
-    readonly CleanupPath path = new CleanupPath();
-
-    public void Dispose()
-    {
-        path.Dispose();
-    }
-
-    [Theory]
-    [MemberData(nameof(GetEmptyStores))]
-    public void TryGetReturnsNull(IReadOnlyStore store)
-    {
-        store.TryGet(Bytes(0)).Should().BeNull();
-    }
-
-    public static IEnumerable<object[]> GetEmptyStores()
-    {
-        yield return new object[] { new MemoryStore() };
-
-        var path = new CleanupPath();
-        yield return new object[] { new RocksDbStore(RocksDbUtility.OpenDb(path)) };
-    }
-}
-
 public class RocksDbStoreTest : IDisposable
 {
     static readonly byte[] zeroKey = Bytes(0);
