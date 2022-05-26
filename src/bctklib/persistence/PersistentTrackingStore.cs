@@ -23,7 +23,7 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
         public PersistentTrackingStore(RocksDb db, string columnFamilyName, IReadOnlyStore store, bool shared = false)
-            : this(db, db.GetColumnFamilyHandle(columnFamilyName), store, false)
+            : this(db, db.GetColumnFamily(columnFamilyName), store, false)
         {
         }
 

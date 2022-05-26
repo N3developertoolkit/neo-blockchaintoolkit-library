@@ -106,7 +106,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return new ColumnFamilies();
         }
 
-        public static ColumnFamilyHandle GetColumnFamilyHandle(this RocksDb db, string? columnFamilyName)
+        public static ColumnFamilyHandle GetColumnFamily(this RocksDb db, string? columnFamilyName)
         {
             return string.IsNullOrEmpty(columnFamilyName)
                 ? db.GetDefaultColumnFamily()

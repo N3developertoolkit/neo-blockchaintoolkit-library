@@ -14,7 +14,7 @@ namespace Neo.BlockchainToolkit.Persistence
         bool disposed;
 
         internal RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false)
-            : this(db, db.GetColumnFamilyHandle(columnFamilyName), readOnly, false)
+            : this(db, db.GetColumnFamily(columnFamilyName), readOnly, false)
         {
         }
 
