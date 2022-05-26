@@ -11,145 +11,147 @@ namespace test.bctklib;
 
 using static Utility;
 
-public class RocksDbStoreTest
+public class StoreTest : IDisposable
 {
-    static void Populate(string path, params (byte[] key, byte[] value)[] values)
+    readonly CleanupPath path = new CleanupPath();
+
+    public void Dispose()
     {
-        using var db = RocksDbUtility.OpenDb(path);
-        var cf = db.GetDefaultColumnFamily();
-        var writeOptions = new WriteOptions().SetSync(true);
-        for (int i = 0; i < values.Length; i++)
-        {
-            var (key, value) = values[i];
-            db.Put(key, value, cf, writeOptions);
-        }
+        path.Dispose();
     }
 
-    static IStore GetSeekStore(string path)
+    [Theory]
+    [MemberData(nameof(GetEmptyStores))]
+    public void TryGetReturnsNull(IReadOnlyStore store)
     {
-        Populate(path);
-        var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-        store.PutSeekData((0, 2), (1, 4));
-        return store;
+        store.TryGet(Bytes(0)).Should().BeNull();
     }
 
-    static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0, 2), (1, 4));
+    public static IEnumerable<object[]> GetEmptyStores()
+    {
+        yield return new object[] { new MemoryStore() };
+
+        var path = new CleanupPath();
+        yield return new object[] { new RocksDbStore(RocksDbUtility.OpenDb(path)) };
+    }
+}
+
+public class RocksDbStoreTest : IDisposable
+{
+    static readonly byte[] zeroKey = Bytes(0);
+    static readonly byte[] helloValue = Bytes("Hello");
+    static readonly byte[] worldValue = Bytes("World");
+
+    readonly CleanupPath path = new CleanupPath();
+
+    public void Dispose()
+    {
+        path.Dispose();
+    }
 
     [Fact]
     public void readonly_store_throws_on_write_operations()
     {
-        using var path = new CleanupPath();
         Populate(path);
 
-        var key = Bytes(0);
-        var hello = Bytes("hello");
         using var store = new RocksDbStore(RocksDbUtility.OpenReadOnlyDb(path), readOnly: true);
-        Assert.Throws<InvalidOperationException>(() => store.Put(key, hello));
-        Assert.Throws<InvalidOperationException>(() => store.PutSync(key, hello));
-        Assert.Throws<InvalidOperationException>(() => store.Delete(key));
+        Assert.Throws<InvalidOperationException>(() => store.Put(zeroKey, helloValue));
+        Assert.Throws<InvalidOperationException>(() => store.PutSync(zeroKey, helloValue));
+        Assert.Throws<InvalidOperationException>(() => store.Delete(zeroKey));
         Assert.Throws<InvalidOperationException>(() => store.GetSnapshot());
     }
 
     [Fact]
     public void store_sharing()
     {
-        using var path = new CleanupPath();
-
-        var key = Bytes(0);
-        var hello = Bytes("hello");
-
-        Populate(path, (key, hello));
+        Populate(path, (zeroKey, helloValue));
 
         using var db = RocksDbUtility.OpenReadOnlyDb(path);
         var cf = db.GetDefaultColumnFamily();
 
         using (var store = new RocksDbStore(db, cf, readOnly: true, shared: true))
         {
-            store.TryGet(key).Should().BeEquivalentTo(hello);
+            store.TryGet(zeroKey).Should().BeEquivalentTo(helloValue);
         }
 
         using (var store = new RocksDbStore(db, cf, readOnly: true, shared: false))
         {
-            store.TryGet(key).Should().BeEquivalentTo(hello);
+            store.TryGet(zeroKey).Should().BeEquivalentTo(helloValue);
         }
 
         using (var store = new RocksDbStore(db, cf, readOnly: true, shared: false))
         {
-            Assert.Throws<ObjectDisposedException>(() => store.TryGet(key));
+            Assert.Throws<ObjectDisposedException>(() => store.TryGet(zeroKey));
         }
     }
 
     [Fact]
     public void can_get_value_from_store()
     {
-        using var path = new CleanupPath();
-
-        var key = Bytes(0);
-        var hello = Bytes("hello");
-
-        Populate(path, (key, hello));
+        Populate(path, (zeroKey, helloValue));
 
         using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-        store.TryGet(key).Should().BeEquivalentTo(hello);
+        store.TryGet(zeroKey).Should().BeEquivalentTo(helloValue);
+    }
+
+
+    [Fact]
+    public void tryget_null_for_invalid_key()
+    {
+        Populate(path);
+
+        using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+        store.TryGet(zeroKey).Should().BeNull();
     }
 
     [Fact]
     public void contains_true_for_valid_key()
     {
-        using var path = new CleanupPath();
-
-        var key = Bytes(0);
-        var hello = Bytes("hello");
-
-        Populate(path, (key, hello));
+        Populate(path, (zeroKey, helloValue));
 
         using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-        store.Contains(key).Should().BeTrue();
+        store.Contains(zeroKey).Should().BeTrue();
     }
 
     [Fact]
     public void contains_false_for_missing_key()
     {
-        using var path = new CleanupPath();
-
         Populate(path);
 
         using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-        store.Contains(Bytes("invalid-key")).Should().BeFalse();
+        store.Contains(zeroKey).Should().BeFalse();
+    }
+
+    [Fact]
+    public void contains_false_for_deleted_key()
+    {
+        Populate(path, (zeroKey, helloValue));
+
+        using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+        store.Contains(zeroKey).Should().BeTrue();
+        store.Delete(zeroKey);
+        store.Contains(zeroKey).Should().BeFalse();
     }
 
     [Fact]
     public void can_overwrite_existing_value()
     {
-        using var path = new CleanupPath();
-
-        var key = Bytes(0);
-        var hello = Bytes("hello");
-        var world = Bytes("world");
-
-        Populate(path, (key, hello));
+        Populate(path, (zeroKey, helloValue));
 
         using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-        store.Put(key, world);
-        store.Contains(key).Should().BeTrue();
-        store.TryGet(key).Should().BeEquivalentTo(world);
+        store.Put(zeroKey, worldValue);
+        store.TryGet(zeroKey).Should().BeEquivalentTo(worldValue);
     }
 
     [Fact]
     public void can_delete_existing_value()
     {
-        using var path = new CleanupPath();
-
-        var key = Bytes(0);
-        var hello = Bytes("hello");
-
-        Populate(path, (key, hello));
+        Populate(path, (zeroKey, helloValue));
 
         using var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
-        store.Contains(key).Should().BeTrue();
-        store.Delete(key);
-        store.Contains(key).Should().BeFalse();
-        store.TryGet(key).Should().BeNull();
+        store.TryGet(zeroKey).Should().NotBeNull();
+        store.Delete(zeroKey);
+        store.TryGet(zeroKey).Should().BeNull();
     }
 
     [Fact]
@@ -256,4 +258,28 @@ public class RocksDbStoreTest
         var expected = GetSeekData().Where(kvp => kvp.Item1[0] <= 0x01).Reverse();
         actual.Should().BeEquivalentTo(expected);
     }
+
+        static void Populate(string path, params (byte[] key, byte[] value)[] values)
+    {
+        using var db = RocksDbUtility.OpenDb(path);
+        var cf = db.GetDefaultColumnFamily();
+        var writeOptions = new WriteOptions().SetSync(true);
+        for (int i = 0; i < values.Length; i++)
+        {
+            var (key, value) = values[i];
+            db.Put(key, value, cf, writeOptions);
+        }
+    }
+
+    static IStore GetSeekStore(string path)
+    {
+        Populate(path);
+        var store = new RocksDbStore(RocksDbUtility.OpenDb(path), readOnly: false);
+        store.PutSeekData((0, 2), (1, 4));
+        return store;
+    }
+
+    static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0, 2), (1, 4));
+
+
 }

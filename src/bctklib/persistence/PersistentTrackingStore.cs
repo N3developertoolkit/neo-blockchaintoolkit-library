@@ -17,6 +17,16 @@ public partial class PersistentTrackingStore : IStore
     readonly bool shared;
     bool disposed;
 
+    public PersistentTrackingStore(RocksDb db, IReadOnlyStore store, bool shared = false)
+        : this(db, db.GetDefaultColumnFamily(), store, false)
+    {
+    }
+
+    public PersistentTrackingStore(RocksDb db, string columnFamilyName, IReadOnlyStore store, bool shared = false)
+        : this(db, db.GetColumnFamilyHandle(columnFamilyName), store, false)
+    {
+    }
+
     public PersistentTrackingStore(RocksDb db, ColumnFamilyHandle columnFamily, IReadOnlyStore store, bool shared = false)
     {
         this.db = db;
@@ -77,7 +87,7 @@ public partial class PersistentTrackingStore : IStore
 
     public static IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction, RocksDb db, ColumnFamilyHandle columnFamily, ReadOptions? readOptions, IReadOnlyStore store)
     {
-        var trackedItems = RocksDbStore.Seek(key, direction, db, columnFamily);
+        var trackedItems = SeekTracked(key, direction, db, columnFamily);
         var storeItems = store.Seek(key, direction).Where(KeyUntracked);
 
         var comparer = direction == SeekDirection.Forward
@@ -85,6 +95,32 @@ public partial class PersistentTrackingStore : IStore
             : ReadOnlyMemoryComparer.Reverse;
 
         return trackedItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
+
+        static IEnumerable<(byte[] Key, byte[] Value)> SeekTracked(
+            byte[]? key, SeekDirection direction, RocksDb db,
+            ColumnFamilyHandle columnFamily, ReadOptions? readOptions = null)
+        {
+            key ??= Array.Empty<byte>();
+            readOptions ??= RocksDbUtility.DefaultReadOptions;
+            var forward = direction == SeekDirection.Forward;
+
+            using var iterator = db.NewIterator(columnFamily, readOptions);
+
+            _ = forward ? iterator.Seek(key) : iterator.SeekForPrev(key);
+            while (iterator.Valid())
+            {
+                var value = iterator.GetValueSpan();
+                if (value[0] == UPDATED_KEY)
+                {
+                    yield return (iterator.Key(), value.Slice(1).ToArray());
+                } 
+                else
+                {
+                    if (value[0] != DELETED_KEY) throw new Exception("value must have 0 or 1 prefix");
+                }
+                _ = forward ? iterator.Next() : iterator.Prev();
+            }
+        }
 
         bool KeyUntracked((byte[] Key, byte[] Value) kvp)
         {

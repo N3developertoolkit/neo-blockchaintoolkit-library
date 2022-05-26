@@ -28,8 +28,6 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public ISnapshot GetSnapshot() => new Snapshot(store, trackingMap, this.CommitSnapshot);
 
-        public bool Contains(byte[]? key) => TryGet(key) != null;
-
         public byte[]? TryGet(byte[]? key) => TryGet(key, trackingMap, store);
 
         static byte[]? TryGet(byte[]? key, TrackingMap trackingMap, IReadOnlyStore store)
@@ -43,6 +41,16 @@ namespace Neo.BlockchainToolkit.Persistence
             }
 
             return store.TryGet(key);
+        }
+
+        public bool Contains(byte[]? key) => Contains(key, trackingMap, store);
+
+        static bool Contains(byte[]? key, TrackingMap trackingMap, IReadOnlyStore store)
+        {
+            key ??= Array.Empty<byte>();
+            return trackingMap.TryGetValue(key, out var mapValue)
+                ? mapValue.IsT0
+                : store.Contains(key);
         }
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
@@ -87,10 +95,7 @@ namespace Neo.BlockchainToolkit.Persistence
         static void AtomicUpdate(ref TrackingMap trackingMap, byte[]? key, OneOf<ReadOnlyMemory<byte>, None> value)
         {
             key = key is null ? Array.Empty<byte>() : key.AsSpan().ToArray();
-            value = value.TryPickT0(out var buffer, out var none)
-                ? (ReadOnlyMemory<byte>)buffer.ToArray()
-                : none;
-
+            value = value.MapT0(memory => (ReadOnlyMemory<byte>)memory.ToArray().AsMemory());
             var priorCollection = Volatile.Read(ref trackingMap);
             do
             {

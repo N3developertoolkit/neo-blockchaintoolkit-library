@@ -16,7 +16,7 @@ public partial class RocksDbStore : IStore
     bool disposed;
 
     internal RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false)
-        : this(db, GetColumnFamilyHandle(db, columnFamilyName), readOnly, false)
+        : this(db, db.GetColumnFamilyHandle(columnFamilyName), readOnly, false)
     {
     }
 
@@ -31,12 +31,6 @@ public partial class RocksDbStore : IStore
         this.columnFamily = columnFamily;
         this.readOnly = readOnly;
         this.shared = shared;
-    }
-
-    static ColumnFamilyHandle GetColumnFamilyHandle(RocksDb db, string? columnFamilyName)
-    {
-        return string.IsNullOrEmpty(columnFamilyName)
-            ? db.GetDefaultColumnFamily() : db.GetColumnFamily(columnFamilyName);
     }
 
     public void Dispose()

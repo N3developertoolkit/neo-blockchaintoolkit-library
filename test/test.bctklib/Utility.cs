@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Neo.BlockchainToolkit.Persistence;
@@ -9,128 +10,148 @@ using Neo.Persistence;
 using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Xunit.Abstractions;
+using Xunit.Sdk;
 
-namespace test.bctklib
+namespace test.bctklib;
+
+static class Utility
 {
-    static class Utility
+    public static byte[] Bytes(int value) => BitConverter.GetBytes(value);
+    public static byte[] Bytes(string value) => System.Text.Encoding.UTF8.GetBytes(value);
+
+    public struct CleanupPath : IDisposable
     {
-        public static byte[] Bytes(int value) => BitConverter.GetBytes(value);
-        public static byte[] Bytes(string value) => System.Text.Encoding.UTF8.GetBytes(value);
+        public readonly string Path;
 
-        public struct CleanupPath : IDisposable
+        public CleanupPath()
         {
-            public readonly string Path;
+            Path = RocksDbUtility.GetTempPath();
+        }
 
-            public CleanupPath()
+        public static implicit operator string(CleanupPath @this) => @this.Path;
+
+        public void Dispose()
+        {
+            if (Directory.Exists(Path)) Directory.Delete(Path, true);
+        }
+    }
+
+    public static Stream GetResourceStream(string name)
+    {
+        var assembly = typeof(DebugInfoTest).Assembly;
+        var resourceName = assembly.GetManifestResourceNames().SingleOrDefault(n => n.EndsWith(name, StringComparison.OrdinalIgnoreCase))
+            ?? throw new FileNotFoundException();
+        return assembly.GetManifestResourceStream(resourceName) ?? throw new FileNotFoundException();
+    }
+
+    public static JToken GetResourceJson(string name)
+    {
+        using var resource = GetResourceStream(name);
+        using var streamReader = new System.IO.StreamReader(resource);
+        using var jsonReader = new JsonTextReader(streamReader);
+        return JToken.ReadFrom(jsonReader);
+    }
+
+    public static string GetResource(string name)
+    {
+        using var resource = GetResourceStream(name);
+        using var streamReader = new System.IO.StreamReader(resource);
+        return streamReader.ReadToEnd();
+    }
+
+    static readonly IReadOnlyList<string> GreekLetters = new []
+    {
+        "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa",
+        "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon",
+        "Phi", "Chi", "Psi", "Omega"
+    };
+
+    static byte[] IndexToKey(int i)
+    {
+        Debug.Assert(i > 0 && i < 100);
+        var tens = i / 10;
+        var ones = i % 10;
+        return new byte[] { (byte) tens, (byte) ones };
+    }
+
+    public static IEnumerable<(byte[] key, byte[] value)> TestSeekData => 
+        GreekLetters.Select((s, i) => (IndexToKey(i + 1), Bytes(s)));
+
+
+    public static void PutSeekData(this IStore store, (byte start, byte end) one, (byte start, byte end) two)
+    {
+        foreach (var (key, value) in GetSeekData(one, two))
+        {
+            store.Put(key, value);
+        }
+    }
+
+    public static IEnumerable<(byte[], byte[])> GetSeekData((byte start, byte end) one, (byte start, byte end) two)
+    {
+        if (one.start > 9 || one.end > 9 || one.end < one.start)
+            throw new ArgumentException(nameof(one));
+        if (two.start > 9 || two.end > 9 || two.end < two.start)
+            throw new ArgumentException(nameof(two));
+
+        for (var i = one.start; i <= one.end; i++)
+        {
+            for (var j = two.start; j <= two.end; j++)
             {
-                Path = RocksDbUtility.GetTempPath();
-            }
-
-            public static implicit operator string(CleanupPath @this) => @this.Path;
-
-            public void Dispose()
-            {
-                if (Directory.Exists(Path)) Directory.Delete(Path, true);
-            }
-        }
-
-        public static Stream GetResourceStream(string name)
-        {
-            var assembly = typeof(DebugInfoTest).Assembly;
-            var resourceName = assembly.GetManifestResourceNames().SingleOrDefault(n => n.EndsWith(name, StringComparison.OrdinalIgnoreCase))
-                ?? throw new FileNotFoundException();
-            return assembly.GetManifestResourceStream(resourceName) ?? throw new FileNotFoundException();
-        }
-
-        public static JToken GetResourceJson(string name)
-        {
-            using var resource = GetResourceStream(name);
-            using var streamReader = new System.IO.StreamReader(resource);
-            using var jsonReader = new JsonTextReader(streamReader);
-            return JToken.ReadFrom(jsonReader);
-        }
-
-        public static string GetResource(string name)
-        {
-            using var resource = GetResourceStream(name);
-            using var streamReader = new System.IO.StreamReader(resource);
-            return streamReader.ReadToEnd();
-        }
-
-        public static void PutSeekData(this IStore store, (byte start, byte end) one, (byte start, byte end) two)
-        {
-            foreach (var (key, value) in GetSeekData(one, two))
-            {
-                store.Put(key, value);
-            }
-        }
-
-        public static IEnumerable<(byte[], byte[])> GetSeekData((byte start, byte end) one, (byte start, byte end) two)
-        {
-            if (one.start > 9 || one.end > 9 || one.end < one.start)
-                throw new ArgumentException(nameof(one));
-            if (two.start > 9 || two.end > 9 || two.end < two.start)
-                throw new ArgumentException(nameof(two));
-
-            for (var i = one.start; i <= one.end; i++)
-            {
-                for (var j = two.start; j <= two.end; j++)
-                {
-                    yield return (new[] { i, j }, BitConverter.GetBytes(i * 10 + j));
-                }
-            }
-        }
-
-        public static StorageKey MakeTestTrieKey(int value, int id = 1)
-        {
-            return new StorageKey() { Id = id, Key = BitConverter.GetBytes(value) };
-        }
-
-        public static Trie<StorageKey, StorageItem> GetTestTrie(Neo.Persistence.IStore store, int id = 1, uint count = 100)
-        {
-            using var snapshot = store.GetSnapshot();
-            var trie = new Trie<StorageKey, StorageItem>(snapshot, null);
-            for (var i = 0; i < count; i++)
-            {
-                var key = MakeTestTrieKey(i, id);
-                var value = new StorageItem(Neo.Utility.StrictUTF8.GetBytes($"{i}"));
-                trie.Put(key, value);
-            }
-            trie.Commit();
-            snapshot.Commit();
-            return trie;
-        }
-
-        public static StorageItem GetValue(this Trie<StorageKey, StorageItem> trie, StorageKey key)
-        {
-            return trie.TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
-        }
-
-        public static byte[] GetSerializedProof(this Trie<StorageKey, StorageItem> trie, StorageKey key)
-        {
-            if (trie.TryGetProof(key, out var proof))
-            {
-                return SerializeProof(key, proof);
-            }
-            else
-            {
-                throw new KeyNotFoundException();
+                yield return (new[] { i, j }, BitConverter.GetBytes(i * 10 + j));
             }
         }
+    }
 
-        public static byte[] SerializeProof(StorageKey key, HashSet<byte[]> proof)
+    public static StorageKey MakeTestTrieKey(int value, int id = 1)
+    {
+        return new StorageKey() { Id = id, Key = BitConverter.GetBytes(value) };
+    }
+
+    public static Trie<StorageKey, StorageItem> GetTestTrie(Neo.Persistence.IStore store, int id = 1, uint count = 100)
+    {
+        using var snapshot = store.GetSnapshot();
+        var trie = new Trie<StorageKey, StorageItem>(snapshot, null);
+        for (var i = 0; i < count; i++)
         {
-            using MemoryStream ms = new();
-            using BinaryWriter writer = new(ms, Neo.Utility.StrictUTF8);
-
-            writer.WriteVarBytes(key.ToArray());
-            writer.WriteVarInt(proof.Count);
-            foreach (var item in proof)
-            {
-                writer.WriteVarBytes(item);
-            }
-            writer.Flush();
-            return ms.ToArray();
+            var key = MakeTestTrieKey(i, id);
+            var value = new StorageItem(Neo.Utility.StrictUTF8.GetBytes($"{i}"));
+            trie.Put(key, value);
         }
+        trie.Commit();
+        snapshot.Commit();
+        return trie;
+    }
+
+    public static StorageItem GetValue(this Trie<StorageKey, StorageItem> trie, StorageKey key)
+    {
+        return trie.TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
+    }
+
+    public static byte[] GetSerializedProof(this Trie<StorageKey, StorageItem> trie, StorageKey key)
+    {
+        if (trie.TryGetProof(key, out var proof))
+        {
+            return SerializeProof(key, proof);
+        }
+        else
+        {
+            throw new KeyNotFoundException();
+        }
+    }
+
+    public static byte[] SerializeProof(StorageKey key, HashSet<byte[]> proof)
+    {
+        using MemoryStream ms = new();
+        using BinaryWriter writer = new(ms, Neo.Utility.StrictUTF8);
+
+        writer.WriteVarBytes(key.ToArray());
+        writer.WriteVarInt(proof.Count);
+        foreach (var item in proof)
+        {
+            writer.WriteVarBytes(item);
+        }
+        writer.Flush();
+        return ms.ToArray();
     }
 }

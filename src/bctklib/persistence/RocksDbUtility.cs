@@ -29,6 +29,12 @@ public static partial class RocksDbUtility
         }
     }
 
+    public unsafe static ReadOnlySpan<byte> GetValueSpan(this Iterator iterator)
+    {
+        IntPtr valuePtr = Native.Instance.rocksdb_iter_value(iterator.Handle, out UIntPtr valueLength);
+        return new ReadOnlySpan<byte>((byte*)valuePtr, (int)valueLength);
+    }
+
     public unsafe static void PutV(this WriteBatch writeBatch, ReadOnlySpan<ReadOnlyMemory<byte>> keys, ReadOnlySpan<ReadOnlyMemory<byte>> values, ColumnFamilyHandle? columnFamily)
     {
         var memoryHandles = new List<MemoryHandle>(keys.Length + values.Length);
@@ -98,6 +104,13 @@ public static partial class RocksDbUtility
         }
 
         return new ColumnFamilies();
+    }
+
+    public static ColumnFamilyHandle GetColumnFamilyHandle(this RocksDb db, string? columnFamilyName)
+    {
+        return string.IsNullOrEmpty(columnFamilyName)
+            ? db.GetDefaultColumnFamily() 
+            : db.GetColumnFamily(columnFamilyName);
     }
 
     private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;

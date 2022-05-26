@@ -41,33 +41,42 @@ public partial class PersistentTrackingStore
             return PersistentTrackingStore.TryGet(key, db, columnFamily, readOptions, store);
         }
 
-        public bool Contains(byte[] key)
+        public bool Contains(byte[]? key)
         {
             if (snapshot.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Snapshot));
             return PersistentTrackingStore.Contains(key, db, columnFamily, readOptions, store);
         }
 
-        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction)
+        public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
         {
             if (snapshot.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Snapshot));
             return PersistentTrackingStore.Seek(key, direction, db, columnFamily, readOptions, store);
         }
 
-        public unsafe void Put(byte[] key, byte[] value)
+        public unsafe void Put(byte[]? key, byte[] value)
         {
             if (snapshot.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Snapshot));
+            key ??= Array.Empty<byte>();
+            // db doesn't have a putv option like write batch, so no choice but to copy value to new array w/ prefix
+            Span<byte> span = stackalloc byte[value.Length + 1];
+            span[0] = UPDATED_KEY;
+            value.CopyTo(span.Slice(1));
 
-            using var prefixOwner = MemoryPool<byte>.Shared.Rent(1);
-            prefixOwner.Memory.Span[0] = PersistentTrackingStore.UPDATED_KEY;
+            writeBatch.Put(key.AsSpan(), span, columnFamily);
 
-            using var romOwner = MemoryPool<ReadOnlyMemory<byte>>.Shared.Rent(3);
-            var keys = romOwner.Memory.Slice(0, 1);
-            keys.Span[0] = key.AsMemory();
-            var values = romOwner.Memory.Slice(1, 2);
-            values.Span[0] = prefixOwner.Memory.Slice(0, 1);
-            values.Span[1] = value.AsMemory();
+            // TODO: make Putv work
 
-            writeBatch.PutV(keys.Span, values.Span, columnFamily);
+            // using var prefixOwner = MemoryPool<byte>.Shared.Rent(1);
+            // prefixOwner.Memory.Span[0] = PersistentTrackingStore.UPDATED_KEY;
+
+            // using var romOwner = MemoryPool<ReadOnlyMemory<byte>>.Shared.Rent(3);
+            // var keys = romOwner.Memory.Slice(0, 1);
+            // keys.Span[0] = key.AsMemory();
+            // var values = romOwner.Memory.Slice(1, 2);
+            // values.Span[0] = prefixOwner.Memory.Slice(0, 1);
+            // values.Span[1] = value.AsMemory();
+
+            // writeBatch.PutV(keys.Span, values.Span, columnFamily);
         }
 
         public void Delete(byte[]? key)
