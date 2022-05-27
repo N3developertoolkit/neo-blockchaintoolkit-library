@@ -142,6 +142,7 @@ namespace Neo.BlockchainToolkit.Persistence
         void Put(byte[]? key, byte[] value, WriteOptions? writeOptions)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
+            if (value is null) throw new NullReferenceException(nameof(value));
 
             key ??= Array.Empty<byte>();
             // db doesn't have a putv option like write batch, so no choice but to copy value to new array w/ prefix

@@ -35,38 +35,83 @@ namespace Neo.BlockchainToolkit.Persistence
             return new ReadOnlySpan<byte>((byte*)valuePtr, (int)valueLength);
         }
 
-        public unsafe static void PutV(this WriteBatch writeBatch, ReadOnlySpan<ReadOnlyMemory<byte>> keys, ReadOnlySpan<ReadOnlyMemory<byte>> values, ColumnFamilyHandle? columnFamily)
+        public static void PutVector(this WriteBatch writeBatch, ColumnFamilyHandle columnFamily, ReadOnlyMemory<byte> key, params ReadOnlyMemory<byte>[] values)
+        {
+            var pool = ArrayPool<ReadOnlyMemory<byte>>.Shared;
+            var keys = pool.Rent(1);
+            try
+            {
+                keys[0] = key;
+                PutVector(writeBatch, columnFamily, keys.AsSpan(0, 1), values);
+            }
+            finally
+            {
+                pool.Return(keys);
+            }
+        }
+
+        public static void PutVector(this WriteBatch writeBatch, ReadOnlyMemory<byte> key, params ReadOnlyMemory<byte>[] values)
+        {
+            var pool = ArrayPool<ReadOnlyMemory<byte>>.Shared;
+            var keys = pool.Rent(1);
+            try
+            {
+                keys[0] = key;
+                PutVector(writeBatch, keys.AsSpan(0, 1), values);
+            }
+            finally
+            {
+                pool.Return(keys);
+            }
+        }
+
+        public static void PutVector(this WriteBatch writeBatch, ReadOnlySpan<ReadOnlyMemory<byte>> keys, ReadOnlySpan<ReadOnlyMemory<byte>> values)
+        {
+            PutVector(writeBatch, null, keys, values);
+        }
+
+        public unsafe static void PutVector(this WriteBatch writeBatch, ColumnFamilyHandle? columnFamily, ReadOnlySpan<ReadOnlyMemory<byte>> keys, ReadOnlySpan<ReadOnlyMemory<byte>> values)
         {
             var memoryHandles = new List<MemoryHandle>(keys.Length + values.Length);
             try
             {
-                var keysList = stackalloc byte*[keys.Length];
-                var keysListSizes = stackalloc int[keys.Length];
+                Span<IntPtr> keysList = stackalloc IntPtr[keys.Length];
+                Span<UIntPtr> keysListSizes = stackalloc UIntPtr[keys.Length];
                 for (var i = 0; i < keys.Length; i++)
                 {
                     var handle = keys[i].Pin();
                     memoryHandles.Add(handle);
-                    keysList[i] = (byte*)handle.Pointer;
-                    keysListSizes[i] = keys[i].Length;
+                    keysList[i] = (IntPtr)handle.Pointer;
+                    keysListSizes[i] = (UIntPtr)keys[i].Length;
                 }
 
-                var valuesList = stackalloc byte*[values.Length];
-                var valuesListSizes = stackalloc int[values.Length];
+                Span<IntPtr> valuesList = stackalloc IntPtr[values.Length];
+                Span<UIntPtr> valuesListSizes = stackalloc UIntPtr[values.Length];
                 for (var i = 0; i < values.Length; i++)
                 {
                     var handle = values[i].Pin();
                     memoryHandles.Add(handle);
-                    keysList[i] = (byte*)handle.Pointer;
-                    keysListSizes[i] = values[i].Length;
+                    valuesList[i] = (IntPtr)handle.Pointer;
+                    valuesListSizes[i] = (UIntPtr)values[i].Length;
                 }
 
-                if (columnFamily is null)
+                fixed (void* keysListPtr = keysList,
+                    keysListSizesPtr = keysListSizes,
+                    valuesListPtr = valuesList,
+                    valuesListSizesPtr = valuesListSizes)
                 {
-                    writeBatch.Putv(keys.Length, (IntPtr)keysList, (IntPtr)keysListSizes, values.Length, (IntPtr)valuesList, (IntPtr)valuesListSizes);
-                }
-                else
-                {
-                    writeBatch.PutvCf(columnFamily.Handle, keys.Length, (IntPtr)keysList, (IntPtr)keysListSizes, values.Length, (IntPtr)valuesList, (IntPtr)valuesListSizes);
+                    if (columnFamily is null)
+                    {
+                        writeBatch.Putv(
+                            keys.Length, (IntPtr)keysListPtr, (IntPtr)keysListSizesPtr,
+                            values.Length, (IntPtr)valuesListPtr, (IntPtr)valuesListSizesPtr);
+                    }
+                    else
+                    {
+                        writeBatch.PutvCf(columnFamily.Handle,
+                            keys.Length, (IntPtr)keysListPtr, (IntPtr)keysListSizesPtr,
+                            values.Length, (IntPtr)valuesListPtr, (IntPtr)valuesListSizesPtr);
+                    }
                 }
             }
             finally
@@ -106,14 +151,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return new ColumnFamilies();
         }
 
-        public static ColumnFamilyHandle GetColumnFamily(this RocksDb db, string? columnFamilyName)
-        {
-            return string.IsNullOrEmpty(columnFamilyName)
-                ? db.GetDefaultColumnFamily()
-                : db.GetColumnFamily(columnFamilyName);
-        }
-
-        private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;
+         private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;
 
         private static string GetAddressFilePath(string directory) => Path.Combine(directory, ADDRESS_FILENAME);
 

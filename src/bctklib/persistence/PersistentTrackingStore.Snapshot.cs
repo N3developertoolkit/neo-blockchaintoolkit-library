@@ -57,27 +57,20 @@ namespace Neo.BlockchainToolkit.Persistence
             public unsafe void Put(byte[]? key, byte[] value)
             {
                 if (snapshot.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Snapshot));
+                if (value is null) throw new NullReferenceException(nameof(value));
+
                 key ??= Array.Empty<byte>();
-                // db doesn't have a putv option like write batch, so no choice but to copy value to new array w/ prefix
-                Span<byte> span = stackalloc byte[value.Length + 1];
-                span[0] = UPDATED_KEY;
-                value.CopyTo(span.Slice(1));
-
-                writeBatch.Put(key.AsSpan(), span, columnFamily);
-
-                // TODO: make Putv work
-
-                // using var prefixOwner = MemoryPool<byte>.Shared.Rent(1);
-                // prefixOwner.Memory.Span[0] = PersistentTrackingStore.UPDATED_KEY;
-
-                // using var romOwner = MemoryPool<ReadOnlyMemory<byte>>.Shared.Rent(3);
-                // var keys = romOwner.Memory.Slice(0, 1);
-                // keys.Span[0] = key.AsMemory();
-                // var values = romOwner.Memory.Slice(1, 2);
-                // values.Span[0] = prefixOwner.Memory.Slice(0, 1);
-                // values.Span[1] = value.AsMemory();
-
-                // writeBatch.PutV(keys.Span, values.Span, columnFamily);
+                var pool = ArrayPool<byte>.Shared;
+                var prefix = pool.Rent(1);
+                try
+                {
+                    prefix[0] = UPDATED_KEY;
+                    writeBatch.PutVector(columnFamily, key, prefix.AsMemory(0, 1), value);
+                }
+                finally
+                {
+                    pool.Return(prefix);
+                }
             }
 
             public void Delete(byte[]? key)

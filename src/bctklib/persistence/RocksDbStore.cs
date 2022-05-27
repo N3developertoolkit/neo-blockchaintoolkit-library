@@ -13,7 +13,12 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly bool shared;
         bool disposed;
 
-        internal RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false)
+        internal RocksDbStore(RocksDb db, bool readOnly = false)
+            : this(db, db.GetDefaultColumnFamily(), readOnly, false)
+        {
+        }
+
+        public RocksDbStore(RocksDb db, string columnFamilyName, bool readOnly = false)
             : this(db, db.GetColumnFamily(columnFamilyName), readOnly, false)
         {
         }
@@ -23,7 +28,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
         }
 
-        internal RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false, bool shared = false)
+        public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly, bool shared)
         {
             this.db = db;
             this.columnFamily = columnFamily;
