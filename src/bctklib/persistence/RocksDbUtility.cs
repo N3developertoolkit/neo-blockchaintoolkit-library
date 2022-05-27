@@ -151,7 +151,12 @@ namespace Neo.BlockchainToolkit.Persistence
             return new ColumnFamilies();
         }
 
-         private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;
+        public static ColumnFamilyHandle GetColumnFamilyOrDefault(this RocksDb db, string? columnFamilyName) 
+            => string.IsNullOrEmpty(columnFamilyName)
+                ? db.GetDefaultColumnFamily()
+                : db.GetColumnFamily(columnFamilyName);
+
+        private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;
 
         private static string GetAddressFilePath(string directory) => Path.Combine(directory, ADDRESS_FILENAME);
 

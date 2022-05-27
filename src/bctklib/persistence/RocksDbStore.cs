@@ -18,12 +18,12 @@ namespace Neo.BlockchainToolkit.Persistence
         {
         }
 
-        public RocksDbStore(RocksDb db, string columnFamilyName, bool readOnly = false)
-            : this(db, db.GetColumnFamily(columnFamilyName), readOnly, false)
+        public RocksDbStore(RocksDb db, string? columnFamilyName, bool readOnly = false)
+            : this(db, db.GetColumnFamilyOrDefault(columnFamilyName), readOnly, false)
         {
         }
 
-        internal RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false)
+        public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false)
             : this(db, columnFamily, readOnly, false)
         {
         }
