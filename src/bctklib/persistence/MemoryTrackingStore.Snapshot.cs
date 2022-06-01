@@ -26,12 +26,12 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Dispose() { }
 
-            public bool Contains(byte[]? key) => TryGet(key) != null;
+            public byte[]? TryGet(byte[]? key) => MemoryTrackingStore.TryGet(key, trackingMap, store);
 
-            public byte[]? TryGet(byte[]? key) => trackingMap.TryGet(store, key);
+            public bool Contains(byte[]? key) => MemoryTrackingStore.Contains(key, trackingMap, store);
 
             public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[]? key, SeekDirection direction)
-                => trackingMap.Seek(store, key, direction);
+                => MemoryTrackingStore.Seek(key, direction, trackingMap, store);
 
             public void Put(byte[]? key, byte[]? value)
             {
