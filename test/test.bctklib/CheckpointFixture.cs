@@ -1,43 +1,30 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
 using Neo;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Cryptography;
 
-namespace test.bctklib
+namespace test.bctklib;
+
+using static Utility;
+
+public class CheckpointFixture : IDisposable
 {
-    public class CheckpointFixture : IDisposable
+    readonly CleanupPath checkpointPath = new();
+    public string CheckpointPath => checkpointPath;
+    public readonly uint Network = ProtocolSettings.Default.Network;
+    public readonly byte AddressVersion = ProtocolSettings.Default.AddressVersion;
+    public readonly UInt160 ScriptHash = new UInt160(Crypto.Hash160(Bytes("sample-script-hash")));
+
+    public CheckpointFixture()
     {
-        public readonly string CheckpointPath;
-        public readonly uint Network = ProtocolSettings.Default.Network;
-        public readonly byte AddressVersion = ProtocolSettings.Default.AddressVersion;
-        public readonly UInt160 ScriptHash = new UInt160(Crypto.Hash160(Encoding.UTF8.GetBytes("sample-script-hash")));
+        using var dbPath = new CleanupPath();
+        using var db = RocksDbUtility.OpenDb(dbPath);
+        RocksDbFixture.Populate(db);
+        RocksDbUtility.CreateCheckpoint(db, CheckpointPath, Network, AddressVersion, ScriptHash);
+    }
 
-        public CheckpointFixture()
-        {
-            var dbPath = RocksDbUtility.GetTempPath();
-            try
-            {
-                using var db = RocksDbUtility.OpenDb(dbPath);
-                using var store = new RocksDbStore(db);
-                store.PutSeekData((0, 2), (1, 4));
-
-                CheckpointPath = RocksDbUtility.GetTempPath();
-                RocksDbUtility.CreateCheckpoint(db, CheckpointPath, Network, AddressVersion, ScriptHash);
-            }
-            finally
-            {
-                if (Directory.Exists(dbPath)) Directory.Delete(dbPath, true);
-            }
-        }
-
-        public void Dispose()
-        {
-            if (File.Exists(CheckpointPath)) File.Delete(CheckpointPath);
-        }
-
-        public static IEnumerable<(byte[], byte[])> GetSeekData() => Utility.GetSeekData((0, 2), (1, 4));
+    public void Dispose()
+    {
+        checkpointPath.Dispose();
     }
 }

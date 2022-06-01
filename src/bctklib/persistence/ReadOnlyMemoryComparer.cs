@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    class ReadOnlyMemoryComparer : IEqualityComparer<ReadOnlyMemory<byte>>, IComparer<ReadOnlyMemory<byte>>
+    internal class ReadOnlyMemoryComparer : IEqualityComparer<ReadOnlyMemory<byte>>, IComparer<ReadOnlyMemory<byte>>
     {
         public static ReadOnlyMemoryComparer Default { get; } = new ReadOnlyMemoryComparer(false);
         public static ReadOnlyMemoryComparer Reverse { get; } = new ReadOnlyMemoryComparer(true);
