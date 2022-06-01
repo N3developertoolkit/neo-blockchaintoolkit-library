@@ -46,7 +46,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     scriptHash.ToString(),
                     Convert.ToBase64String(key));
                 var proof = Convert.FromBase64String(result.AsString());
-                return Utility.VerifyProof(proof, rootHash).item.Value;
+                return Utility.VerifyProof(rootHash, proof).value;
             }
             // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
             // which returns null for invalid keys instead of throwing an exception.
@@ -88,9 +88,9 @@ namespace Neo.BlockchainToolkit.Persistence
 
             static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
             {
-                var (storageKey, storageItem) = Utility.VerifyProof(proof, rootHash);
-                if (!result.key.AsSpan().SequenceEqual(storageKey.Key)) throw new Exception("Incorrect StorageKey");
-                if (!result.value.AsSpan().SequenceEqual(storageItem.Value)) throw new Exception("Incorrect StorageItem");
+                var (storageKey, storageValue) = Utility.VerifyProof(rootHash, proof);
+                if (!result.key.AsSpan().SequenceEqual(storageKey.Key.Span)) throw new Exception("Incorrect StorageKey");
+                if (!result.value.AsSpan().SequenceEqual(storageValue)) throw new Exception("Incorrect StorageItem");
             }
         }
     }
