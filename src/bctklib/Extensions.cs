@@ -63,14 +63,6 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
-            ProtocolSettings settings, UInt160 scriptHash)
-                => @this.CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
-
-        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
-            Models.ExpressChain chain, UInt160 scriptHash)
-                => @this.CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
-
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
             if (fileSystem.Path.DirectorySeparatorChar == '\\')
