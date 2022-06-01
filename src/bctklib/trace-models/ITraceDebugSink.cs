@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Neo;
-using Neo.Ledger;
 using Neo.SmartContract;
 using Neo.VM;
 
@@ -14,7 +12,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
         void Notify(NotifyEventArgs args, string scriptName);
         void Results(VMState vmState, long gasConsumed, IReadOnlyCollection<Neo.VM.Types.StackItem> results);
         void Fault(Exception exception);
-        void Script(byte[] script);
+        void Script(Script script);
         void Storages(UInt160 scriptHash, IEnumerable<(StorageKey key, StorageItem item)> storages);
         void ProtocolSettings(uint network, byte addressVersion);
     }

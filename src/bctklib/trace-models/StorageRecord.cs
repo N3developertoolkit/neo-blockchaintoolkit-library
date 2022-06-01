@@ -2,10 +2,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using MessagePack;
-using Neo.Ledger;
 using Neo.SmartContract;
-using Neo.VM;
-using StackItem = Neo.VM.Types.StackItem;
 
 namespace Neo.BlockchainToolkit.TraceDebug
 {
@@ -48,7 +45,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
             writer.WriteMapHeader(count);
             foreach (var (key, item) in storages)
             {
-                byteArrayFormatter.Serialize(ref writer, key.Key, options);
+                writer.Write(key.Key.Span);
                 storageItemFormatter.Serialize(ref writer, item, options);
             }
         }

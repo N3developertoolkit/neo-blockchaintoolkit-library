@@ -75,6 +75,10 @@ namespace Neo.BlockchainToolkit
             }
         }
 
+        public static ReadOnlySpan<byte> AsSpan(this Script script) => ((ReadOnlyMemory<byte>)script).Span;
+
+        public static UInt160 CalculateScriptHash(this Script script) => Neo.SmartContract.Helper.ToScriptHash(script.AsSpan());
+
         public static string GetInstructionAddressPadding(this Script script)
         {
             var digitCount = EnumerateInstructions(script).Last().address switch

@@ -1,3 +1,5 @@
+using System;
+using Neo.BlockchainToolkit;
 using Neo.VM;
 
 namespace MessagePack.Formatters.Neo.BlockchainToolkit
@@ -8,12 +10,13 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit
 
         public Script Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options)
         {
-            return options.Resolver.GetFormatter<byte[]>().Deserialize(ref reader, options);
+            var bytes = options.Resolver.GetFormatter<byte[]>().Deserialize(ref reader, options);
+            return new Script(bytes);
         }
 
         public void Serialize(ref MessagePackWriter writer, Script value, MessagePackSerializerOptions options)
         {
-            writer.Write((byte[])value);
+            writer.Write(value.AsSpan());
         }
     }
 }

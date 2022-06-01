@@ -21,7 +21,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit
 
         public void Serialize(ref MessagePackWriter writer, StorageItem value, MessagePackSerializerOptions options)
         {
-            writer.Write(value.Value);
+            writer.Write(value.Value.Span);
         }
     }
 }

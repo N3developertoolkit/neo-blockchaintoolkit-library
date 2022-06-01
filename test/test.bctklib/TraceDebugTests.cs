@@ -130,10 +130,10 @@ namespace test.bctklib
             mpWriter.WriteMapHeader(count);
             foreach (var (key, item) in storages)
             {
-                byteArrayFormatter.Serialize(ref mpWriter, key.Key, options);
+                byteArrayFormatter.Serialize(ref mpWriter, key.Key.ToArray(), options);
 
                 mpWriter.WriteArrayHeader(1);
-                mpWriter.Write(item.Value);
+                mpWriter.Write(item.Value.Span);
             }
             mpWriter.Flush();
         }

@@ -103,7 +103,7 @@ namespace MessagePack.Formatters.Neo.BlockchainToolkit
                     break;
                 case NeoBuffer buffer:
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.Buffer, options);
-                    writer.Write(buffer.InnerBuffer.AsSpan());
+                    writer.Write(buffer.InnerBuffer.Span);
                     break;
                 case NeoByteString byteString:
                     stackItemTypeResolver.Serialize(ref writer, StackItemType.ByteString, options);
