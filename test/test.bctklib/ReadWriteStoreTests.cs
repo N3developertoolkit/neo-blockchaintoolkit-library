@@ -142,10 +142,9 @@ public class ReadWriteStoreTests : IDisposable
         store.TryGet(key).Should().BeNull();
     }
 
-    [SkippableTheory, CombinatorialData]
+    [Theory, CombinatorialData]
     public void snapshot_isolation_addition(StoreType storeType)
     {
-        Skip.If(storeType == StoreType.Memory, "https://github.com/neo-project/neo/issues/2758");
         using var store = GetStore(storeType);
         test_snapshot_isolation_addition(store);
     }
@@ -177,10 +176,9 @@ public class ReadWriteStoreTests : IDisposable
         snapshot.TryGet(key).Should().BeEquivalentTo(value);
     }
 
-    [SkippableTheory, CombinatorialData]
+    [Theory, CombinatorialData]
     public void snapshot_isolation_delete(StoreType storeType)
     {
-        Skip.If(storeType == StoreType.Memory, "https://github.com/neo-project/neo/issues/2758");
         using var store = GetStore(storeType);
         test_snapshot_isolation_delete(store);
     }
@@ -194,10 +192,9 @@ public class ReadWriteStoreTests : IDisposable
         snapshot.TryGet(key).Should().BeEquivalentTo(value);
     }
 
-    [SkippableTheory, CombinatorialData]
+    [Theory, CombinatorialData]
     public void key_instance_isolation(StoreType storeType)
     {
-        Skip.If(storeType == StoreType.Memory, "https://github.com/neo-project/neo/issues/2758");
         using var store = GetStore(storeType);
         test_key_instance_isolation(store);
     }
@@ -213,10 +210,9 @@ public class ReadWriteStoreTests : IDisposable
         store.TryGet(key).Should().BeNull();
     }
 
-    [SkippableTheory, CombinatorialData]
+    [Theory, CombinatorialData]
     public void value_instance_isolation(StoreType storeType)
     {
-        Skip.If(storeType == StoreType.Memory, "https://github.com/neo-project/neo/issues/2758");
         using var store = GetStore(storeType);
         test_value_instance_isolation(store);
     }
@@ -231,10 +227,9 @@ public class ReadWriteStoreTests : IDisposable
         store.TryGet(key).Should().BeEquivalentTo(Bytes("test-value"));
     }
 
-    [SkippableTheory, CombinatorialData]
+    [Theory, CombinatorialData]
     public void put_null_value_throws(StoreType storeType)
     {
-        Skip.If(storeType == StoreType.Memory, "https://github.com/neo-project/neo/issues/2758");
         using var store = GetStore(storeType);
         test_put_null_value_throws(store);
     }
@@ -242,13 +237,12 @@ public class ReadWriteStoreTests : IDisposable
     internal static void test_put_null_value_throws(IStore store)
     {
         var key = Bytes(0);
-        Assert.Throws<NullReferenceException>(() => store.Put(key, null));
+        AssertThrowsNullCheck(() => store.Put(key, null));
     }
 
-    [SkippableTheory, CombinatorialData]
+    [Theory, CombinatorialData]
     public void snapshot_put_null_value_throws(StoreType storeType)
     {
-        Skip.If(storeType == StoreType.Memory, "https://github.com/neo-project/neo/issues/2758");
         using var store = GetStore(storeType);
         test_snapshot_put_null_value_throws(store);
     }
@@ -257,7 +251,17 @@ public class ReadWriteStoreTests : IDisposable
     {
         using var snapshot = store.GetSnapshot();
         var key = Bytes(0);
-        Assert.Throws<NullReferenceException>(() => snapshot.Put(key, null));
+        AssertThrowsNullCheck(() => snapshot.Put(key, null));
+    }
+
+    static void AssertThrowsNullCheck(Action testCode)
+    {
+        // MemoryStore throws ArgumentNullException instead of NullReferenceException
+        // For test purposes, consider both valid
+
+        var ex = Assert.ThrowsAny<Exception>(testCode);
+        Assert.True(ex.GetType() == typeof(NullReferenceException)
+            || ex.GetType() == typeof(ArgumentNullException));
     }
 
     [Theory, CombinatorialData]

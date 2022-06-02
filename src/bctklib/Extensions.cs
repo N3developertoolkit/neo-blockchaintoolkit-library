@@ -63,14 +63,6 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
-        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
-            ProtocolSettings settings, UInt160 scriptHash)
-                => @this.CreateCheckpoint(checkPointFileName, settings.Network, settings.AddressVersion, scriptHash);
-
-        public static void CreateCheckpoint(this IRocksDbStorageProvider @this, string checkPointFileName,
-            Models.ExpressChain chain, UInt160 scriptHash)
-                => @this.CreateCheckpoint(checkPointFileName, chain.Network, chain.AddressVersion, scriptHash);
-
         internal static string NormalizePath(this IFileSystem fileSystem, string path)
         {
             if (fileSystem.Path.DirectorySeparatorChar == '\\')
@@ -82,6 +74,10 @@ namespace Neo.BlockchainToolkit
                 return path.Replace('\\', '/');
             }
         }
+
+        public static ReadOnlySpan<byte> AsSpan(this Script script) => ((ReadOnlyMemory<byte>)script).Span;
+
+        public static UInt160 CalculateScriptHash(this Script script) => Neo.SmartContract.Helper.ToScriptHash(script.AsSpan());
 
         public static string GetInstructionAddressPadding(this Script script)
         {

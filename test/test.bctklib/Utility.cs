@@ -113,19 +113,14 @@ static class Utility
         }
     }
 
-    public static StorageKey MakeTestTrieKey(int value, int id = 1)
-    {
-        return new StorageKey() { Id = id, Key = BitConverter.GetBytes(value) };
-    }
-
-    public static Trie<StorageKey, StorageItem> GetTestTrie(Neo.Persistence.IStore store, int id = 1, uint count = 100)
+    public static Trie GetTestTrie(Neo.Persistence.IStore store, uint count = 100)
     {
         using var snapshot = store.GetSnapshot();
-        var trie = new Trie<StorageKey, StorageItem>(snapshot, null);
+        var trie = new Trie(snapshot, null);
         for (var i = 0; i < count; i++)
         {
-            var key = MakeTestTrieKey(i, id);
-            var value = new StorageItem(Neo.Utility.StrictUTF8.GetBytes($"{i}"));
+            var key = BitConverter.GetBytes(i);
+            var value = Neo.Utility.StrictUTF8.GetBytes($"{i}");
             trie.Put(key, value);
         }
         trie.Commit();
@@ -133,12 +128,7 @@ static class Utility
         return trie;
     }
 
-    public static StorageItem GetValue(this Trie<StorageKey, StorageItem> trie, StorageKey key)
-    {
-        return trie.TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
-    }
-
-    public static byte[] GetSerializedProof(this Trie<StorageKey, StorageItem> trie, StorageKey key)
+    public static byte[] GetSerializedProof(this Trie trie, byte[] key)
     {
         if (trie.TryGetProof(key, out var proof))
         {
@@ -150,12 +140,12 @@ static class Utility
         }
     }
 
-    public static byte[] SerializeProof(StorageKey key, HashSet<byte[]> proof)
+    public static byte[] SerializeProof(byte[] key, HashSet<byte[]> proof)
     {
         using MemoryStream ms = new();
         using BinaryWriter writer = new(ms, Neo.Utility.StrictUTF8);
 
-        writer.WriteVarBytes(key.ToArray());
+        writer.WriteVarBytes(key);
         writer.WriteVarInt(proof.Count);
         foreach (var item in proof)
         {
