@@ -70,7 +70,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
                 return scriptId;
             }
 
-            scriptId = Neo.SmartContract.Helper.ToScriptHash(context.Script);
+            scriptId = context.Script.CalculateScriptHash();
             scriptIdMap[scriptHash] = scriptId;
             return scriptId;
         }
@@ -95,7 +95,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
             Write((seq, opt) => FaultRecord.Write(seq, opt, exception.Message));
         }
 
-        public void Script(byte[] script)
+        public void Script(Script script)
         {
             Write((seq, opt) => ScriptRecord.Write(seq, opt, script));
         }

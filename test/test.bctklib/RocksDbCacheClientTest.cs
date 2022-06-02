@@ -18,21 +18,21 @@ public class RocksDbCacheClientTest
     {
         using var store = new Neo.Persistence.MemoryStore();
         var trie = GetTestTrie(store);
-        var key = MakeTestTrieKey(42);
+        var key = BitConverter.GetBytes(42);
         var proof = trie.GetSerializedProof(key);
-        var expected = trie.GetValue(key).Value;
+        Assert.True(trie.TryGetValue(key, out var expected));
 
         using var rpcClient = new TestableRpcClient(() => Convert.ToBase64String(trie.GetSerializedProof(key)));
 
         var tempPath = new CleanupPath();
         using var client = new StateServiceStore.RocksDbCacheClient(rpcClient, tempPath);
 
-        Assert.Null(client.GetCachedState(trie.Root.Hash, UInt160.Zero, key.Key));
-        var actual1 = client.GetState(trie.Root.Hash, UInt160.Zero, key.Key);
+        Assert.Null(client.GetCachedState(trie.Root.Hash, UInt160.Zero, key));
+        var actual1 = client.GetState(trie.Root.Hash, UInt160.Zero, key);
         Assert.Equal(expected, actual1);
-        Assert.NotNull(client.GetCachedState(trie.Root.Hash, UInt160.Zero, key.Key));
+        Assert.NotNull(client.GetCachedState(trie.Root.Hash, UInt160.Zero, key));
 
-        var actual2 = client.GetState(trie.Root.Hash, UInt160.Zero, key.Key);
+        var actual2 = client.GetState(trie.Root.Hash, UInt160.Zero, key);
         Assert.Equal(expected, actual2);
     }
 

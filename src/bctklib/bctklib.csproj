@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NeoModulesVersion>3.2.1</NeoModulesVersion>
+    <NeoModulesVersion>3.3.0</NeoModulesVersion>
     <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath>
     <!-- <NeoModulesVersion>local</NeoModulesVersion> -->
   </PropertyGroup>
@@ -44,7 +44,7 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
     <PackageReference Include="Nerdbank.Streams" Version="2.8.57" />
     <PackageReference Include="OneOf" Version="3.0.216" />
-    <PackageReference Include="rocksdb" Version="7.1.2.28620" />
+    <PackageReference Include="rocksdb" Version="7.2.2.29452" />
     <PackageReference Include="System.IO.Abstractions" Version="17.0.15" />
   </ItemGroup>
 
