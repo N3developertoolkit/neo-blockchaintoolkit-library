@@ -220,7 +220,7 @@ public class TrackingStoreTests : IDisposable
         return trackingStore;
     }
 
-    IStore GetTrackingStore(StoreType storeType, IReadOnlyStore store) 
+    IStore GetTrackingStore(StoreType storeType, IReadOnlyStore store)
         => storeType switch
         {
             StoreType.MemoryTracking => new MemoryTrackingStore(store),

@@ -26,7 +26,7 @@ namespace Neo.BlockchainToolkit
             for (ulong i = 0; i < count; i++)
             {
                 proofs.Add(reader.ReadVarBytes());
-            } 
+            }
 
             var value = Trie.VerifyProof(rootHash, keyBuffer, proofs);
             if (value is null) throw new Exception("Verification failed");
