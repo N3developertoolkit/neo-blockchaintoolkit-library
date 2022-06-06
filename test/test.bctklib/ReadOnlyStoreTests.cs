@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using Neo.BlockchainToolkit.Persistence;
@@ -218,7 +217,7 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         StoreType.Checkpoint => new CheckpointStore(checkpointFixture.CheckpointPath),
         StoreType.Memory => GetPopulatedMemoryStore(),
         StoreType.NeoRocksDb => CreateNeoRocksDb(rocksDbFixture.DbPath),
-        StoreType.RocksDb => new RocksDbStore(RocksDbUtility.OpenDb(rocksDbFixture.DbPath), readOnly:true),
+        StoreType.RocksDb => new RocksDbStore(RocksDbUtility.OpenDb(rocksDbFixture.DbPath), readOnly: true),
         _ => throw new Exception($"Invalid {nameof(StoreType)}")
     };
 

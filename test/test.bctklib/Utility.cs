@@ -7,11 +7,8 @@ using Neo.BlockchainToolkit.Persistence;
 using Neo.Cryptography.MPTTrie;
 using Neo.IO;
 using Neo.Persistence;
-using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace test.bctklib;
 
@@ -41,7 +38,7 @@ static class Utility
     {
         const string storeTypeName = "Neo.Plugins.Storage.Store";
         var storeType = typeof(Neo.Plugins.Storage.RocksDBStore).Assembly.GetType(storeTypeName);
-        var storeCtor = storeType?.GetConstructor(new [] { typeof(string) });
+        var storeCtor = storeType?.GetConstructor(new[] { typeof(string) });
         var store = storeCtor?.Invoke(new object[] { (string)path }) as IStore;
         if (store == null) throw new Exception($"Failed to create {storeTypeName} instance");
         return store;
@@ -70,7 +67,7 @@ static class Utility
         return streamReader.ReadToEnd();
     }
 
-    static readonly IReadOnlyList<string> GreekLetters = new []
+    static readonly IReadOnlyList<string> GreekLetters = new[]
     {
         "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa",
         "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon",
@@ -82,10 +79,10 @@ static class Utility
         Debug.Assert(i > 0 && i < 100);
         var tens = i / 10;
         var ones = i % 10;
-        return new byte[] { (byte) tens, (byte) ones };
+        return new byte[] { (byte)tens, (byte)ones };
     }
 
-    public static IEnumerable<(byte[] key, byte[] value)> TestData => 
+    public static IEnumerable<(byte[] key, byte[] value)> TestData =>
         GreekLetters.Select((s, i) => (IndexToKey(i + 1), Bytes(s)));
 
 
