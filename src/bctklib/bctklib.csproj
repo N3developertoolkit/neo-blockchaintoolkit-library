@@ -22,9 +22,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NeoModulesVersion>3.3.0</NeoModulesVersion>
-    <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath>
-    <!-- <NeoModulesVersion>local</NeoModulesVersion> -->
+    <NeoVersion>3.3.0</NeoVersion>
+    <!-- <NeoVersion>local</NeoVersion> -->
+    <NeoMonorepoPath>..\..\..\..\official\3neo-monorepo</NeoMonorepoPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CI)' == 'true'">
@@ -49,16 +49,16 @@
   </ItemGroup>
 
   <Choose>
-    <When Condition=" '$(NeoModulesVersion)' == 'local'">
+    <When Condition=" '$(NeoVersion)' == 'local'">
       <ItemGroup>
-        <ProjectReference Include="$(NeoModuleLocalPath)\src\MPTTrie\MPTTrie.csproj" />
-        <ProjectReference Include="$(NeoModuleLocalPath)\src\RpcClient\RpcClient.csproj" />
+        <ProjectReference Include="$(NeoMonorepoPath)\modules\src\MPTTrie\MPTTrie.csproj" />
+        <ProjectReference Include="$(NeoMonorepoPath)\modules\src\RpcClient\RpcClient.csproj" />
       </ItemGroup>
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoModulesVersion)" />
-        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoModulesVersion)" />
+        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoVersion)" />
+        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoVersion)" />
       </ItemGroup>
     </Otherwise>
   </Choose>
