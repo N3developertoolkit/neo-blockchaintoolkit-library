@@ -16,6 +16,17 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         internal class RocksDbCacheClient : ICachingClient
         {
+            readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
+
+            static ColumnFamilyHandle GetOrCreateColumnFamily(RocksDb db, string familyName, ColumnFamilyOptions? options = null)
+            {
+                if (!db.TryGetColumnFamily(familyName, out var familyHandle))
+                {
+                    familyHandle = db.CreateColumnFamily(options ?? defaultColumnFamilyOptions, familyName);
+                }
+                return familyHandle;
+            }
+
             readonly RpcClient rpcClient;
             readonly RocksDb db;
 
@@ -52,7 +63,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
             {
                 var familyName = $"{nameof(FindStates)}{rootHash}{scriptHash}";
-                var family = db.GetOrCreateColumnFamily(familyName);
+                var family = GetOrCreateColumnFamily(db, familyName);
 
                 var keyLength = prefix.Length + from.Length + (count.HasValue ? sizeof(int) : 0);
                 Span<byte> key = stackalloc byte[keyLength];
@@ -82,7 +93,7 @@ namespace Neo.BlockchainToolkit.Persistence
             ColumnFamilyHandle GetColumnFamily(UInt256 rootHash, UInt160 scriptHash)
             {
                 var familyName = $"{nameof(GetState)}{rootHash}{scriptHash}";
-                return db.GetOrCreateColumnFamily(familyName);
+                return GetOrCreateColumnFamily(db, familyName);
             }
 
             // method used for testing
@@ -131,7 +142,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
 
                 var familyName = $"{nameof(GetLedgerStorage)}";
-                var family = db.GetOrCreateColumnFamily(familyName);
+                var family = GetOrCreateColumnFamily(db, familyName);
                 var json = GetCachedJson(key.Span, family,
                     () => rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
                 return Convert.FromBase64String(json.AsString());

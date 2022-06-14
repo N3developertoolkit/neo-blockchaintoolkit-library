@@ -16,7 +16,7 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         public TraceApplicationEngine(ITraceDebugSink traceDebugSink, TriggerType trigger, IVerifiable container,
                                       DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas,
-                                      Neo.SmartContract.Diagnostic? diagnostic = null)
+                                      IDiagnostic? diagnostic = null)
             : base(trigger, container, snapshot, persistingBlock, settings, gas, diagnostic)
         {
             this.traceDebugSink = traceDebugSink;

@@ -9,9 +9,10 @@ namespace Neo.BlockchainToolkit.Persistence
     public class CheckpointStore : ICheckpointStore, IDisposable
     {
         readonly RocksDbStore store;
-        internal readonly string checkpointTempPath;
+        readonly string checkpointTempPath;
 
         public ProtocolSettings Settings { get; }
+        internal string CheckpointTempPath => checkpointTempPath;
 
         public CheckpointStore(string checkpointPath, ExpressChain? chain, UInt160? scriptHash = null)
             : this(checkpointPath, chain?.Network, chain?.AddressVersion, scriptHash)

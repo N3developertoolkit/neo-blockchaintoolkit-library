@@ -22,8 +22,8 @@ namespace test.bctklib
         {
             using var store = new Neo.Persistence.MemoryStore();
             var trie = Utility.GetTestTrie(store);
-            var key = Utility.MakeTestTrieKey(42);
-            var expected = trie.GetValue(key).Value;
+            var key = BitConverter.GetBytes(42);
+            Assert.True(trie.TryGetValue(key, out var expected));
 
             var rpcClient = new TestableRpcClient(() => Convert.ToBase64String(trie.GetSerializedProof(key)));
             var actual = rpcClient.GetProvenState(trie.Root.Hash, UInt160.Zero, default);
