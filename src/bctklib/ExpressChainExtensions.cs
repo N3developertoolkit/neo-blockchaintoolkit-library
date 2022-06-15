@@ -34,16 +34,16 @@ namespace Neo.BlockchainToolkit
                 => new KeyPair(node.Wallet.Accounts.Select(a => a.PrivateKey).Distinct().Single().HexToBytes()).PublicKey;
         }
 
-        public static ExpressWallet GetWallet(this ExpressChain chain, string name)
+        public static ExpressWallet GetWallet(this ExpressChain chain, ReadOnlySpan<char> name)
             => TryGetWallet(chain, name, out var wallet)
                 ? wallet
                 : throw new Exception($"wallet {name} not found");
 
-        public static bool TryGetWallet(this ExpressChain chain, string name, [MaybeNullWhen(false)] out ExpressWallet wallet)
+        public static bool TryGetWallet(this ExpressChain chain, ReadOnlySpan<char> name, [MaybeNullWhen(false)] out ExpressWallet wallet)
         {
             for (int i = 0; i < chain.Wallets.Count; i++)
             {
-                if (string.Equals(name, chain.Wallets[i].Name, StringComparison.OrdinalIgnoreCase))
+                if (name.Equals(chain.Wallets[i].Name, StringComparison.OrdinalIgnoreCase))
                 {
                     wallet = chain.Wallets[i];
                     return true;
@@ -81,7 +81,7 @@ namespace Neo.BlockchainToolkit
                 ? account.ToScriptHash(chain.AddressVersion)
                 : throw new Exception($"default account for {name} wallet not found");
 
-        public static bool TryGetDefaultAccount(this ExpressChain chain, string name, [MaybeNullWhen(false)] out ExpressWalletAccount account)
+        public static bool TryGetDefaultAccount(this ExpressChain chain, ReadOnlySpan<char> name, [MaybeNullWhen(false)] out ExpressWalletAccount account)
         {
             if (chain.TryGetWallet(name, out var wallet) && wallet.DefaultAccount != null)
             {
@@ -91,6 +91,15 @@ namespace Neo.BlockchainToolkit
 
             account = null;
             return false;
+        }
+
+
+        public static UInt160 CalculateScriptHash(this ExpressWalletAccount account)
+        {
+            KeyPair keyPair = new(Convert.FromHexString(account.PrivateKey));
+            if (keyPair.PublicKey.IsInfinity) throw new ArgumentException(null, nameof(account.PrivateKey));
+            var script = Contract.CreateSignatureRedeemScript(keyPair.PublicKey);
+            return script.ToScriptHash();
         }
 
         public static UInt160 ToScriptHash(this ExpressWalletAccount account, byte addressVersion)

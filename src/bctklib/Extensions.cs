@@ -11,8 +11,11 @@ using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
 using Neo.VM;
-using Newtonsoft.Json;
+
+using Formatting = Newtonsoft.Json.Formatting;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
+using JsonTextReader = Newtonsoft.Json.JsonTextReader;
+using JsonTextWriter = Newtonsoft.Json.JsonTextWriter;
 
 namespace Neo.BlockchainToolkit
 {
@@ -62,6 +65,15 @@ namespace Neo.BlockchainToolkit
             return false;
         }
 
+        public static ScriptBuilder EmitInvocations(this ScriptBuilder builder, IEnumerable<ContractInvocation> invocations)
+        {
+            foreach (var invocation in invocations)
+            {
+                builder.EmitInvocation(invocation);
+            }
+            return builder;
+        }
+
         public static ScriptBuilder EmitInvocation(this ScriptBuilder builder, ContractInvocation invocation)
         {
             if (invocation.Contract.TryPickT1(out var contract, out var hash))
@@ -69,7 +81,7 @@ namespace Neo.BlockchainToolkit
                 throw new Exception($"Unbound Contract {contract}");
             }
 
-            builder.EmitArgArray(invocation.Args);
+            builder.EmitPush(invocation.Args);
             builder.EmitPush(invocation.CallFlags);
             builder.EmitPush(invocation.Operation);
             builder.EmitPush(hash);
@@ -84,29 +96,25 @@ namespace Neo.BlockchainToolkit
                     return builder.Emit(OpCode.PUSHNULL);
                 case PrimitiveContractArg primitive:
                 {
-                    if (primitive.Value.TryPickT3(out var str, out var remainder))
+                    if (primitive.Value.TryPickT3(out var @string, out var remainder))
                     {
-                        throw new Exception($"Unbound parameter {str}");
+                        throw new Exception($"Unbound parameter {@string}");
                     }
                     else
                     {
                         return remainder.Match(
-                            b => builder.EmitPush(b),
-                            i => builder.EmitPush(i),
-                            ia => builder.EmitPush(ia));
+                            @bool => builder.EmitPush(@bool),
+                            @int => builder.EmitPush(@int),
+                            bytes => builder.EmitPush(bytes.Span));
                     }
                 }
                 case ArrayContractArg array:
-                    return builder.EmitArgArray(array.Values);
+                    return builder.EmitPush(array.Values);
                 case MapContractArg map:
                     {
                         builder.Emit(OpCode.NEWMAP);
                         foreach (var (key, value) in map.Values)
                         {
-                            if (key is not PrimitiveContractArg)
-                            {
-                                throw new Exception("Map key must be primitive type");
-                            }
                             builder.Emit(OpCode.DUP);
                             builder.EmitPush(key);
                             builder.EmitPush(value);
@@ -119,7 +127,7 @@ namespace Neo.BlockchainToolkit
             }
         }
 
-        public static ScriptBuilder EmitArgArray(this ScriptBuilder builder, IReadOnlyList<ContractArg> args)
+        public static ScriptBuilder EmitPush(this ScriptBuilder builder, IReadOnlyList<ContractArg> args)
         {
             if (args.Count == 0) 
             { 
@@ -134,27 +142,12 @@ namespace Neo.BlockchainToolkit
             return builder.Emit(OpCode.PACK);
         }
 
-        internal static bool TryFind<T>(this IEnumerable<T> @this, Func<T, bool> func, [MaybeNullWhen(false)] out T result)
-        {
-            foreach (var item in @this)
-            {
-                if (func(item))
-                {
-                    result = item;
-                    return true;
-                }
-            }
-
-            result = default;
-            return false;
-        }
-
         internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update) where T : class
-            => Update(@this, update, ReferenceEquals);
+            => Update(@this, update, ReferenceEqualityComparer.Instance);
 
         // Calls update for every item in @this, but only returns a new list if one or more of the items has actually
         // been updated. If update returns an equal object for every item, Update returns the original list.
-        internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update, Func<T, T, bool> equals)
+        internal static IReadOnlyList<T> Update<T>(this IReadOnlyList<T> @this, Func<T, T> update, IEqualityComparer<T> comparer)
         {
             // Lazily create updatedItems list when we first encounter an updated item
             List<T>? updatedList = null;
@@ -166,7 +159,7 @@ namespace Neo.BlockchainToolkit
                 // if we haven't already got an updatedItems list
                 // check to see if the object returned from update
                 // is different from the one we passed in 
-                if (updatedList is null && !equals(updatedItem, @this[i]))
+                if (updatedList is null && !comparer.Equals(updatedItem, @this[i]))
                 {
                     // if the updated item is different, this is the
                     // first modified item in the list. 

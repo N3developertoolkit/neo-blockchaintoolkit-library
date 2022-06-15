@@ -23,6 +23,15 @@ namespace Neo.BlockchainToolkit
 
         public static bool Success(IEnumerable<Diagnostic> diagnostics)
             => !diagnostics.Any(d => d.Severity == SeverityLevel.Error);
+    }
 
+    public class DiagnosticException : Exception
+    {
+        public readonly Diagnostic.SeverityLevel Severity;
+
+        public DiagnosticException(Diagnostic diagnostic) : base(diagnostic.Message)
+        {
+            this.Severity = diagnostic.Severity;
+        }
     }
 }

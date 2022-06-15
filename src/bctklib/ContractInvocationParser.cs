@@ -1,522 +1,414 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Models;
 using Neo.Cryptography.ECC;
 using Neo.IO;
 using Neo.SmartContract;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using OneOf;
-using None = OneOf.Types.None;
+using Neo.SmartContract.Manifest;
+using Neo.SmartContract.Native;
+using Neo.VM;
 
 namespace Neo.BlockchainToolkit
 {
-    // Note, string is not a valid arg type. Strings need to be converted into byte arrays 
-    // by later processing steps. However, the specific conversion of string -> byte array
-    // is string content dependent
-
-    using PrimitiveArg = OneOf<bool, BigInteger, ImmutableArray<byte>, string>;
-    using BindingFunc = Func<string, Action<string>, OneOf<PrimitiveContractArg, OneOf.Types.None>>;
-
     public static partial class ContractInvocationParser
     {
-        public delegate bool TryConvert<T>(string value, [MaybeNullWhen(false)] out T account);
+        static Lazy<IFileSystem> defaultFileSystem = new Lazy<IFileSystem>(() => new FileSystem());
+        public static readonly IArgBinders NullBinders = new NullArgBinders();
 
-        public static IEnumerable<ContractInvocation> ParseInvocations(JToken doc)
+        public static IArgBinders GetExpressArgBinders(ExpressChain chain, IEnumerable<(UInt160 hash, ContractManifest manifest)> contracts, IFileSystem? fileSystem = null)
         {
-            if (doc is JObject obj)
+            return new ExpressArgBinders(chain, contracts, fileSystem);
+        }
+
+        public static async Task<IReadOnlyList<ContractInvocation>> LoadAsync(string path, IFileSystem? fileSystem = null)
+        {
+            fileSystem ??= defaultFileSystem.Value;
+
+            var invokeFile = fileSystem.Path.GetFullPath(path);
+            if (!fileSystem.File.Exists(invokeFile)) throw new ArgumentException($"{path} doesn't exist", nameof(path));
+
+            using var stream = fileSystem.File.Open(invokeFile, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+            using var doc = await JsonDocument.ParseAsync(stream).ConfigureAwait(false);
+            return ParseInvocations(doc.RootElement).ToArray();
+        }
+
+        public static async Task<Script> LoadScriptAsync(string path, IArgBinders binders)
+        {
+            var invocations = await LoadAsync(path, binders.FileSystem);
+
+            List<Diagnostic> diagnostics = new();
+            var bound = Bind(invocations, binders, diagnostics);
+            if (diagnostics.Any(d => d.Severity == Diagnostic.SeverityLevel.Error))
             {
-                yield return ParseInvocation(obj);
-            }
-            else if (doc is JArray arr)
-            {
-                foreach (var item in arr)
+                if (diagnostics.Count == 1)
                 {
-                    if (item is JObject itemObj)
-                    {
-                        yield return ParseInvocation(itemObj);
-                    }
-                    else
-                    {
-                        throw new JsonException("Invalid invocation JSON");
-                    }
+                    throw new DiagnosticException(diagnostics[0]);
                 }
+                else
+                {
+                    throw new AggregateException(diagnostics.Select(d => new DiagnosticException(d)));
+                }
+            }
+
+            using ScriptBuilder builder = new();
+            builder.EmitInvocations(bound);
+            return builder.ToArray();
+        }
+
+        public static IReadOnlyList<ContractInvocation> ParseInvocations(in JsonElement json)
+        {
+            if (json.ValueKind == JsonValueKind.Array)
+            {
+                var count = json.GetArrayLength();
+                List<ContractInvocation> invocations = new(count);
+                for (int i = 0; i < count; i++)
+                {
+                    invocations.Add(ParseInvocation(json[i]));
+                }
+                return invocations;
             }
             else
             {
-                throw new JsonException("Invalid invocation JSON");
+                return new[] { ParseInvocation(json) };
             }
         }
 
-        public static ContractInvocation ParseInvocation(JObject json)
+        public static ContractInvocation ParseInvocation(in JsonElement json)
         {
-            var contract = json.Value<string>("contract");
+            if (json.ValueKind != JsonValueKind.Object) throw new JsonException("Invalid invocation JSON");
+
+            var contract = json.GetProperty("contract").GetString();
             if (string.IsNullOrEmpty(contract)) throw new JsonException("missing invocation contract property");
-            var operation = json.Value<string>("operation");
+            var operation = json.GetProperty("operation").GetString();
             if (string.IsNullOrEmpty(operation)) throw new JsonException("missing invocation operation property");
 
-            var callFlags = json.ContainsKey("callFlags")
-                ? Enum.Parse<CallFlags>(json.Value<string>("callFlags"))
-                // default to CallFlags.All if not specified in JSON
+            // default to CallFlags.All if not specified in JSON
+            var callFlags = json.TryGetProperty("callFlags", out var jsonCallFlags)
+                ? Enum.Parse<CallFlags>(jsonCallFlags.GetRawText())
                 : CallFlags.All;
 
-            var args = json.TryGetValue("args", out var jsonArgs)
-                    ? ParseArgs(jsonArgs)
-                    : Array.Empty<ContractArg>();
+            IReadOnlyList<ContractArg> args = json.TryGetProperty("args", out var jsonArgs)
+                ? ParseArgs(jsonArgs).ToList() : Array.Empty<ContractArg>();
 
             return new ContractInvocation(contract, operation, callFlags, args);
         }
 
-        public static IReadOnlyList<ContractArg> ParseArgs(JToken jsonArgs)
+        public static IReadOnlyList<ContractArg> ParseArgs(in JsonElement json)
         {
-            if (jsonArgs is JArray argsArray)
+            if (json.ValueKind == JsonValueKind.Array)
             {
-                var array = new ContractArg[argsArray.Count];
-                for (int i = 0; i < argsArray.Count; i++)
+                var count = json.GetArrayLength();
+                List<ContractArg> args = new(count);
+                for (int i = 0; i < count; i++)
                 {
-                    array[i] = ParseArg(argsArray[i]);
+                    args.Add(ParseArg(json[i]));
                 }
-                return array;
+                return args;
             }
             else
             {
-                var array = new ContractArg[1];
-                array[0] = ParseArg(jsonArgs);
-                return array;
+                return new[] { ParseArg(json) };
             }
         }
 
-        internal static ContractArg ParseArg(JToken json)
+        internal static ContractArg ParseArg(in JsonElement json)
         {
-            if (json is null) return NullContractArg.Null;
-            return json.Type switch
+            return json.ValueKind switch
             {
-                JTokenType.Null => NullContractArg.Null,
-                JTokenType.Boolean => new PrimitiveContractArg(json.Value<bool>()),
-                JTokenType.Integer => new PrimitiveContractArg(BigInteger.Parse(json.Value<string>())),
-                JTokenType.String => new PrimitiveContractArg(json.Value<string>()),
-                JTokenType.Array => new ArrayContractArg(json.Select(ParseArg).ToArray()),
-                JTokenType.Object => ParseObject((JObject)json),
-                _ => throw new ArgumentException($"Invalid JTokenType {json.Type}", nameof(json))
+                JsonValueKind.Null => NullContractArg.Null,
+                JsonValueKind.True => new PrimitiveContractArg(true),
+                JsonValueKind.False => new PrimitiveContractArg(false),
+                JsonValueKind.Number => new PrimitiveContractArg(BigInteger.Parse(json.GetRawText())),
+                JsonValueKind.String => new PrimitiveContractArg(json.GetRawText()),
+                JsonValueKind.Array => new ArrayContractArg(json.EnumerateArray().Select(item => ParseArg(item)).ToArray()),
+                JsonValueKind.Object => ParseObject(json),
+                _ => throw new NotSupportedException($"Invalid JsonValueKind {json.ValueKind}")
             };
         }
 
-        internal static ContractArg ParseObject(JObject json)
+        internal static ContractArg ParseObject(in JsonElement json)
         {
-            var typeStr = json.Value<string>("type");
-            if (string.IsNullOrEmpty(typeStr)) throw new JsonException("missing type field");
-            var type = Enum.Parse<ContractParameterType>(typeStr);
-            var value = json["value"];
-            if (value is null) return NullContractArg.Null;
+            if (!json.TryGetProperty("value", out var value))
+            {
+                return NullContractArg.Null; 
+            }
 
+            var type = Enum.Parse<ContractParameterType>(json.GetProperty("type").GetRawText());
             return type switch
             {
-                ContractParameterType.Any =>
-                    NullContractArg.Null,
+                ContractParameterType.Any => NullContractArg.Null,
                 ContractParameterType.Signature or
-                ContractParameterType.ByteArray =>
-                    ParseBinary(value.Value<string>()),
-                ContractParameterType.Boolean =>
-                    new PrimitiveContractArg(value.Value<bool>()),
-                ContractParameterType.Integer =>
-                    new PrimitiveContractArg(BigInteger.Parse(value.Value<string>())),
-                ContractParameterType.Hash160 =>
-                    PrimitiveContractArg.FromSerializable(UInt160.Parse(value.Value<string>())),
-                ContractParameterType.Hash256 =>
-                    PrimitiveContractArg.FromSerializable(UInt256.Parse(value.Value<string>())),
-                ContractParameterType.PublicKey =>
-                    PrimitiveContractArg.FromSerializable(ECPoint.Parse(value.Value<string>(), ECCurve.Secp256r1)),
-                ContractParameterType.String =>
-                    PrimitiveContractArg.FromString(value.Value<string>()),
-                ContractParameterType.Array =>
-                    new ArrayContractArg(value.Select(ParseArg).ToArray()),
-                ContractParameterType.Map =>
-                    new MapContractArg(value.Select(ParseMapElement).ToArray()),
-                _ => throw new ArgumentException($"invalid type {type}", nameof(json)),
+                ContractParameterType.ByteArray => new PrimitiveContractArg(value.GetBytesFromBase64()),
+                ContractParameterType.Boolean => new PrimitiveContractArg(value.GetBoolean()),
+                ContractParameterType.Integer => new PrimitiveContractArg(BigInteger.Parse(value.GetRawText())),
+                ContractParameterType.Hash160 => new PrimitiveContractArg(UInt160.Parse(value.GetRawText())),
+                ContractParameterType.Hash256 => new PrimitiveContractArg(UInt256.Parse(value.GetRawText())),
+                ContractParameterType.PublicKey => new PrimitiveContractArg(ECPoint.Parse(value.GetRawText(), ECCurve.Secp256r1)),
+                ContractParameterType.String => new PrimitiveContractArg(value.GetRawText()),
+                ContractParameterType.Array => new ArrayContractArg(value.EnumerateArray().Select(v => ParseArg(v)).ToList()),
+                ContractParameterType.Map => new MapContractArg(value.EnumerateArray().Select(v => ParseMapElement(v)).ToList()),
+                _ => throw new NotSupportedException($"invalid ContractParameterType {type}"),
             };
 
-            static PrimitiveContractArg ParseBinary(string value)
+            static KeyValuePair<PrimitiveContractArg, ContractArg> ParseMapElement(in JsonElement json)
             {
-                if (PrimitiveContractArg.TryFromBase64String(value.AsMemory(), out var arg))
-                {
-                    return arg;
-                }
-
-                // TODO: Should I support hex encoding here? 
-                //       Core ContractParam.FromJson only supports base64
-
-                throw new JsonException("Invalid binary string");
-            }
-
-            static (ContractArg, ContractArg) ParseMapElement(JToken json)
-            {
-                var keyToken = json["key"] ?? throw new JsonException("Missing key property");
-                var key = ParseArg(keyToken);
-                if (key is not PrimitiveContractArg) throw new Exception("Map key must be a primitive type");
-                var valueToken = json["value"] ?? throw new JsonException("Missing value property");
-                var value = ParseArg(valueToken);
-                return (key, value);
+                var key = ParseArg(json.GetProperty("key"));
+                return key is PrimitiveContractArg primitiveKey
+                    ? KeyValuePair.Create(primitiveKey, ParseArg(json.GetProperty("value")))
+                    : throw new Exception("Map key must be a primitive type");
             }
         }
 
-        public static bool Validate(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic> diagnostics)
+        public static bool Validate(IEnumerable<ContractInvocation> invocations, ICollection<Diagnostic>? diagnostics)
         {
-            var visitor = new ValidationVisitor(diagnostics);
             bool valid = true;
             foreach (var invocation in invocations)
             {
-                valid &= Validate(invocation, visitor, diagnostics);
+                valid &= Validate(invocation, diagnostics);
             }
             return valid;
         }
 
-        public static bool Validate(ContractInvocation invocation, ICollection<Diagnostic> diagnostics)
-        {
-            var visitor = new ValidationVisitor(diagnostics);
-            return Validate(invocation, visitor, diagnostics);
-        }
-
-        static bool Validate(ContractInvocation invocation, ValidationVisitor visitor, ICollection<Diagnostic> diagnostics)
+        public static bool Validate(ContractInvocation invocation, ICollection<Diagnostic>? diagnostics)
         {
             bool valid = true;
-            if (invocation.Contract.IsT1)
+            if (invocation.Contract.TryPickT1(out var name, out _))
             {
-                diagnostics.Add(Diagnostic.Error($"Unbound contract hash {invocation.Contract.AsT1}"));
+                diagnostics?.Add(Diagnostic.Error($"Unbound contract {name}"));
                 valid = false;
             }
-
             if (string.IsNullOrEmpty(invocation.Operation))
             {
-                diagnostics.Add(Diagnostic.Error("Invalid operation"));
+                diagnostics?.Add(Diagnostic.Error("Invalid operation"));
                 valid = false;
             }
-
             for (int i = 0; i < invocation.Args.Count; i++)
             {
-                valid &= visitor.Visit(invocation.Args[i]);
+                valid &= Validate(invocation.Args[i], diagnostics);
             }
             return valid;
         }
 
-        public interface IBindingParameters
+        static bool Validate(ContractArg arg, ICollection<Diagnostic>? diagnostics)
         {
-            byte AddressVersion { get; }
-            TryConvert<UInt160>? TryGetAccount { get; }
-            TryConvert<UInt160>? TryGetContract { get; }
-        }
-
-        class DefaultBindingParameters : IBindingParameters
-        {
-            Models.ExpressChain? chain;
-
-            IReadOnlyDictionary<string, UInt160> contractNameMap;
-
-            public DefaultBindingParameters(ExpressChain? chain, IReadOnlyDictionary<string, UInt160> contracts)
+            bool valid = true;
+            if (arg is PrimitiveContractArg primitive)
             {
-                this.chain = chain;
-                this.contractNameMap = contracts;
-            }
-
-            public byte AddressVersion => chain?.AddressVersion ?? ProtocolSettings.Default.AddressVersion;
-
-            public TryConvert<UInt160> TryGetAccount => (string name, [MaybeNullWhen(false)] out UInt160 scriptHash) =>
+                if (primitive.Value.TryPickT3(out var @string, out _))
                 {
-                    if (chain is not null
-                        && chain.TryGetDefaultAccount(name, out var account))
-                    {
-                        scriptHash = Neo.Wallets.Helper.ToScriptHash(account.ScriptHash, AddressVersion);
-                        return true;
-                    }
-
-                    scriptHash = null!;
+                    diagnostics?.Add(Diagnostic.Error($"Unbound string argument '{@string}"));
                     return false;
-                };
-
-            public TryConvert<UInt160> TryGetContract => (string name, [MaybeNullWhen(false)] out UInt160 scriptHash) =>
-                {
-                    if (contractNameMap.TryGetValue(name, out scriptHash))
-                    {
-                        return true;
-                    }
-
-                    foreach (var kvp in contractNameMap)
-                    {
-                        if (name.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase))
-                        {
-                            scriptHash = kvp.Value;
-                            return true;
-                        }
-                    }
-
-                    return false;
-                };
-        }
-
-        public static IBindingParameters CreateBindingParameters(Models.ExpressChain? chain, Neo.Persistence.DataCache? snapshot)
-        {
-            IReadOnlyDictionary<string, UInt160> contractNameMap = snapshot is null
-                ? System.Collections.Immutable.ImmutableDictionary<string, UInt160>.Empty
-                : Neo.SmartContract.Native.NativeContract.ContractManagement.ListContracts(snapshot)
-                    .Where(cs => cs.Id >= 0)
-                    .ToDictionary(cs => cs.Manifest.Name, cs => cs.Hash);
-
-            return new DefaultBindingParameters(chain, contractNameMap);
-        }
-
-        static Lazy<IFileSystem> defaultFileSystem = new Lazy<IFileSystem>(() => new FileSystem());
-
-        public static IEnumerable<ContractInvocation> Bind(
-            IEnumerable<ContractInvocation> invocations,
-            IBindingParameters bindingParams,
-            Action<string>? reportError = null,
-            IFileSystem? fileSystem = null)
-        {
-            return Bind(invocations, bindingParams.AddressVersion, bindingParams.TryGetAccount, bindingParams.TryGetContract, reportError, fileSystem);
-        }
-
-        // Not sure this needs to broken out for test purposes, but leaving it separate from previous Bind method for now
-        internal static IEnumerable<ContractInvocation> Bind(
-            IEnumerable<ContractInvocation> invocations,
-            byte addressVersion,
-            TryConvert<UInt160>? tryGetAccount,
-            TryConvert<UInt160>? tryGetContract,
-            Action<string>? reportError = null,
-            IFileSystem? fileSystem = null)
-        {
-            reportError ??= _ => { };
-            fileSystem ??= defaultFileSystem.Value;
-
-            var contractBinder = CreateContractBinder(tryGetContract, reportError);
-            var addressBinder = CreateAddressBinder(tryGetAccount, addressVersion, reportError);
-            var fileUriBinder = CreateFileUriBinder(fileSystem, reportError);
-            var stringBinder = CreateStringBinder(reportError);
-
-            return invocations
-                .Select(i => BindContract(i, tryGetContract, reportError))
-                .Select(i => BindArguments(i, contractBinder))
-                .Select(i => BindArguments(i, addressBinder))
-                .Select(i => BindArguments(i, fileUriBinder))
-                .Select(i => BindArguments(i, stringBinder));
-        }
-
-        public static ContractInvocation BindContract(ContractInvocation invocation, IBindingParameters bindingParams, Action<string>? reportError = null)
-        {
-            reportError ??= _ => { };
-            return BindContract(invocation, bindingParams.TryGetContract, reportError);
-        }
-
-        internal static ContractInvocation BindContract(ContractInvocation invocation, TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
-        {
-            if (invocation.Contract.TryPickT1(out var contract, out _))
-            {
-                contract = contract.Length > 0 && contract[0] == '#'
-                    ? contract.Substring(1) : contract;
-                if (TryConvertContractHash(contract, tryGetContractHash, out var hash))
-                {
-                    return invocation with { Contract = hash };
-                }
-                else
-                {
-                    reportError($"Failed to bind contract {contract}");
                 }
             }
-            return invocation;
-        }
-
-        public static ContractInvocation BindContractArgs(ContractInvocation invocation, IBindingParameters bindingParams, Action<string>? reportError = null)
-        {
-            reportError ??= _ => { };
-            return BindContractArgs(invocation, bindingParams.TryGetContract, reportError);
-        }
-
-        internal static ContractInvocation BindContractArgs(ContractInvocation invocation, TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
-        {
-            var binder = CreateContractBinder(tryGetContractHash, reportError);
-            return BindArguments(invocation, binder);
-        }
-
-        internal static BindStringArgVisitor CreateContractBinder(TryConvert<UInt160>? tryGetContractHash, Action<string> reportError)
-        {
-            BindingFunc func = (value, reportError) =>
+            else if (arg is ArrayContractArg array)
             {
-                if (value.StartsWith("#"))
+                for (int i = 0; i < array.Values.Count; i++)
                 {
-                    var hashStr = value.Substring(1);
-
-                    if (TryConvertContractHash(hashStr, tryGetContractHash, out var uint160))
-                    {
-                        return PrimitiveContractArg.FromSerializable(uint160);
-                    }
-
-                    if (UInt256.TryParse(hashStr, out var uint256))
-                    {
-                        return PrimitiveContractArg.FromSerializable(uint256);
-                    }
-
-                    reportError($"failed to bind contract {value}");
+                    valid &= Validate(array.Values[i], diagnostics);
                 }
-                return default(None);
-            };
-            return new BindStringArgVisitor(func, reportError);
-        }
-
-        public static ContractInvocation BindAddressArgs(ContractInvocation invocation, IBindingParameters bindingParams, Action<string>? reportError = null)
-        {
-            reportError ??= _ => { };
-            return BindAddressArgs(invocation, bindingParams.TryGetAccount, bindingParams.AddressVersion, reportError);
-        }
-
-        internal static ContractInvocation BindAddressArgs(ContractInvocation invocation, TryConvert<UInt160>? tryGetAddress, byte addressVersion, Action<string> reportError)
-        {
-            var binder = CreateAddressBinder(tryGetAddress, addressVersion, reportError);
-            return BindArguments(invocation, binder);
-        }
-
-        internal static BindStringArgVisitor CreateAddressBinder(TryConvert<UInt160>? tryGetAddress, byte addressVersion, Action<string> reportError)
-        {
-            BindingFunc func = (value, reportError) =>
+            }
+            else if (arg is MapContractArg map)
             {
-                if (value.StartsWith("@"))
+                for (int i = 0; i < map.Values.Count; i++)
                 {
-                    var address = value.Substring(1);
-
-                    if (tryGetAddress is not null
-                        && tryGetAddress(address, out var hash))
-                    {
-                        return PrimitiveContractArg.FromSerializable(hash);
-                    }
-
-                    try
-                    {
-                        hash = Neo.Wallets.Helper.ToScriptHash(address, addressVersion);
-                        return PrimitiveContractArg.FromSerializable(hash);
-                    }
-                    catch (FormatException) { }
-
-                    reportError($"failed to bind address {value}");
+                    valid &= Validate(map.Values[i].Key, diagnostics);
+                    valid &= Validate(map.Values[i].Value, diagnostics);
                 }
-                return default(None);
-            };
-            return new BindStringArgVisitor(func, reportError);
+            }
+            return valid;
         }
 
-        public static ContractInvocation BindFileUriArgs(ContractInvocation invocation, Action<string>? reportError = null, IFileSystem? fileSystem = null)
+        public static IReadOnlyList<ContractInvocation> Bind(
+            IReadOnlyCollection<ContractInvocation> invocations,
+            IArgBinders binders,
+            ICollection<Diagnostic> diagnostics)
         {
-            fileSystem ??= defaultFileSystem.Value;
-            reportError ??= _ => { };
-            return BindFileUriArgs(invocation, fileSystem, reportError);
-        }
-
-        internal static ContractInvocation BindFileUriArgs(ContractInvocation invocation, IFileSystem fileSystem, Action<string> reportError)
-        {
-            var binder = CreateFileUriBinder(fileSystem, reportError);
-            return BindArguments(invocation, binder);
-        }
-
-        internal static BindStringArgVisitor CreateFileUriBinder(IFileSystem fileSystem, Action<string> reportError)
-        {
-            BindingFunc func = (value, reportError) =>
+            List<ContractInvocation> updatedInvocations = new(invocations.Count);
+            foreach (var invocation in invocations)
             {
-                const string FILE_URI = "file://";
-                if (value.StartsWith(FILE_URI))
-                {
-                    var path = fileSystem.NormalizePath(value.Substring(FILE_URI.Length));
-                    path = !fileSystem.Path.IsPathFullyQualified(path)
-                        ? fileSystem.Path.GetFullPath(path, fileSystem.Directory.GetCurrentDirectory())
-                        : path;
+                updatedInvocations.Add(Bind(invocation, binders, diagnostics));
+            }
+            return updatedInvocations;
 
-                    if (!fileSystem.File.Exists(path))
-                    {
-                        reportError($"{value} not found");
-                    }
-                    else
-                    {
-                        try
-                        {
-                            return PrimitiveContractArg.FromArray(() => fileSystem.File.ReadAllBytes(path));
-                        }
-                        catch (Exception ex)
-                        {
-                            reportError(ex.Message);
-                        }
-                    }
+        }
+
+        public static ContractInvocation Bind(
+            in ContractInvocation invocation,
+            IArgBinders binders,
+            ICollection<Diagnostic> diagnostics)
+        {
+            if (invocation.Contract.TryPickT1(out var contractName, out var contractHash))
+            {
+                if (!TryGetContract(contractName, binders, out contractHash))
+                {
+                    diagnostics.Add(Diagnostic.Error($"Failed to bind contract {contractName}"));
                 }
-                return default(None);
-            };
-            return new BindStringArgVisitor(func, reportError);
+            }
+
+            var args = invocation.Args.Update(a => Bind(a, binders, diagnostics));
+            return invocation with { Contract = contractHash, Args = args };
         }
 
-        public static ContractInvocation BindStringArgs(ContractInvocation invocation, Action<string>? reportError = null)
+        public static ContractArg Bind(
+            ContractArg arg,
+            IArgBinders binders,
+            ICollection<Diagnostic> diagnostics)
         {
-            reportError ??= _ => { };
-            var binder = CreateStringBinder(reportError);
-            return BindArguments(invocation, binder);
-        }
-
-        internal static BindStringArgVisitor CreateStringBinder(Action<string> reportError)
-        {
-            BindingFunc func = (value, reportError) =>
+            if (arg is PrimitiveContractArg primitive
+                && primitive.Value.TryPickT3(out var @string, out _))
             {
-                // TODO: Should we support base64 encocding here?
-                //       "data:application/octet-stream;base64," would be appropriate prefix,
-                //       but man that is LONG
+                return Bind(@string, binders, diagnostics);
+            }
+            else if (arg is ArrayContractArg array)
+            {
+                var values = array.Values.Update(a => Bind(a, binders, diagnostics));
+                return object.ReferenceEquals(values, array.Values)
+                    ? array
+                    : new ArrayContractArg(values);
+            }
+            else if (arg is MapContractArg map)
+            {
+                if (Validate(map, null)) return map;
 
-                if (PrimitiveContractArg.TryFromHexString(value, out var arg))
+                List<KeyValuePair<PrimitiveContractArg, ContractArg>> values = new(map.Values.Count);
+                for (int i = 0; i < map.Values.Count; i++)
                 {
-                    return arg;
+                    var key = Bind(map.Values[i].Key, binders, diagnostics);
+                    if (key is not PrimitiveContractArg)
+                    {
+                        diagnostics.Add(Diagnostic.Error("Map keys must be primitive types"));
+                    }
+                    var value = Bind(map.Values[i].Value, binders, diagnostics);
+                    var kvp = KeyValuePair.Create(
+                        key as PrimitiveContractArg ?? map.Values[i].Key,
+                        value);
+                    values.Add(kvp);
+                }
+                return new MapContractArg(values);
+            }
+            else
+            {
+                return arg;
+            }
+        }
+
+        public static ContractArg Bind(
+            string arg,
+            IArgBinders binders,
+            ICollection<Diagnostic> diagnostics)
+        {
+            if (arg.Length == 0) return new PrimitiveContractArg(default(ReadOnlyMemory<byte>));
+
+            if (arg[0] == '#')
+            {
+                var hashString = arg.Substring(1);
+
+                if (UInt256.TryParse(hashString, out var uint256))
+                {
+                    return new PrimitiveContractArg(uint256);
+                }
+                if (TryGetContract(hashString, binders, out var uint160))
+                {
+                    return new PrimitiveContractArg(uint160);
+                }
+                diagnostics?.Add(Diagnostic.Warning($"Failed to bind {arg} as hash string"));
+            }
+
+            if (arg[0] == '@')
+            {
+                var addressString = arg.Substring(1);
+
+                if (binders.TryGetAccount is not null
+                    && binders.TryGetAccount(addressString, out var account))
+                {
+                    return new PrimitiveContractArg(account);
                 }
 
                 try
                 {
-                    return PrimitiveContractArg.FromString(value);
+                    var scriptHash = Neo.Wallets.Helper.ToScriptHash(addressString, binders.AddressVersion);
+                    return new PrimitiveContractArg(scriptHash);
                 }
-                catch (System.Exception ex)
+                catch (FormatException) { }
+
+                diagnostics?.Add(Diagnostic.Warning($"Failed to bind {arg} as address string"));
+            }
+
+            const string FILE_URI = "file://";
+            if (arg.StartsWith(FILE_URI))
+            {
+                var fileSystem = binders.FileSystem;
+                var path = fileSystem.NormalizePath(arg.Substring(FILE_URI.Length));
+                path = !fileSystem.Path.IsPathFullyQualified(path)
+                    ? fileSystem.Path.GetFullPath(path, fileSystem.Directory.GetCurrentDirectory())
+                    : path;
+
+                if (!fileSystem.File.Exists(path))
                 {
-                    reportError(ex.Message);
+                    diagnostics?.Add(Diagnostic.Error($"{path} path not found"));
                 }
-
-                return default(None);
-            };
-            return new BindStringArgVisitor(func, reportError);
-        }
-
-        static ContractInvocation BindArguments(ContractInvocation invocation, BindStringArgVisitor visitor)
-        {
-            var args = invocation.Args.Update(visitor.NullCheckVisit);
-            return ReferenceEquals(args, invocation.Args)
-                ? invocation
-                : invocation with { Args = args };
-        }
-
-        static bool TryConvertContractHash(string contract, TryConvert<UInt160>? tryGetContractHash, out UInt160 hash)
-        {
-            if (tryGetContractHash is not null
-                && tryGetContractHash(contract, out var _hash))
-            {
-                hash = _hash;
-                return true;
+                else
+                {
+                    try
+                    {
+                        var bytes = fileSystem.File.ReadAllBytes(path);
+                        return new PrimitiveContractArg(bytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        diagnostics?.Add(Diagnostic.Error(ex.Message));
+                    }
+                }
             }
 
-            if (Neo.SmartContract.Native.NativeContract.Contracts.TryFind(
-                    nc => nc.Name.Equals(contract, StringComparison.OrdinalIgnoreCase),
-                    out var result))
+            if (arg.StartsWith("0x"))
             {
-                hash = result.Hash;
-                return true;
+                try
+                {
+                    var bytes = Convert.FromHexString(arg.AsSpan(2));
+                    return new PrimitiveContractArg(bytes);
+                }
+                catch (FormatException) { }
+
+                diagnostics?.Add(Diagnostic.Warning($"Failed to bind {arg} as hex string"));
             }
 
+            // TODO: Should we support base64 encoding here? If so, should there be a prefix?
+            //       "data:application/octet-stream;base64," would be appropriate prefix,
+            //       but man that is LONG
+
+            return new PrimitiveContractArg(arg);
+        }
+
+
+        static bool TryGetContract(string contract, IArgBinders binders, out UInt160 hash)
+        {
             if (UInt160.TryParse(contract, out hash))
             {
                 return true;
             }
 
-            hash = UInt160.Zero;
+            if (binders.TryGetContract is not null
+                && binders.TryGetContract(contract, out hash))
+            {
+                return true;
+            }
+
+            foreach (var nativeContract in NativeContract.Contracts)
+            {
+                if (string.Equals(contract, nativeContract.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    hash = nativeContract.Hash;
+                    return true;
+                }
+            }
+
             return false;
         }
     }
