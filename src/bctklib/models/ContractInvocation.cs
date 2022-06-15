@@ -1,7 +1,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Neo.IO;
 using Neo.SmartContract;
@@ -10,8 +9,8 @@ using OneOf;
 namespace Neo.BlockchainToolkit.Models
 {
     // Note, string is not a valid arg type. Strings need to be converted into byte arrays 
-    // by later processing steps. However, the specific conversion of string -> byte array
-    // is string content dependent
+    // by later processing steps. However, the specific conversion of string to byte array
+    // is string content and arg binder dependent
 
     using PrimitiveArg = OneOf<bool, BigInteger, ReadOnlyMemory<byte>, string>;
 
@@ -31,8 +30,8 @@ namespace Neo.BlockchainToolkit.Models
     public record PrimitiveContractArg(PrimitiveArg Value) : ContractArg
     {
         public PrimitiveContractArg(byte[] array) : this((ReadOnlyMemory<byte>)array) { }
-        public PrimitiveContractArg(ISerializable value) : this(value.ToArray()) { }
         public PrimitiveContractArg(string value) : this(Neo.Utility.StrictUTF8.GetBytes(value)) { }
+        public PrimitiveContractArg(ISerializable value) : this(value.ToArray()) { }
     }
 
     public record ArrayContractArg(IReadOnlyList<ContractArg> Values) : ContractArg;

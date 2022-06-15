@@ -16,15 +16,18 @@ using Neo.VM;
 
 namespace Neo.BlockchainToolkit
 {
+    // ContractInvocationParser is ContractParameterParser v2
+    // Improvements include:
+    //      * Separate invocation JSON parsing from argument binding and script generation
+    //      * Static class w/ reusable IArgBinders instance for handling context sensitive argument binding
+
     public static partial class ContractInvocationParser
     {
         static Lazy<IFileSystem> defaultFileSystem = new Lazy<IFileSystem>(() => new FileSystem());
         public static readonly IArgBinders NullBinders = new NullArgBinders();
 
         public static IArgBinders GetExpressArgBinders(ExpressChain chain, IEnumerable<(UInt160 hash, ContractManifest manifest)> contracts, IFileSystem? fileSystem = null)
-        {
-            return new ExpressArgBinders(chain, contracts, fileSystem);
-        }
+            => new ExpressArgBinders(chain, contracts, fileSystem);
 
         public static async Task<IReadOnlyList<ContractInvocation>> LoadAsync(string path, IFileSystem? fileSystem = null)
         {

@@ -32,8 +32,8 @@ namespace Neo.BlockchainToolkit
         class ExpressArgBinders : IArgBinders
         {
             ExpressChain chain;
-            IFileSystem? fileSystem;
             IReadOnlyDictionary<string, UInt160> contractNameMap;
+            IFileSystem? fileSystem;
 
             public ExpressArgBinders(ExpressChain chain, IEnumerable<(UInt160 hash, ContractManifest manifest)> contracts, IFileSystem? fileSystem = null)
                 : this(chain, contracts.ToDictionary(t => t.manifest.Name, t => t.hash), fileSystem)
@@ -43,8 +43,8 @@ namespace Neo.BlockchainToolkit
             public ExpressArgBinders(ExpressChain chain, IReadOnlyDictionary<string, UInt160> contracts, IFileSystem? fileSystem = null)
             {
                 this.chain = chain;
-                this.fileSystem = fileSystem;
                 this.contractNameMap = contracts;
+                this.fileSystem = fileSystem;
             }
 
             public byte AddressVersion => chain?.AddressVersion ?? ProtocolSettings.Default.AddressVersion;
