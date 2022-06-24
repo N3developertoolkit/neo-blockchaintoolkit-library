@@ -1,6 +1,6 @@
 # Neo Blockchain Toolkit Persistence Library
 
-[![Build Status](https://dev.azure.com/ngdenterprise/Build/_apis/build/status/ngdenterprise.neo-blockchaintoolkit-library?branchName=master)](https://dev.azure.com/ngdenterprise/Build/_build/latest?definitionId=6&branchName=master)
+[![Build Status](https://github.com/ngdenterprise/neo-blockchaintoolkit-library/actions/workflows/build.yml/badge.svg)](https://github.com/ngdenterprise/neo-blockchaintoolkit-library/actions?query=branch%3Amaster)
 
 This repo projects for code shared between managed projects in the Neo Blockchain Toolkit.
 In particular, these libraries are used in [Neo-Express](https://github.com/neo-project/neo-express)
@@ -8,6 +8,11 @@ and the [Neo Smart Contract Debugger for VS Code](https://github.com/neo-project
 
 Continutious Integration build packages are available via
 [Azure Artifacts](https://dev.azure.com/ngdenterprise/Build/_packaging?_a=feed&feed=public).
+
+## Models
+
+This library contains classes for reading and writing .neo-express files and 
+[NEP-19 compatible debug information](https://github.com/neo-project/proposals/blob/master/nep-19.mediawiki)
 
 ## Contract Parameter Parsing
 
@@ -24,15 +29,24 @@ This library contains two `Neo.Persistence.IStore` implementations:
 * **RocksDbStore**: This implementation stores blockchain information in a
   [RocksDb](https://rocksdb.org/). It is similar to the RocksDbStore implementation in
   [neo-modules](https://github.com/neo-project/neo-modules), but is optimized for
-  fast startup and includes live checkpoint support.
+  developer scenarios, including live checkpoint support.
 
-* **CheckpointStore**: This implementation sits on top of any `Neo.Persistence.IReadOnlyStore`
+* **MemoryTrackingStore**: This implementation sits on top of any `Neo.Persistence.IReadOnlyStore`
   implementation and stores all changes in memory. This enables test/debug runs to
   use live data without persisting further changes.
 
-* **StateServiceStore**: This implementation sits on top of a [StateService node](https://github.com/neo-project/neo-modules/tree/master/src/StateService)
-  running with `FullState: true`. This enables code to use live data from a public Neo
-  blockchain network such as MainNet or TestNet.
+* **PersistentTrackingStore**: This implementation sits on top of any `Neo.Persistence.IReadOnlyStore`
+  implementation and stores all changes on disk.
+
+* **CheckpointStore**: This implementation of `Neo.Persistence.IReadOnlyStore` pulls data
+  from a Neo Express checkpoint. Combined with a tracking store, this enables test/debug runs to
+  use live data without persisting further changes.
+
+* **StateServiceStore**: This implementation of `Neo.Persistence.IReadOnlyStore` sits
+  on top of a [StateService node](https://github.com/neo-project/neo-modules/tree/master/src/StateService)
+  running with `FullState: true`. Combined with a tracking store, this enables code to use live
+  data from a public Neo blockchain network such as MainNet or TestNet.
+
 
 ## Trace Models
 
