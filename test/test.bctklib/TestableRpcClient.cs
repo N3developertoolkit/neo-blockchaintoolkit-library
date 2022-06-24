@@ -17,7 +17,6 @@ namespace test.bctklib
             }
         }
 
-
         public void QueueResource(string resourceName)
         {
             responseQueue.Enqueue(() => JObject.Parse(Utility.GetResource(resourceName)));
