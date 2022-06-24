@@ -18,13 +18,20 @@ may not exactly match a publicly released version.
 ### Added
 
 * CreateGenesisContract extension method (#60)
-* IRocksDbStorageProvider abstraction (#62)
+* Utility.VerifyProof method (1d4b6ab53868b0b0fda961d135e6d86f9c65f6ce)
+* PersistentTrackingStore (#67)
+
+### Removed 
+
+* Removed storage providers (#69)
+  * Storage Providers are specific to Neo Express so they were [moved into that repo](https://github.com/neo-project/neo-express/pull/235)
 
 ### Changed
 
 * Verify state service proofs in StateServiceStore methods (#64)
 * MemoryTrackingStore throws NullReferenceException when `Put` a null value to match RocksDB behavior
 * Moved `RocksDbStorageProvider.CreateCheckpoint` overloads to be extension methods
+* Support additional instructions in GetComment (4cafe6643f0516ba8ba3536bea4e725da9bce12e)
 
 ### Engineering
 

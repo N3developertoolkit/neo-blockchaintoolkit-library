@@ -33,6 +33,7 @@ namespace Neo.BlockchainToolkit
 
             // Note, StorageKey.Deserialized was removed in Neo 3.3.0
             //       so VerifyProof has to deserialize StorageKey directly
+            //       https://github.com/neo-project/neo/issues/2765
             var key = new StorageKey()
             {
                 Id = BinaryPrimitives.ReadInt32LittleEndian(keyBuffer),
