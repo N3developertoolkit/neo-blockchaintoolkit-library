@@ -22,9 +22,9 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NeoModulesVersion>3.3.0</NeoModulesVersion>
-    <NeoModuleLocalPath>..\..\..\..\official\3neo-monorepo\modules\</NeoModuleLocalPath>
-    <!-- <NeoModulesVersion>local</NeoModulesVersion> -->
+    <NeoVersion>3.3.1</NeoVersion>
+    <!-- <NeoVersion>local</NeoVersion> -->
+    <NeoMonorepoPath>..\..\..\..\official\3neo-monorepo</NeoMonorepoPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CI)' == 'true'">
@@ -40,25 +40,25 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="2.3.85" />
+    <PackageReference Include="MessagePack" Version="2.3.112" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
     <PackageReference Include="Nerdbank.Streams" Version="2.8.57" />
     <PackageReference Include="OneOf" Version="3.0.216" />
-    <PackageReference Include="rocksdb" Version="7.2.2.29452" />
-    <PackageReference Include="System.IO.Abstractions" Version="17.0.15" />
+    <PackageReference Include="rocksdb" Version="7.2.2.30179" />
+    <PackageReference Include="System.IO.Abstractions" Version="17.0.18" />
   </ItemGroup>
 
   <Choose>
-    <When Condition=" '$(NeoModulesVersion)' == 'local'">
+    <When Condition=" '$(NeoVersion)' == 'local'">
       <ItemGroup>
-        <ProjectReference Include="$(NeoModuleLocalPath)\src\MPTTrie\MPTTrie.csproj" />
-        <ProjectReference Include="$(NeoModuleLocalPath)\src\RpcClient\RpcClient.csproj" />
+        <ProjectReference Include="$(NeoMonorepoPath)\modules\src\MPTTrie\MPTTrie.csproj" />
+        <ProjectReference Include="$(NeoMonorepoPath)\modules\src\RpcClient\RpcClient.csproj" />
       </ItemGroup>
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoModulesVersion)" />
-        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoModulesVersion)" />
+        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoVersion)" />
+        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoVersion)" />
       </ItemGroup>
     </Otherwise>
   </Choose>

@@ -60,12 +60,12 @@ namespace Neo.BlockchainToolkit.Persistence
             }
             catch (RpcException ex) when (ex.HResult == -100 && ex.Message == "Unknown value")
             {
-                // Unfortunately, StateService GetProof method throws a custom exception 
-                // instead of KeyNotFoundException like GetState. 
-                // https://github.com/neo-project/neo-modules/pull/706 tracks changing
-                // exception thrown by GetProof. 
-                // Until this is changed, also look for the the custom exception thrown
-                // by GetProof
+                // Prior to Neo 3.3.0, StateService GetProof method threw a custom exception 
+                // instead of KeyNotFoundException like GetState. This catch clause detected
+                // the custom exception that GetProof used to throw. 
+
+                // TODO: remove this clause once deployed StateService for Neo N3 MainNet and
+                //       TestNet has been verified to be running Neo 3.3.0 or later.
 
                 return null;
             }

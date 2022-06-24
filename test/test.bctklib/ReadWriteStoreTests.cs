@@ -11,8 +11,7 @@ using static Utility;
 
 public class ReadWriteStoreTests : IDisposable
 {
-    // include memory and NeoRocksDb for comparison
-    // Note, MemoryStore fails multiple tests. Tracked by https://github.com/neo-project/neo/issues/2758
+    // include Neo.Persistence MemoryStore and Neo.Plugins.Storage.RocksDBStore for comparison
     public enum StoreType { Memory, NeoRocksDb, RocksDb }
 
     readonly CleanupPath path = new CleanupPath();
