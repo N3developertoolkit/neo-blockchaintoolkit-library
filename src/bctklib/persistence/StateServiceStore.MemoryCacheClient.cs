@@ -33,8 +33,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 var hash = HashCode.Combine(
                     rootHash,
                     scriptHash,
-                    ReadOnlyMemoryComparer.GetHashCode(prefix.Span),
-                    ReadOnlyMemoryComparer.GetHashCode(from.Span),
+                    MemorySequenceComparer.GetHashCode(prefix.Span),
+                    MemorySequenceComparer.GetHashCode(from.Span),
                     count);
                 return foundStates.GetOrAdd(hash,
                     _ => rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from.Span, count));
@@ -49,7 +49,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 var doo = new Dictionary<int, RpcFoundStates>();
 
-                var hash = HashCode.Combine(rootHash, scriptHash, ReadOnlyMemoryComparer.GetHashCode(key.Span));
+                var hash = HashCode.Combine(rootHash, scriptHash, MemorySequenceComparer.GetHashCode(key.Span));
                 return retrievedStates.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
             }
 
@@ -61,7 +61,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
             {
                 var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
-                var hash = ReadOnlyMemoryComparer.GetHashCode(key.Span);
+                var hash = MemorySequenceComparer.GetHashCode(key.Span);
                 return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
             }
 

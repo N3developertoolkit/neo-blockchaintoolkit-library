@@ -14,7 +14,7 @@ namespace Neo.BlockchainToolkit.Persistence
     public partial class MemoryTrackingStore : IStore
     {
         readonly IReadOnlyStore store;
-        TrackingMap trackingMap = TrackingMap.Empty.WithComparers(ReadOnlyMemoryComparer.Default);
+        TrackingMap trackingMap = TrackingMap.Empty.WithComparers(MemorySequenceComparer.Default);
 
         public MemoryTrackingStore(IReadOnlyStore store)
         {
@@ -65,8 +65,8 @@ namespace Neo.BlockchainToolkit.Persistence
             }
 
             var comparer = direction == SeekDirection.Forward
-                ? ReadOnlyMemoryComparer.Default
-                : ReadOnlyMemoryComparer.Reverse;
+                ? MemorySequenceComparer.Default
+                : MemorySequenceComparer.Reverse;
 
             var memoryItems = trackingMap
                 .Where(kvp => kvp.Value.IsT0)

@@ -91,8 +91,8 @@ namespace Neo.BlockchainToolkit.Persistence
             var storeItems = store.Seek(key, direction).Where(KeyUntracked);
 
             var comparer = direction == SeekDirection.Forward
-                ? ReadOnlyMemoryComparer.Default
-                : ReadOnlyMemoryComparer.Reverse;
+                ? MemorySequenceComparer.Default
+                : MemorySequenceComparer.Reverse;
 
             return trackedItems.Concat(storeItems).OrderBy(kvp => kvp.Key, comparer);
 
