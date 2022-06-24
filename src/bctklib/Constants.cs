@@ -7,7 +7,7 @@ namespace Neo.BlockchainToolkit
         public const string EXPRESS_EXTENSION = ".neo-express";
         public const string DEFAULT_EXPRESS_FILENAME = "default" + EXPRESS_EXTENSION;
 
-        public static readonly IReadOnlyList<string> MAINNET_RPC_ENDPOINTS = new []
+        public static readonly IReadOnlyList<string> MAINNET_RPC_ENDPOINTS = new[]
         {
             "http://seed1.neo.org:10332",
             "http://seed2.neo.org:10332",
@@ -16,7 +16,7 @@ namespace Neo.BlockchainToolkit
             "http://seed5.neo.org:10332"
         };
 
-        public static readonly IReadOnlyList<string> TESTNET_RPC_ENDPOINTS = new []
+        public static readonly IReadOnlyList<string> TESTNET_RPC_ENDPOINTS = new[]
         {
             "http://seed1t5.neo.org:20332",
             "http://seed2t5.neo.org:20332",
