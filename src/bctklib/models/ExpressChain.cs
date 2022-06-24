@@ -11,7 +11,8 @@ namespace Neo.BlockchainToolkit.Models
             /* Neo 2 MainNet */ 7630401,
             /* Neo 2 TestNet */ 1953787457,
             /* Neo 3 MainNet */ 860833102,
-            /* Neo 3 TestNet */ 877933390,
+            /* Neo 3 T5 TestNet */ 894710606,
+            /* Neo 3 T4 TestNet */ 877933390,
             /* Neo 3 RC3 TestNet */ 844378958,
             /* Neo 3 RC1 TestNet */ 827601742,
             /* Neo 3 Preview5 TestNet */ 894448462);
