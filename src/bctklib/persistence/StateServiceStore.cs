@@ -212,8 +212,8 @@ namespace Neo.BlockchainToolkit.Persistence
         IEnumerable<(byte[] Key, byte[] Value)> Seek(UInt160 contractHash, int contractId, ReadOnlyMemory<byte> prefix, SeekDirection direction)
         {
             var comparer = direction == SeekDirection.Forward
-                ? ReadOnlyMemoryComparer.Default
-                : ReadOnlyMemoryComparer.Reverse;
+                ? MemorySequenceComparer.Default
+                : MemorySequenceComparer.Reverse;
 
             return EnumerateFindStates(cachingClient, rootHash, contractHash, prefix)
                 .Select(kvp =>

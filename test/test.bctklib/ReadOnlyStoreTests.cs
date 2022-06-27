@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using FluentAssertions;
+using Neo.BlockchainToolkit;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
 using Xunit;
@@ -191,7 +192,7 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         using var _ = store as IDisposable;
         var key = new byte[] { 1, 0 };
         var expected = TestData
-            .Where(kvp => ReadOnlyMemoryComparer.Default.Compare(kvp.key, key) >= 0);
+            .Where(kvp => MemorySequenceComparer.Default.Compare(kvp.key, key) >= 0);
         store.Seek(key, SeekDirection.Forward).Should().BeEquivalentTo(expected);
     }
 
@@ -207,7 +208,7 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         using var _ = store as IDisposable;
         var key = new byte[] { 2, 0 };
         var expected = TestData
-            .Where(kvp => ReadOnlyMemoryComparer.Reverse.Compare(kvp.key, key) >= 0)
+            .Where(kvp => MemorySequenceComparer.Reverse.Compare(kvp.key, key) >= 0)
             .Reverse();
         store.Seek(key, SeekDirection.Backward).Should().BeEquivalentTo(expected);
     }
