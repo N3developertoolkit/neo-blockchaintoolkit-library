@@ -15,7 +15,7 @@ namespace Neo.BlockchainToolkit.Persistence
             readonly IReadOnlyStore store;
             readonly TrackingMap trackingMap;
             readonly Action<TrackingMap> commitAction;
-            TrackingMap writeBatchMap = TrackingMap.Empty.WithComparers(ReadOnlyMemoryComparer.Default);
+            TrackingMap writeBatchMap = TrackingMap.Empty.WithComparers(MemorySequenceComparer.Default);
 
             public Snapshot(IReadOnlyStore store, TrackingMap trackingMap, Action<TrackingMap> commitAction)
             {
