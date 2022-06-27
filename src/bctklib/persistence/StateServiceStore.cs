@@ -126,7 +126,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public bool Contains(byte[] key) => TryGet(key) == null;
+        public bool Contains(byte[] key) => TryGet(key) != null;
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction)
         {
