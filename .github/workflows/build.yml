@@ -72,6 +72,7 @@ jobs:
         dotnet restore
         dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
         dotnet pack --configuration ${{ env.CONFIGURATION }} --output ./out --no-build --verbosity normal
+        rm ./out/*.snupkg
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
