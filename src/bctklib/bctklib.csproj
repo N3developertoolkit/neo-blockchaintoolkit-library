@@ -57,8 +57,8 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="Neo.Cryptography.MPT" Version="$(NeoVersion)" />
-        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="$(NeoVersion)" />
+        <PackageReference Include="Neo.Cryptography.MPT" Version="3.4.0" />
+        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="3.4.0" />
       </ItemGroup>
     </Otherwise>
   </Choose>
