@@ -1,6 +1,7 @@
 using System;
 using Neo;
 using Neo.BlockchainToolkit.Persistence;
+using Neo.Json;
 using Neo.Network.RPC;
 using RocksDbSharp;
 using Xunit;
@@ -22,7 +23,7 @@ public class RocksDbCacheClientTest
         var proof = trie.GetSerializedProof(key);
         Assert.True(trie.TryGetValue(key, out var expected));
 
-        using var rpcClient = new TestableRpcClient(() => Convert.ToBase64String(trie.GetSerializedProof(key)));
+        using var rpcClient = new TestableRpcClient(() => new JString(Convert.ToBase64String(trie.GetSerializedProof(key))));
 
         var tempPath = new CleanupPath();
         using var client = new StateServiceStore.RocksDbCacheClient(rpcClient, tempPath);

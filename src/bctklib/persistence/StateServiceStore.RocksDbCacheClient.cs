@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using MessagePack;
 using MessagePack.Formatters;
-using Neo.IO.Json;
+using Neo.Json;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 using RocksDbSharp;
@@ -74,7 +74,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 var json = GetCachedJson(key, family, () =>
                 {
                     var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
-                    return rpcClient.RpcSend("findstates", @params);
+                    return (Json.JObject)rpcClient.RpcSend("findstates", @params);
                 });
                 return RpcFoundStates.FromJson(json);
             }
@@ -83,7 +83,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 var family = db.GetDefaultColumnFamily();
                 var json = GetCachedJson($"{nameof(GetBlockHash)}{index}", family,
-                    () => rpcClient.RpcSend("getblockhash", index));
+                    () => (Json.JObject)rpcClient.RpcSend("getblockhash", index));
                 return UInt256.Parse(json.AsString());
             }
 
@@ -133,7 +133,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 var family = db.GetDefaultColumnFamily();
                 var json = GetCachedJson($"{nameof(GetStateRoot)}{index}", family,
-                    () => rpcClient.RpcSend("getstateroot", index));
+                    () => (Json.JObject)rpcClient.RpcSend("getstateroot", index));
                 return RpcStateRoot.FromJson(json);
             }
 
@@ -144,7 +144,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 var familyName = $"{nameof(GetLedgerStorage)}";
                 var family = GetOrCreateColumnFamily(db, familyName);
                 var json = GetCachedJson(key.Span, family,
-                    () => rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
+                    () => (Json.JObject)rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
                 return Convert.FromBase64String(json.AsString());
             }
 
@@ -169,14 +169,16 @@ namespace Neo.BlockchainToolkit.Persistence
                 var value = db.Get(key, family);
                 if (value != null)
                 {
-                    return JObject.Parse(value);
+                    var token = JToken.Parse(value);
+                    if (token != null && token is JObject jObject)
+                    {
+                        return jObject;
+                    }
                 }
-                else
-                {
-                    var json = factory();
-                    db.Put(key, json.ToByteArray(false), family);
-                    return json;
-                }
+
+                var json = factory();
+                db.Put(key, json.ToByteArray(false), family);
+                return json;
             }
         }
     }

@@ -267,7 +267,7 @@ namespace test.bctklib
 
         static byte[] CreateCompressedDebugInfo(string contractName, string debugInfo)
         {
-            var jsonDebugInfo = Neo.IO.Json.JObject.Parse(debugInfo);
+            var jsonDebugInfo = Neo.Json.JToken.Parse(debugInfo) ?? throw new NullReferenceException();
             using var memoryStream = new MemoryStream();
             using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
             {

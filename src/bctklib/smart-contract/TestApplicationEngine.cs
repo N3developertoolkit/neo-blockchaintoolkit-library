@@ -154,11 +154,11 @@ namespace Neo.BlockchainToolkit.SmartContract
             }
         }
 
-        static int CalculateBranchOffset(ExecutionContext context)
+        static int CalculateBranchOffset(Instruction instruction, ExecutionContext context)
         {
-            Debug.Assert(context.CurrentInstruction.IsBranchInstruction());
+            Debug.Assert(instruction.IsBranchInstruction());
 
-            switch (context.CurrentInstruction.OpCode)
+            switch (instruction.OpCode)
             {
                 case OpCode.JMPIF_L:
                 case OpCode.JMPIFNOT_L:
@@ -168,7 +168,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                 case OpCode.JMPGE_L:
                 case OpCode.JMPLT_L:
                 case OpCode.JMPLE_L:
-                    return context.InstructionPointer + context.CurrentInstruction.TokenI32;
+                    return context.InstructionPointer + instruction.TokenI32;
                 case OpCode.JMPIF:
                 case OpCode.JMPIFNOT:
                 case OpCode.JMPEQ:
@@ -177,9 +177,9 @@ namespace Neo.BlockchainToolkit.SmartContract
                 case OpCode.JMPGE:
                 case OpCode.JMPLT:
                 case OpCode.JMPLE:
-                    return context.InstructionPointer + context.CurrentInstruction.TokenI8;
+                    return context.InstructionPointer + instruction.TokenI8;
                 default:
-                    throw new InvalidOperationException($"CalculateBranchOffsets:GetOffset Unexpected OpCode {context.CurrentInstruction.OpCode}");
+                    throw new InvalidOperationException($"CalculateBranchOffsets:GetOffset Unexpected OpCode {instruction.OpCode}");
             }
         }
 
@@ -192,18 +192,18 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         BranchInstructionInfo? branchInstructionInfo = null;
 
-        protected override void PreExecuteInstruction()
+        protected override void PreExecuteInstruction(Instruction instruction)
         {
-            base.PreExecuteInstruction();
+            base.PreExecuteInstruction(instruction);
 
             if (CurrentContext == null) return;
 
             var hash = CurrentContext.GetScriptHash()
                 ?? throw new InvalidOperationException("CurrentContext.GetScriptHash returned null");
 
-            if (CurrentContext.CurrentInstruction.IsBranchInstruction())
+            if (instruction.IsBranchInstruction())
             {
-                var branchOffset = CalculateBranchOffset(CurrentContext);
+                var branchOffset = CalculateBranchOffset(instruction, CurrentContext);
                 branchInstructionInfo = new BranchInstructionInfo()
                 {
                     ContractHash = hash,
@@ -226,9 +226,9 @@ namespace Neo.BlockchainToolkit.SmartContract
             hitMap[CurrentContext.InstructionPointer] = hitCount + 1;
         }
 
-        protected override void PostExecuteInstruction()
+        protected override void PostExecuteInstruction(Instruction instruction)
         {
-            base.PostExecuteInstruction();
+            base.PostExecuteInstruction(instruction);
 
             if (CurrentContext == null) return;
 
