@@ -8,7 +8,7 @@ using Neo.BlockchainToolkit;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Cryptography.MPTTrie;
 using Neo.IO;
-using Neo.IO.Json;
+using Neo.Json;
 using Neo.Network.RPC;
 using Neo.SmartContract;
 using Xunit;
@@ -25,7 +25,7 @@ namespace test.bctklib
             var key = BitConverter.GetBytes(42);
             Assert.True(trie.TryGetValue(key, out var expected));
 
-            var rpcClient = new TestableRpcClient(() => Convert.ToBase64String(trie.GetSerializedProof(key)));
+            var rpcClient = new TestableRpcClient(() => new JString(Convert.ToBase64String(trie.GetSerializedProof(key))));
             var actual = rpcClient.GetProvenState(trie.Root.Hash, UInt160.Zero, default);
             Assert.Equal(expected, actual);
         }

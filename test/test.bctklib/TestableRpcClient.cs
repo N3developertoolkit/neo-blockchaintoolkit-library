@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Neo.IO.Json;
+using Neo.Json;
 
 namespace test.bctklib
 {
     class TestableRpcClient : Neo.Network.RPC.RpcClient
     {
-        Queue<Func<JObject>> responseQueue = new();
+        Queue<Func<JToken>> responseQueue = new();
 
-        public TestableRpcClient(params Func<JObject>[] functions) : base(null)
+        public TestableRpcClient(params Func<JToken>[] functions) : base(null)
         {
             foreach (var func in functions.Reverse())
             {
@@ -19,10 +19,10 @@ namespace test.bctklib
 
         public void QueueResource(string resourceName)
         {
-            responseQueue.Enqueue(() => JObject.Parse(Utility.GetResource(resourceName)));
+            responseQueue.Enqueue(() => JToken.Parse(Utility.GetResource(resourceName)) ?? throw new NullReferenceException());
         }
 
-        public override JObject RpcSend(string method, params JObject[] paraArgs)
+        public override JToken RpcSend(string method, params JToken[] paraArgs)
         {
             return responseQueue.Dequeue()();
         }

@@ -16,7 +16,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public static RpcVersion GetVersion(this RpcClient rpcClient)
         {
             var result = rpcClient.RpcSend(RpcClient.GetRpcName());
-            return RpcVersion.FromJson(result);
+            return RpcVersion.FromJson((Json.JObject)result);
         }
 
         public static UInt256 GetBlockHash(this RpcClient rpcClient, uint index)
@@ -34,7 +34,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public static RpcStateRoot GetStateRoot(this RpcClient rpcClient, uint index)
         {
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
-            return RpcStateRoot.FromJson(result);
+            return RpcStateRoot.FromJson((Json.JObject)result);
         }
 
         public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
@@ -75,7 +75,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
-            var foundStates = RpcFoundStates.FromJson(result);
+            var foundStates = RpcFoundStates.FromJson((Json.JObject)result);
             if (foundStates.Results.Length > 0)
             {
                 ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
