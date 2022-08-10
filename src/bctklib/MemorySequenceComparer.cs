@@ -24,7 +24,7 @@ namespace Neo.BlockchainToolkit
             var compare = x.Span.SequenceCompareTo(y.Span);
             return reverse ? -compare : compare;
         }
-        
+
         public static bool Equals(ReadOnlySpan<byte> x, ReadOnlySpan<byte> y) => x.SequenceEqual(y);
 
         public static int GetHashCode(ReadOnlySpan<byte> span)
