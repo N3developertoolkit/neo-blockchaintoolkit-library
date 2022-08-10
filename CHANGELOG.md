@@ -32,6 +32,12 @@ may not exactly match a publicly released version.
 
 ## [Unreleased]
 
+### Changed
+
+* Updated to Neo 3.4 (#70)
+
+## [3.3.21] - 2022-06-27
+
 ### Added
 
 * CreateGenesisContract extension method (#60)
@@ -45,6 +51,7 @@ may not exactly match a publicly released version.
 
 ### Changed
 
+* Updated to Neo 3.3.1 (#69)
 * Verify state service proofs in StateServiceStore methods (#64)
 * MemoryTrackingStore throws NullReferenceException when `Put` a null value to match RocksDB behavior
 * Moved `RocksDbStorageProvider.CreateCheckpoint` overloads to be extension methods
