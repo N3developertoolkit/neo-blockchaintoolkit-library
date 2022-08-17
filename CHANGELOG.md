@@ -13,11 +13,11 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [Unreleased]
+## [3.4.13] - 2202-08-17
 
 ### Changed
 
-* Updated to Neo 3.4 (#70)
+* Updated to Neo v3.4 ([#70](https://github.com/ngdenterprise/neo-blockchaintoolkit-library/pull/70))
 
 ## [3.3.21] - 2022-06-27
 
