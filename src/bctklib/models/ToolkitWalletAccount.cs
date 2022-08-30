@@ -5,7 +5,7 @@ using Neo.Wallets;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    class ToolkitWalletAccount : WalletAccount
+    public class ToolkitWalletAccount : WalletAccount
     {
         readonly KeyPair? key;
 

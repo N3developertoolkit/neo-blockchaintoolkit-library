@@ -7,7 +7,7 @@ using Neo.Wallets;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    class ToolkitWallet : Wallet
+    public class ToolkitWallet : Wallet
     {
         readonly Dictionary<UInt160, ToolkitWalletAccount> accounts = new();
 
