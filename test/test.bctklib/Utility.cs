@@ -97,9 +97,9 @@ static class Utility
     public static IEnumerable<(byte[], byte[])> GetSeekData((byte start, byte end) one, (byte start, byte end) two)
     {
         if (one.start > 9 || one.end > 9 || one.end < one.start)
-            throw new ArgumentException(nameof(one));
+            throw new ArgumentException("Invalid value", nameof(one));
         if (two.start > 9 || two.end > 9 || two.end < two.start)
-            throw new ArgumentException(nameof(two));
+            throw new ArgumentException("Invalid value", nameof(two));
 
         for (var i = one.start; i <= one.end; i++)
         {

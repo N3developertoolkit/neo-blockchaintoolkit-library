@@ -26,5 +26,6 @@ public class CheckpointFixture : IDisposable
     public void Dispose()
     {
         checkpointPath.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

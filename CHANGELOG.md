@@ -30,11 +30,11 @@ may not exactly match a publicly released version.
   from Smart Contract Framework source (#61)
   * scfx-gen tool to generate Neo Core platform structure definitions
 
-## [Unreleased]
+## [3.4.13] - 2202-08-17
 
 ### Changed
 
-* Updated to Neo 3.4 (#70)
+* Updated to Neo v3.4 ([#70](https://github.com/ngdenterprise/neo-blockchaintoolkit-library/pull/70))
 
 ## [3.3.21] - 2022-06-27
 

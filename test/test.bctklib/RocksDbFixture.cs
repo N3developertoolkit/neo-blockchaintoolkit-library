@@ -21,6 +21,7 @@ public class RocksDbFixture : IDisposable
     public void Dispose()
     {
         dbPath.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     public static void Populate(RocksDb db)
