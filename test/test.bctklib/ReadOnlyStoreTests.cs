@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using FluentAssertions;
 using Neo.BlockchainToolkit;
@@ -10,6 +11,8 @@ namespace test.bctklib;
 
 using static Utility;
 
+
+[SuppressMessage("IClassFixture", "xUnit1033")]
 public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixture<RocksDbFixture>, IDisposable
 {
     public enum StoreType { Checkpoint, Memory, NeoRocksDb, RocksDb }
@@ -27,6 +30,7 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
     public void Dispose()
     {
         path.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

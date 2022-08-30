@@ -39,7 +39,7 @@ namespace test.bctklib
         public void ParseObjectParameter_bytearray_hex()
         {
             var value = "0xbcbbcd38fb0c097be28e6aef0177f5d65534eb3b";
-            var expected = Convert.FromHexString(value.Substring(2));
+            var expected = Convert.FromHexString(value.AsSpan(2));
             var json = new JObject()
             {
                 ["type"] = "ByteArray",
@@ -113,7 +113,7 @@ namespace test.bctklib
         {
             var uint160 = UInt160.Parse("30f41a14ca6019038b055b585d002b287b5fdd47");
             var address = Neo.Wallets.Helper.ToAddress(uint160, DEFAULT_ADDRESS_VERSION);
-            var expected = "@" + address.Substring(0, address.Length - 1);
+            var expected = string.Concat("@", address.AsSpan(0, address.Length - 1));
 
             var parser = new ContractParameterParser(DEFAULT_ADDRESS_VERSION);
             var param = parser.ParseStringParameter(expected);

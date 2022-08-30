@@ -21,6 +21,7 @@ public class TrackingStoreTests : IDisposable
     public void Dispose()
     {
         path.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Theory, CombinatorialData]
@@ -226,7 +227,7 @@ public class TrackingStoreTests : IDisposable
             StoreType.MemoryTracking => new MemoryTrackingStore(store),
             StoreType.PersistentTracking =>
                 new PersistentTrackingStore(RocksDbUtility.OpenDb(path), store),
-            _ => throw new ArgumentException(nameof(storeType)),
+            _ => throw new ArgumentException("Unknown StoreType", nameof(storeType)),
         };
 
     class DisposableStore : IReadOnlyStore, IDisposable

@@ -149,7 +149,8 @@ namespace Neo.BlockchainToolkit.Persistence
             }
 
             readonly static Encoding encoding = Encoding.UTF8;
-            IMemoryOwner<byte> GetKeyBuffer(string text, out int count)
+
+            static IMemoryOwner<byte> GetKeyBuffer(string text, out int count)
             {
                 count = encoding.GetByteCount(text);
                 var owner = MemoryPool<byte>.Shared.Rent(count);

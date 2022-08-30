@@ -43,6 +43,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 Directory.Delete(checkpointTempPath, true);
             }
+            GC.SuppressFinalize(this);
         }
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction) => store.Seek(key, direction);

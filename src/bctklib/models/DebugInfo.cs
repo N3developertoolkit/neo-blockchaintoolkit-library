@@ -297,8 +297,8 @@ namespace Neo.BlockchainToolkit.Models
                     Range = (rangeStart, rangeEnd),
                     Parameters = @params,
                     ReturnType = @return,
-                    Variables = variables.ToImmutableList(),
-                    SequencePoints = sequencePoints.ToImmutableList(),
+                    Variables = variables,
+                    SequencePoints = sequencePoints,
                 };
             }
 

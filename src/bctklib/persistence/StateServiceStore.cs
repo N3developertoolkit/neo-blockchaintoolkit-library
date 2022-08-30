@@ -77,6 +77,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public void Dispose()
         {
             cachingClient.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public RpcVersion GetVersion() => version;

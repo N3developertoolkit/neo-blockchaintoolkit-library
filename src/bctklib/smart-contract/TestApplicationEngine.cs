@@ -113,6 +113,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             ApplicationEngine.Log -= OnLog;
             ApplicationEngine.Notify -= OnNotify;
             base.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public IReadOnlyDictionary<int, int> GetHitMap(UInt160 contractHash)

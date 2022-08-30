@@ -19,6 +19,7 @@ public class ReadWriteStoreTests : IDisposable
     public void Dispose()
     {
         path.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Theory, CombinatorialData]
