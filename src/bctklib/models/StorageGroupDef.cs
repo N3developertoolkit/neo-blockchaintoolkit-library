@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using OneOf;
 
@@ -43,6 +44,39 @@ namespace Neo.BlockchainToolkit.Models
                 if (!KeySegments[i].Equals(other.KeySegments[i])) return false;
             }
             return true;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is StorageGroupDef sgd ? Equals(sgd) : false;
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(Name);
+            hash.Add(ValueType);
+            hash.Add(KeyPrefix.Span.Length);
+            for (int i = 0; i < KeyPrefix.Span.Length; i++)
+            {
+                hash.Add(KeyPrefix.Span[i]);
+            }
+            hash.Add(KeySegments.Count);
+            for (int i = 0; i < KeySegments.Count; i++)
+            {
+                hash.Add(KeySegments[i]);
+            }
+            return hash.ToHashCode();
+        }
+
+        public static bool operator ==(StorageGroupDef left, StorageGroupDef right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(StorageGroupDef left, StorageGroupDef right)
+        {
+            return !(left == right);
         }
     }
 }

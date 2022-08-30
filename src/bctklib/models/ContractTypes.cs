@@ -180,7 +180,7 @@ namespace Neo.BlockchainToolkit.Models
 
         public StructContractType(string name, IReadOnlyList<(string Name, ContractType Type)> fields)
         {
-            if (!name.StartsWith(NEO_NAMESPACE) && !IsValidName(name)) throw new ArgumentException(nameof(name));
+            if (!name.StartsWith(NEO_NAMESPACE) && !IsValidName(name)) throw new ArgumentException(null, nameof(name));
 
             this.Name = name;
             this.Fields = fields;

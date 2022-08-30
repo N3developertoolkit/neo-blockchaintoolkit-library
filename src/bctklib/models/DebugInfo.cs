@@ -356,7 +356,7 @@ namespace Neo.BlockchainToolkit.Models
                 return (values[0], values[1]);
             }
 
-            throw new ArgumentException(nameof(value));
+            throw new ArgumentException(null, nameof(value));
         }
     }
 }
