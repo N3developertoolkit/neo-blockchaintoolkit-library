@@ -41,6 +41,7 @@ namespace Neo.BlockchainToolkit.Persistence
             if (disposed || shared) return;
             disposed = true;
             db.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public byte[]? TryGet(byte[]? key)

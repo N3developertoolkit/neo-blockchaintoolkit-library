@@ -39,6 +39,7 @@ namespace Neo.BlockchainToolkit.TraceDebug
         {
             stream.Flush();
             stream.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         private void Write(Action<IBufferWriter<byte>, MessagePackSerializerOptions> funcWrite)

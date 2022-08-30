@@ -31,6 +31,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             Notify -= OnNotify!;
             traceDebugSink.Dispose();
             base.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         private string GetContractName(UInt160 scriptId)
