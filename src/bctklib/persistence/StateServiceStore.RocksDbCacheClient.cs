@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using MessagePack;
 using MessagePack.Formatters;
+using Neo.IO;
 using Neo.Json;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
@@ -16,6 +17,9 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         internal class RocksDbCacheClient : ICachingClient
         {
+            const byte GetBlockHash_Prefix = 0xC0;
+            const byte GetStateRootAsync_Prefix = 0xC1;
+ 
             readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
 
             static ColumnFamilyHandle GetOrCreateColumnFamily(RocksDb db, string familyName, ColumnFamilyOptions? options = null)
@@ -35,71 +39,12 @@ namespace Neo.BlockchainToolkit.Persistence
                 this.rpcClient = rpcClient;
 
                 if (!Directory.Exists(cachePath)) Directory.CreateDirectory(cachePath);
-                var columnFamilies = GetColumnFamilies(cachePath);
-                db = RocksDb.Open(new DbOptions().SetCreateIfMissing(true), cachePath, columnFamilies);
-
-                static ColumnFamilies GetColumnFamilies(string path)
-                {
-                    if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
-                    {
-                        var columnFamilyOptions = new ColumnFamilyOptions();
-                        var families = new ColumnFamilies();
-                        foreach (var name in names)
-                        {
-                            families.Add(name, columnFamilyOptions);
-                        }
-                        return families;
-                    }
-
-                    return new ColumnFamilies();
-                }
+                db = RocksDbUtility.OpenDb(cachePath);
             }
 
             public void Dispose()
             {
                 db.Dispose();
-            }
-
-            public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
-            {
-                var familyName = $"{nameof(FindStates)}{rootHash}{scriptHash}";
-                var family = GetOrCreateColumnFamily(db, familyName);
-
-                var keyLength = prefix.Length + from.Length + (count.HasValue ? sizeof(int) : 0);
-                Span<byte> key = stackalloc byte[keyLength];
-                prefix.Span.CopyTo(key);
-                if (from.Length > 0) from.Span.CopyTo(key.Slice(prefix.Length));
-                if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
-
-                var json = GetOrAddJson(key, family, () =>
-                {
-                    var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
-                    return (Json.JObject)rpcClient.RpcSend("findstates", @params);
-                });
-                return RpcFoundStates.FromJson(json);
-            }
-
-            const byte GetBlockHash_Prefix = 0xC0;
-            const byte GetStateRootAsync_Prefix = 0xC1;
-
-            public UInt256 GetBlockHash(uint index)
-            {
-                var family = db.GetDefaultColumnFamily();
-                Span<byte> key = stackalloc byte[1 + sizeof(uint)];
-                key[0] = GetBlockHash_Prefix;
-                BinaryPrimitives.WriteUInt32LittleEndian(key.Slice(1), index);
-
-                using (var slice = db.GetSlice(key, family))
-                {
-                    if (slice.Valid)
-                    {
-                        return new UInt256(slice.GetValue());
-                    }
-                }
-
-                var hash = rpcClient.GetBlockHash(index);
-                db.Put(key, Neo.IO.Helper.ToArray(hash).AsSpan(), family);
-                return hash;
             }
 
             public async Task<UInt256> GetStateRootHashAsync(uint index)
@@ -121,8 +66,57 @@ namespace Neo.BlockchainToolkit.Persistence
 
                 var stateApi = new StateAPI(rpcClient);
                 var stateRoot = await stateApi.GetStateRootAsync(index).ConfigureAwait(false);
-                db.Put(key.Span, Neo.IO.Helper.ToArray(stateRoot.RootHash).AsSpan(), family);
+                db.Put(key.Span, stateRoot.RootHash.ToArray().AsSpan(), family);
                 return stateRoot.RootHash;
+            }
+
+            public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
+            {
+                var familyName = $"{nameof(FindStates)}{rootHash}{scriptHash}";
+                var family = GetOrCreateColumnFamily(db, familyName);
+
+                var keyLength = prefix.Length + from.Length + (count.HasValue ? sizeof(int) : 0);
+                Span<byte> key = stackalloc byte[keyLength];
+                prefix.Span.CopyTo(key);
+                if (from.Length > 0) from.Span.CopyTo(key.Slice(prefix.Length));
+                if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
+
+                using (var slice = db.GetSlice(key, family))
+                {
+                    if (slice.Valid)
+                    {
+                        var token = JToken.Parse(slice.GetValue());
+                        if (token is not null && token is JObject jObject)
+                        {
+                            return RpcFoundStates.FromJson(jObject);
+                        }
+                    }
+                }
+
+                var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
+                var json = (Json.JObject)rpcClient.RpcSend("findstates", @params);
+                db.Put(key, json.ToByteArray(false), family);
+                return RpcFoundStates.FromJson(json);
+            }
+
+            public UInt256 GetBlockHash(uint index)
+            {
+                var family = db.GetDefaultColumnFamily();
+                Span<byte> key = stackalloc byte[1 + sizeof(uint)];
+                key[0] = GetBlockHash_Prefix;
+                BinaryPrimitives.WriteUInt32LittleEndian(key.Slice(1), index);
+
+                using (var slice = db.GetSlice(key, family))
+                {
+                    if (slice.Valid)
+                    {
+                        return new UInt256(slice.GetValue());
+                    }
+                }
+
+                var hash = rpcClient.GetBlockHash(index);
+                db.Put(key, Neo.IO.Helper.ToArray(hash).AsSpan(), family);
+                return hash;
             }
 
             static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter =
@@ -173,29 +167,17 @@ namespace Neo.BlockchainToolkit.Persistence
 
                 var familyName = $"{nameof(GetLedgerStorage)}";
                 var family = GetOrCreateColumnFamily(db, familyName);
-                var json = GetOrAddJson(key.Span, family,
-                    () => (Json.JObject)rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
-                return Convert.FromBase64String(json.AsString());
-            }
-
-            JObject GetOrAddJson(ReadOnlySpan<byte> key, ColumnFamilyHandle family, Func<JObject> factory)
-            {
-                using (var slice = db.GetSlice(key, family))
+                using (var slice = db.GetSlice(key.Span, family))
                 {
                     if (slice.Valid)
                     {
-                        var token = JToken.Parse(slice.GetValue());
-                        if (token != null && token is JObject jObject)
-                        {
-                            return jObject;
-                        }
+                        return slice.GetValue().ToArray();
                     }
                 }
 
-                var json = factory();
-                var buffer = json.ToByteArray(false);
-                db.Put(key, buffer.AsSpan(), family);
-                return json;
+                var storage = rpcClient.GetStorage(contractHash, key.Span);
+                db.Put(key.Span, storage, family);
+                return storage;
             }
         }
     }
