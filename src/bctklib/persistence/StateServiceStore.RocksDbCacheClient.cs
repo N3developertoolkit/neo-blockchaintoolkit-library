@@ -2,7 +2,7 @@ using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO;
-using System.Text;
+using System.Threading.Tasks;
 using MessagePack;
 using MessagePack.Formatters;
 using Neo.Json;
@@ -71,7 +71,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 if (from.Length > 0) from.Span.CopyTo(key.Slice(prefix.Length));
                 if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
 
-                var json = GetCachedJson(key, family, () =>
+                var json = GetOrAddJson(key, family, () =>
                 {
                     var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
                     return (Json.JObject)rpcClient.RpcSend("findstates", @params);
@@ -79,18 +79,56 @@ namespace Neo.BlockchainToolkit.Persistence
                 return RpcFoundStates.FromJson(json);
             }
 
+            const byte GetBlockHash_Prefix = 0xC0;
+            const byte GetStateRootAsync_Prefix = 0xC1;
+
             public UInt256 GetBlockHash(uint index)
             {
                 var family = db.GetDefaultColumnFamily();
-                var json = GetCachedJson($"{nameof(GetBlockHash)}{index}", family,
-                    () => (Json.JObject)rpcClient.RpcSend("getblockhash", index));
-                return UInt256.Parse(json.AsString());
+                Span<byte> key = stackalloc byte[1 + sizeof(uint)];
+                key[0] = GetBlockHash_Prefix;
+                BinaryPrimitives.WriteUInt32LittleEndian(key.Slice(1), index);
+
+                using (var slice = db.GetSlice(key, family))
+                {
+                    if (slice.Valid)
+                    {
+                        return new UInt256(slice.GetValue());
+                    }
+                }
+
+                var hash = rpcClient.GetBlockHash(index);
+                db.Put(key, Neo.IO.Helper.ToArray(hash).AsSpan(), family);
+                return hash;
+            }
+
+            public async Task<UInt256> GetStateRootHashAsync(uint index)
+            {
+                var family = db.GetDefaultColumnFamily();
+                const int keyLength = 1 + sizeof(uint);
+                var owner = MemoryPool<byte>.Shared.Rent(keyLength);
+                var key = owner.Memory.Slice(0, keyLength);
+                key.Span[0] = GetStateRootAsync_Prefix;
+                BinaryPrimitives.WriteUInt32LittleEndian(key.Span.Slice(1), index);
+
+                using (var slice = db.GetSlice(key.Span, family))
+                {
+                    if (slice.Valid)
+                    {
+                        return new UInt256(slice.GetValue());
+                    }
+                }
+
+                var stateApi = new StateAPI(rpcClient);
+                var stateRoot = await stateApi.GetStateRootAsync(index).ConfigureAwait(false);
+                db.Put(key.Span, Neo.IO.Helper.ToArray(stateRoot.RootHash).AsSpan(), family);
+                return stateRoot.RootHash;
             }
 
             static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter =
                 MessagePackSerializerOptions.Standard.Resolver.GetFormatter<byte[]?>();
 
-            ColumnFamilyHandle GetColumnFamily(UInt256 rootHash, UInt160 scriptHash)
+            ColumnFamilyHandle GetStateColumnFamily(UInt256 rootHash, UInt160 scriptHash)
             {
                 var familyName = $"{nameof(GetState)}{rootHash}{scriptHash}";
                 return GetOrCreateColumnFamily(db, familyName);
@@ -99,7 +137,7 @@ namespace Neo.BlockchainToolkit.Persistence
             // method used for testing
             internal byte[]? GetCachedState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
-                var family = GetColumnFamily(rootHash, scriptHash);
+                var family = GetStateColumnFamily(rootHash, scriptHash);
                 return GetCachedState(key.Span, family);
             }
 
@@ -107,7 +145,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
-                var family = GetColumnFamily(rootHash, scriptHash);
+                var family = GetStateColumnFamily(rootHash, scriptHash);
                 var cachedState = GetCachedState(key.Span, family);
 
                 if (cachedState != null)
@@ -129,56 +167,34 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
-            public RpcStateRoot GetStateRoot(uint index)
-            {
-                var family = db.GetDefaultColumnFamily();
-                var json = GetCachedJson($"{nameof(GetStateRoot)}{index}", family,
-                    () => (Json.JObject)rpcClient.RpcSend("getstateroot", index));
-                return RpcStateRoot.FromJson(json);
-            }
-
             public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
             {
                 var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
 
                 var familyName = $"{nameof(GetLedgerStorage)}";
                 var family = GetOrCreateColumnFamily(db, familyName);
-                var json = GetCachedJson(key.Span, family,
+                var json = GetOrAddJson(key.Span, family,
                     () => (Json.JObject)rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
                 return Convert.FromBase64String(json.AsString());
             }
 
-            readonly static Encoding encoding = Encoding.UTF8;
-
-            static IMemoryOwner<byte> GetKeyBuffer(string text, out int count)
+            JObject GetOrAddJson(ReadOnlySpan<byte> key, ColumnFamilyHandle family, Func<JObject> factory)
             {
-                count = encoding.GetByteCount(text);
-                var owner = MemoryPool<byte>.Shared.Rent(count);
-                if (encoding.GetBytes(text, owner.Memory.Span) != count)
-                    throw new InvalidOperationException();
-                return owner;
-            }
-
-            JObject GetCachedJson(string key, ColumnFamilyHandle family, Func<JObject> factory)
-            {
-                using var keyBuffer = GetKeyBuffer(key, out var count);
-                return GetCachedJson(keyBuffer.Memory.Slice(0, count).Span, family, factory);
-            }
-
-            JObject GetCachedJson(ReadOnlySpan<byte> key, ColumnFamilyHandle family, Func<JObject> factory)
-            {
-                var value = db.Get(key, family);
-                if (value != null)
+                using (var slice = db.GetSlice(key, family))
                 {
-                    var token = JToken.Parse(value);
-                    if (token != null && token is JObject jObject)
+                    if (slice.Valid)
                     {
-                        return jObject;
+                        var token = JToken.Parse(slice.GetValue());
+                        if (token != null && token is JObject jObject)
+                        {
+                            return jObject;
+                        }
                     }
                 }
 
                 var json = factory();
-                db.Put(key, json.ToByteArray(false), family);
+                var buffer = json.ToByteArray(false);
+                db.Put(key, buffer.AsSpan(), family);
                 return json;
             }
         }

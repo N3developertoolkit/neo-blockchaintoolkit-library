@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 
@@ -12,7 +14,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             readonly RpcClient rpcClient;
 
-            LockingDictionary<uint, RpcStateRoot> stateRoots = new();
+            LockingDictionary<uint, UInt256> stateRootHashes = new();
             LockingDictionary<uint, UInt256> blockHashes = new();
             LockingDictionary<int, RpcFoundStates> foundStates = new();
             LockingDictionary<int, byte[]?> retrievedStates = new();
@@ -53,9 +55,15 @@ namespace Neo.BlockchainToolkit.Persistence
                 return retrievedStates.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
             }
 
-            public RpcStateRoot GetStateRoot(uint index)
+            public async Task<UInt256> GetStateRootHashAsync(uint index)
             {
-                return stateRoots.GetOrAdd(index, i => rpcClient.GetStateRoot(i));
+                if (stateRootHashes.TryGetValue(index, out var stateRootHash))
+                {
+                    return stateRootHash;
+                }
+                var stateApi = new StateAPI(rpcClient);
+                var stateRoot = await stateApi.GetStateRootAsync(index).ConfigureAwait(false);
+                return stateRootHashes.GetOrAdd(index, i => stateRoot.RootHash);
             }
 
             public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
@@ -69,6 +77,19 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 readonly Dictionary<TKey, TValue> cache = new();
                 readonly ReaderWriterLockSlim cacheLock = new();
+
+                public bool TryGetValue(in TKey key, [MaybeNullWhen(false)] out TValue value)
+                {
+                    cacheLock.EnterReadLock();
+                    try
+                    {
+                        return cache.TryGetValue(key, out value);
+                    }
+                    finally
+                    {
+                        cacheLock.ExitReadLock();
+                    }
+                }
 
                 public TValue GetOrAdd(in TKey key, Func<TKey, TValue> factory)
                 {
