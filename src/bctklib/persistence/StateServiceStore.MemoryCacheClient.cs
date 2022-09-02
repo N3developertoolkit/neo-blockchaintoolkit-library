@@ -1,8 +1,5 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
 
@@ -13,12 +10,10 @@ namespace Neo.BlockchainToolkit.Persistence
         internal class MemoryCacheClient : ICachingClient
         {
             readonly RpcClient rpcClient;
-
-            LockingDictionary<uint, UInt256> stateRootHashes = new();
-            LockingDictionary<uint, UInt256> blockHashes = new();
-            LockingDictionary<int, RpcFoundStates> foundStates = new();
-            LockingDictionary<int, byte[]?> retrievedStates = new();
-            LockingDictionary<int, byte[]> storages = new();
+            readonly ConcurrentDictionary<int, RpcFoundStates> foundStates = new();
+            readonly ConcurrentDictionary<int, byte[]?> proofs = new();
+            readonly ConcurrentDictionary<int, byte[]> storages = new();
+            bool disposed = false;
 
             public MemoryCacheClient(RpcClient rpcClient)
             {
@@ -27,11 +22,16 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public void Dispose()
             {
-                rpcClient.Dispose();
+                if (!disposed)
+                {
+                    rpcClient.Dispose();
+                    disposed = true;
+                }
             }
 
             public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
             {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
                 var hash = HashCode.Combine(
                     rootHash,
                     scriptHash,
@@ -42,86 +42,23 @@ namespace Neo.BlockchainToolkit.Persistence
                     _ => rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from.Span, count));
             }
 
-            public UInt256 GetBlockHash(uint index)
+            public byte[]? GetProvenState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
-                return blockHashes.GetOrAdd(index, i => rpcClient.GetBlockHash(i));
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+                var hash = HashCode.Combine(
+                    rootHash,
+                    scriptHash,
+                    MemorySequenceComparer.GetHashCode(key.Span));
+                return proofs.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
             }
 
-            public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
+            public byte[] GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key)
             {
-                var doo = new Dictionary<int, RpcFoundStates>();
-
-                var hash = HashCode.Combine(rootHash, scriptHash, MemorySequenceComparer.GetHashCode(key.Span));
-                return retrievedStates.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
-            }
-
-            public async Task<UInt256> GetStateRootHashAsync(uint index)
-            {
-                if (stateRootHashes.TryGetValue(index, out var stateRootHash))
-                {
-                    return stateRootHash;
-                }
-                var stateApi = new StateAPI(rpcClient);
-                var stateRoot = await stateApi.GetStateRootAsync(index).ConfigureAwait(false);
-                return stateRootHashes.GetOrAdd(index, i => stateRoot.RootHash);
-            }
-
-            public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
-            {
-                var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
-                var hash = MemorySequenceComparer.GetHashCode(key.Span);
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+                var hash = HashCode.Combine(
+                    contractHash,
+                    MemorySequenceComparer.GetHashCode(key.Span));
                 return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
-            }
-
-            class LockingDictionary<TKey, TValue> where TKey : notnull
-            {
-                readonly Dictionary<TKey, TValue> cache = new();
-                readonly ReaderWriterLockSlim cacheLock = new();
-
-                public bool TryGetValue(in TKey key, [MaybeNullWhen(false)] out TValue value)
-                {
-                    cacheLock.EnterReadLock();
-                    try
-                    {
-                        return cache.TryGetValue(key, out value);
-                    }
-                    finally
-                    {
-                        cacheLock.ExitReadLock();
-                    }
-                }
-
-                public TValue GetOrAdd(in TKey key, Func<TKey, TValue> factory)
-                {
-                    cacheLock.EnterUpgradeableReadLock();
-                    try
-                    {
-                        if (cache.TryGetValue(key, out var value)) return value;
-
-                        value = factory(key);
-                        cacheLock.EnterWriteLock();
-                        try
-                        {
-                            if (cache.TryGetValue(key, out var _value))
-                            {
-                                value = _value;
-                            }
-                            else
-                            {
-                                cache.Add(key, value);
-                            }
-                            return value;
-                        }
-                        finally
-                        {
-                            cacheLock.ExitWriteLock();
-                        }
-                    }
-                    finally
-                    {
-                        cacheLock.ExitUpgradeableReadLock();
-                    }
-                }
             }
         }
     }

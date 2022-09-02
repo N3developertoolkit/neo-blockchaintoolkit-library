@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Neo.BlockchainToolkit.Models;
 using Neo.IO;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
@@ -16,23 +17,22 @@ using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    using ContractMap = IReadOnlyDictionary<int, (UInt160 hash, ContractManifest manifest)>;
+
 
     public partial class StateServiceStore : IReadOnlyStore, IDisposable
     {
-        interface ICachingClient : IDisposable
+        internal interface ICachingClient : IDisposable 
         {
+            byte[] GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key);
+            byte[]? GetProvenState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key);
             RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null);
-            UInt256 GetBlockHash(uint index);
-            byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key);
-            Task<UInt256> GetStateRootHashAsync(uint index);
-            byte[] GetLedgerStorage(ReadOnlyMemory<byte> key);
         }
 
-        readonly ICachingClient cachingClient;
+        readonly ICachingClient rpcClient;
         readonly uint index;
+        readonly UInt256 indexHash;
         readonly UInt256 rootHash;
-        readonly ContractMap contractMap;
+        readonly IReadOnlyDictionary<int, UInt160> contractMap;
 
         public ProtocolSettings Settings { get; }
 
@@ -44,59 +44,123 @@ namespace Neo.BlockchainToolkit.Persistence
         const byte NeoToken_Prefix_GasPerBlock = 29;
         const byte NeoToken_Prefix_VoterRewardPerCommittee = 23;
 
-        StateServiceStore(ICachingClient cachingClient, uint index, UInt256 rootHash, ProtocolSettings settings, ContractMap contractMap)
+        internal StateServiceStore(ICachingClient client, in BranchInfo branchInfo)
         {
-            this.cachingClient = cachingClient;
-            this.index = index;
-            this.rootHash = rootHash;
-            this.Settings = settings;
-            this.contractMap = contractMap;
+            this.rpcClient = client;
+            this.index = branchInfo.index;
+            this.indexHash = branchInfo.indexHash;
+            this.rootHash = branchInfo.rootHash;
+            this.contractMap = branchInfo.contractMap;
+
+            this.Settings = ProtocolSettings.Default with 
+            {
+                Network = branchInfo.network,
+                AddressVersion = branchInfo.addressVersion,
+            };
         }
 
-        public static Task<StateServiceStore> CreateAsync(string uri, uint index, string? cachePath = null)
+        public StateServiceStore(string url, in BranchInfo branchInfo, string? cachePath = null)
+            : this(GetCachingClient(new Uri(url), cachePath), branchInfo)
         {
-            return CreateAsync(new Uri(uri), index, cachePath);
         }
 
-        public static async Task<StateServiceStore> CreateAsync(Uri uri, uint index, string? cachePath = null)
+        public StateServiceStore(Uri url, in BranchInfo branchInfo, string? cachePath = null)
+            : this(GetCachingClient(url, cachePath), branchInfo)
         {
-            // create temporary RpcClient in order to get network version info 
-            // and configure protocol settings correctly
-            var settings = await GetSettingsAsync(uri).ConfigureAwait(false);
-
-            var rpcClient = new RpcClient(uri, protocolSettings: settings);
-            ICachingClient cachingClient = string.IsNullOrEmpty(cachePath)
-                ? new MemoryCacheClient(rpcClient)
-                : new RocksDbCacheClient(rpcClient, cachePath);
-            var stateRootHash = await cachingClient.GetStateRootHashAsync(index).ConfigureAwait(false);
-
-            // IReadOnlyStore key parameters identifies contracts by their internal 32 bit signed integer
-            // ID while the State Service identifies contracts by their UInt160 contract hash. So we 
-            // build a dictionary mapping internal contract IDs to the manifest (including the contract
-            // hash) so we can construct the correct state service calls.
-
-            using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
-            memoryOwner.Memory.Span[0] = ContractManagement_Prefix_Contract;
-            var prefix = memoryOwner.Memory.Slice(0, 1);
-
-            // ICachingClient.FindStates is typically used in a synchronous context. It doesn't seem worth it
-            // to have a separate async version just for retrieving the contract map. Instead, we'll run the sync
-            // version on a BG task in order to keep the create method async. It's slightly wasteful to use an
-            // extra task like this instead of using the async methods of RpcClient/HttpClient, but it's a one
-            // time hit on store creation. Seems worth it to avoid the duplication of code / effort.
-
-            var contractMap = await Task.Run(() => 
-                EnumerateFindStates(cachingClient, stateRootHash, NativeContract.ContractManagement.Hash, prefix)
-                    .Where(kvp => kvp.key.AsSpan().StartsWith(prefix.Span))
-                    .Select(kvp => new StorageItem(kvp.value).GetInteroperable<ContractState>())
-                    .ToImmutableDictionary(c => c.Id, c => (c.Hash, c.Manifest))).ConfigureAwait(false);
-
-            return new StateServiceStore(cachingClient, index, stateRootHash, settings, contractMap);
         }
+
+        static ICachingClient GetCachingClient(Uri url, string? cachePath)
+        {
+            // TODO: fill in this code
+            return new MemoryCacheClient(new RpcClient(url));
+        }
+
+
+        // internal static async Task<(BranchInfo branchInfo, ContractMap contractMap)> GetBranchInfoAsync(Uri uri, uint index)
+        // {
+        //     using var rpcClient = new RpcClient(uri);
+        //     var version = await rpcClient.GetVersionAsync().ConfigureAwait(false);
+        //     var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
+        //     var blockHash = await rpcClient.GetBlockHashAsync(index).ConfigureAwait(false);
+        //     var settings = ProtocolSettings.Default with
+        //     {
+        //         AddressVersion = version.Protocol.AddressVersion,
+        //         Network = version.Protocol.Network
+        //     };
+        //     var branchInfo = new BranchInfo(settings, index, blockHash, stateRoot.RootHash);
+
+        //     using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
+        //     memoryOwner.Memory.Span[0] = ContractManagement_Prefix_Contract;
+        //     var prefix = memoryOwner.Memory.Slice(0, 1);
+
+        //     var contractMapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
+        //     var enumerable = EnumerateStatesAsync(rpcClient, stateRoot.RootHash, NativeContract.ContractManagement.Hash, prefix);
+        //     await foreach (var (key, value) in enumerable)
+        //     {
+        //         if (key.AsSpan().StartsWith(prefix.Span))
+        //         {
+        //             var state = new StorageItem(value).GetInteroperable<ContractState>();
+        //             contractMapBuilder.Add(state.Id, state.Hash);
+        //         }
+        //     }
+        //     var contractMap = contractMapBuilder.ToImmutable();
+
+        // }
+
+        // public static Task<StateServiceStore> CreateAsync(string uri, uint index, string? cachePath = null)
+        // {
+        //     return CreateAsync(new Uri(uri), index, cachePath);
+        // }
+
+        // public static async Task<StateServiceStore> CreateAsync(Uri uri, uint index, string? cachePath = null)
+        // {
+        //     var settings = await GetSettingsAsync(uri).ConfigureAwait(false);
+
+        //     RpcClient rpcClient = new RpcClient(uri, protocolSettings: settings);
+        //     var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
+        //     var blockHash = await rpcClient.GetBlockHashAsync(index).ConfigureAwait(false);
+
+        //     // IReadOnlyStore key parameters identifies contracts by their internal 32 bit signed integer
+        //     // ID while the State Service identifies contracts by their UInt160 contract hash.  
+        //     // StateServiceStore needs a dictionary that maps internal contract IDs to the contract hash
+        //     // so it can construct the correct state service calls.
+
+        //     using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
+        //     memoryOwner.Memory.Span[0] = ContractManagement_Prefix_Contract;
+        //     var prefix = memoryOwner.Memory.Slice(0, 1);
+
+        //     var contractMapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
+        //     var enumerable = rpcClient.EnumerateStatesAsync(stateRoot.RootHash, NativeContract.ContractManagement.Hash, prefix);
+        //     await foreach (var (key, value) in enumerable)
+        //     {
+        //         if (key.AsSpan().StartsWith(prefix.Span))
+        //         {
+        //             var state = new StorageItem(value).GetInteroperable<ContractState>();
+        //             contractMapBuilder.Add(state.Id, state.Hash);
+        //         }
+        //     }
+        //     var contractMap = contractMapBuilder.ToImmutable();
+
+        //     return new StateServiceStore(rpcClient, index, blockHash, stateRoot.RootHash, settings, contractMap);
+
+        //     static async Task<ProtocolSettings> GetSettingsAsync(Uri uri)
+        //     {
+        //         // create temporary RpcClient in order to get network version info 
+        //         // and configure protocol settings correctly
+
+        //         using RpcClient rpcClient = new RpcClient(uri);
+        //         var version = await rpcClient.GetVersionAsync().ConfigureAwait(false);
+        //         return ProtocolSettings.Default with
+        //         {
+        //             AddressVersion = version.Protocol.AddressVersion,
+        //             Network = version.Protocol.Network
+        //         };
+        //     }
+        // }
 
         public void Dispose()
         {
-            cachingClient.Dispose();
+            rpcClient.Dispose();
             GC.SuppressFinalize(this);
         }
 
@@ -104,20 +168,33 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             var contractId = BinaryPrimitives.ReadInt32LittleEndian(key.AsSpan(0, 4));
 
-            // Since blocks and transactions are immutable and already available via other JSON-RPC
-            // methods, the state service does not store ledger contract data. For the StateServiceStore,
-            // we need to translate TryGet calls into equivalent non-state service calls.
-
             if (contractId == NativeContract.Ledger.Id)
             {
-                return key[4] switch
+                // Since blocks and transactions are immutable and already available via other
+                // JSON-RPC methods, the state service does not store ledger contract data.
+                // StateServiceStore needs to translate LedgerContract calls into equivalent
+                // non-state service calls.
+
+                // LedgerContract stores the current block's hash and index in a single storage
+                // recorded keyed by Ledger_Prefix_CurrentBlock. StateServiceStore is initialized
+                // with the branching index, so TryGet needs the associated block hash for this index
+                // in order to correctly construct the serialized storage
+
+                if (key[4] == Ledger_Prefix_CurrentBlock)
                 {
-                    Ledger_Prefix_CurrentBlock => Serialize(cachingClient.GetBlockHash(index)),
-                    Ledger_Prefix_BlockHash
-                        or Ledger_Prefix_Block
-                        or Ledger_Prefix_Transaction => cachingClient.GetLedgerStorage(key.AsMemory(4)),
-                    _ => throw new NotSupportedException()
-                };
+                    Debug.Assert(key.Length == 5);
+
+                    var @struct = new VM.Types.Struct() { indexHash.ToArray(), index };
+                    return BinarySerializer.Serialize(@struct, 1024 * 1024);
+                }
+
+                // all other ledger contract prefixes (Block, BlockHash and Transaction) store immutable
+                // data, so this data can be directly retrieved from LedgerContract storage
+                Debug.Assert(key[4] == Ledger_Prefix_Block
+                    || key[4] == Ledger_Prefix_BlockHash
+                    || key[4] == Ledger_Prefix_Transaction);
+
+                return rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsMemory(4));
             }
 
             // for all other contracts, we simply need to translate the contract ID into the contract
@@ -125,7 +202,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                return cachingClient.GetState(rootHash, contract.hash, key.AsMemory(4));
+                return rpcClient.GetProvenState(rootHash, contract, key.AsMemory(4));
             }
 
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
@@ -208,7 +285,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                return Seek(contract.hash, contractId, key.AsMemory(4), direction);
+                return Seek(contract, contractId, key.AsMemory(4), direction);
             }
 
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
@@ -220,7 +297,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 ? MemorySequenceComparer.Default
                 : MemorySequenceComparer.Reverse;
 
-            return EnumerateFindStates(cachingClient, rootHash, contractHash, prefix)
+            return rpcClient.EnumerateStates(rootHash, contractHash, prefix)
                 .Select(kvp =>
                 {
                     var k = new byte[kvp.key.Length + 4];
@@ -231,37 +308,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 .OrderBy(kvp => kvp.key, comparer);
         }
 
-        byte[] Serialize(UInt256 value)
-        {
-            var @struct = new VM.Types.Struct() { value.ToArray(), index };
-            return BinarySerializer.Serialize(@struct, 1024*1024);
-        }
 
-        static async Task<ProtocolSettings> GetSettingsAsync(Uri uri) 
-        {
-            using var rpcClient = new RpcClient(uri);
-            var version = await rpcClient.GetVersionAsync().ConfigureAwait(false);
-            return ProtocolSettings.Default with
-            {
-                AddressVersion = version.Protocol.AddressVersion,
-                Network = version.Protocol.Network
-            };
-        }
 
-        static IEnumerable<(byte[] key, byte[] value)> EnumerateFindStates(ICachingClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
-        {
-            var from = Array.Empty<byte>();
-            while (true)
-            {
-                var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix, from, pageSize);
-                var states = foundStates.Results;
-                for (int i = 0; i < states.Length; i++)
-                {
-                    yield return (states[i].key, states[i].value);
-                }
-                if (!foundStates.Truncated || states.Length == 0) break;
-                from = states[states.Length - 1].key;
-            }
-        }
+
     }
 }
