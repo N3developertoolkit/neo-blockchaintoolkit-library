@@ -2,14 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.Json;
 using Neo.SmartContract;
 using Neo.Wallets;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    public class ToolkitWallet : Wallet
+    public partial class ToolkitWallet : Wallet
     {
-        readonly Dictionary<UInt160, ToolkitWalletAccount> accounts = new();
+        readonly Dictionary<UInt160, Account> accounts = new();
 
         public override string Name { get; }
         public override Version Version => Version.Parse(ThisAssembly.AssemblyFileVersion);
@@ -19,7 +20,7 @@ namespace Neo.BlockchainToolkit.Models
             this.Name = name;
         }
 
-        public ToolkitWallet(string name, IEnumerable<ToolkitWalletAccount> accounts, ProtocolSettings settings)
+        internal ToolkitWallet(string name, IEnumerable<Account> accounts, ProtocolSettings settings)
             : this(name, settings)
         {
             foreach (var account in accounts)
@@ -28,20 +29,42 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        public ExpressWallet ToExpress()
+        public static ToolkitWallet ReadJson(JsonElement json, ProtocolSettings settings)
         {
-            return new ExpressWallet
-            {
-                Name = Name,
-                Accounts = accounts.Values.Select(a => a.ToExpress()).ToList(),
-            };
+            var name = json.GetProperty("name").GetString() ?? throw new JsonException("name");
+            var accounts = json.TryGetProperty("accounts", out var prop)
+                ? prop.EnumerateArray().Select(a => Account.ReadJson(a, settings))
+                : Enumerable.Empty<ToolkitWallet.Account>();
+            return new ToolkitWallet(name, accounts, settings);
         }
 
-        public static ToolkitWallet FromExpress(ExpressWallet wallet, ProtocolSettings settings)
+        public void WriteJson(Utf8JsonWriter writer)
         {
-            var accounts = wallet.Accounts.Select(a => ToolkitWalletAccount.FromExpress(a, settings));
-            return new ToolkitWallet(wallet.Name, accounts, settings);
+            writer.WriteStartObject();
+            writer.WriteString("name", Name);
+            writer.WriteStartArray("accounts");
+            foreach (var account in accounts.Values)
+            {
+                account.WriteJson(writer);
+            }
+            writer.WriteEndArray();
+            writer.WriteEndObject();
         }
+
+        // public ExpressWallet ToExpress()
+        // {
+        //     return new ExpressWallet
+        //     {
+        //         Name = Name,
+        //         Accounts = accounts.Values.Select(a => a.ToExpress()).ToList(),
+        //     };
+        // }
+
+        // public static ToolkitWallet FromExpress(ExpressWallet wallet, ProtocolSettings settings)
+        // {
+        //     var accounts = wallet.Accounts.Select(a => ToolkitWalletAccount.FromExpress(a, settings));
+        //     return new ToolkitWallet(wallet.Name, accounts, settings);
+        // }
 
         public override bool Contains(UInt160 scriptHash) => accounts.ContainsKey(scriptHash);
 
@@ -54,14 +77,17 @@ namespace Neo.BlockchainToolkit.Models
 
         public override WalletAccount CreateAccount(Contract contract, KeyPair? key = null)
         {
-            var account = new ToolkitWalletAccount(key, contract, ProtocolSettings);
+            var account = new Account(key, contract.ScriptHash, ProtocolSettings)
+            {
+                Contract = contract
+            };
             accounts.Add(account.ScriptHash, account);
             return account;
         }
 
         public override WalletAccount CreateAccount(UInt160 scriptHash)
         {
-            var account = new ToolkitWalletAccount(scriptHash, ProtocolSettings);
+            var account = new Account(null, scriptHash, ProtocolSettings);
             accounts.Add(account.ScriptHash, account);
             return account;
         }
@@ -72,7 +98,8 @@ namespace Neo.BlockchainToolkit.Models
 
         public override IEnumerable<WalletAccount> GetAccounts() => accounts.Values;
 
-        public override bool VerifyPassword(string password) => true;
+        public override bool VerifyPassword(string password)
+            => throw new NotSupportedException();
 
         public override bool ChangePassword(string oldPassword, string newPassword)
             => throw new NotSupportedException();

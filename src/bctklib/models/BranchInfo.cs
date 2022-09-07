@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.IO;
@@ -17,11 +17,11 @@ namespace Neo.BlockchainToolkit.Models
         UInt256 rootHash,
         IReadOnlyDictionary<int, UInt160> contractMap)
     {
-        public static void AddConverters(JsonSerializerOptions options)
+        public Neo.ProtocolSettings ProtocolSettings => Neo.ProtocolSettings.Default with
         {
-            options.Converters.Add(UInt160JsonConverter.Instance);
-            options.Converters.Add(UInt256JsonConverter.Instance);
-        }
+            AddressVersion = addressVersion,
+            Network = network,
+        };
 
         public static Task<BranchInfo> GetBranchInfoAsync(string url, uint index) => GetBranchInfoAsync(new Uri(url), index);
 
@@ -30,38 +30,39 @@ namespace Neo.BlockchainToolkit.Models
             using var client = new RpcClient(url);
             return await client.GetBranchInfoAsync(index).ConfigureAwait(false);
         }
-    }
 
-    public class UInt160JsonConverter : JsonConverter<UInt160>
-    {
-        public static UInt160JsonConverter Instance = new UInt160JsonConverter();
-        public override UInt160? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public static BranchInfo ReadJson(JsonElement json)
         {
-            return reader.TryGetBytesFromBase64(out var value)
-                ? new UInt160(value)
-                : null;
+            var network = json.GetProperty("network").GetUInt32();
+            var addressVersion = json.GetProperty("address-version").GetByte();
+            var index = json.GetProperty("index").GetUInt32();
+            var indexHash = new UInt256(json.GetProperty("index-hash").GetBytesFromBase64());
+            var rootHash = new UInt256(json.GetProperty("root-hash").GetBytesFromBase64());
+            var contractMapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
+            foreach (var prop in json.GetProperty("contract-map").EnumerateObject())
+            {
+                contractMapBuilder.Add(int.Parse(prop.Name), new UInt160(prop.Value.GetBytesFromBase64()));
+            }
+
+            return new BranchInfo(network, addressVersion, index, indexHash, rootHash, contractMapBuilder.ToImmutable());
         }
 
-        public override void Write(Utf8JsonWriter writer, UInt160 value, JsonSerializerOptions options)
+        public void WriteJson(Utf8JsonWriter writer)
         {
-            writer.WriteBase64StringValue(value.ToArray());
-        }
-    }
-
-    public class UInt256JsonConverter : JsonConverter<UInt256>
-    {
-        public static UInt256JsonConverter Instance = new UInt256JsonConverter();
-
-        public override UInt256? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            return reader.TryGetBytesFromBase64(out var value)
-                ? new UInt256(value)
-                : null;
-        }
-
-        public override void Write(Utf8JsonWriter writer, UInt256 value, JsonSerializerOptions options)
-        {
-            writer.WriteBase64StringValue(value.ToArray());
+            writer.WriteStartObject();
+            writer.WriteNumber("network", network);
+            writer.WriteNumber("address-version", addressVersion);
+            writer.WriteNumber("index", index);
+            writer.WriteBase64String("index-hash", indexHash.ToArray());
+            writer.WriteBase64String("root-hash", rootHash.ToArray());
+            writer.WriteStartObject("contract-map");
+            foreach (var (k, v) in contractMap)
+            {
+                writer.WritePropertyName($"{k}");
+                writer.WriteBase64StringValue(v.ToArray());
+            }
+            writer.WriteEndObject();
+            writer.WriteEndObject();
         }
     }
 }

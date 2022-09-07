@@ -16,10 +16,17 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public static async Task<BranchInfo> GetBranchInfoAsync(this RpcClient rpcClient, uint index)
         {
-            var version = await rpcClient.GetVersionAsync().ConfigureAwait(false);
+            var versionTask = rpcClient.GetVersionAsync();
+            var blockHashTask = rpcClient.GetBlockHashAsync(index);
             var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
-            var blockHash = await rpcClient.GetBlockHashAsync(index).ConfigureAwait(false);
-            var contractMap = await GetContractMap(rpcClient, stateRoot.RootHash);
+            var contractMapTask = GetContractMap(rpcClient, stateRoot.RootHash);
+            
+            await Task.WhenAll(versionTask, blockHashTask, contractMapTask).ConfigureAwait(false);
+
+            var version = await versionTask.ConfigureAwait(false);
+            var blockHash = await blockHashTask.ConfigureAwait(false);
+            var contractMap = await contractMapTask.ConfigureAwait(false);
+
             return new BranchInfo(
                 version.Protocol.Network,
                 version.Protocol.AddressVersion,
