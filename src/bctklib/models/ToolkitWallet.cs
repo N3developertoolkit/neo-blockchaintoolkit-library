@@ -29,43 +29,6 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        public static ToolkitWallet ReadJson(JsonElement json, ProtocolSettings settings)
-        {
-            var name = json.GetProperty("name").GetString() ?? throw new JsonException("name");
-            var accounts = json.TryGetProperty("accounts", out var prop)
-                ? prop.EnumerateArray().Select(a => Account.ReadJson(a, settings))
-                : Enumerable.Empty<ToolkitWallet.Account>();
-            return new ToolkitWallet(name, accounts, settings);
-        }
-
-        public void WriteJson(Utf8JsonWriter writer)
-        {
-            writer.WriteStartObject();
-            writer.WriteString("name", Name);
-            writer.WriteStartArray("accounts");
-            foreach (var account in accounts.Values)
-            {
-                account.WriteJson(writer);
-            }
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        }
-
-        // public ExpressWallet ToExpress()
-        // {
-        //     return new ExpressWallet
-        //     {
-        //         Name = Name,
-        //         Accounts = accounts.Values.Select(a => a.ToExpress()).ToList(),
-        //     };
-        // }
-
-        // public static ToolkitWallet FromExpress(ExpressWallet wallet, ProtocolSettings settings)
-        // {
-        //     var accounts = wallet.Accounts.Select(a => ToolkitWalletAccount.FromExpress(a, settings));
-        //     return new ToolkitWallet(wallet.Name, accounts, settings);
-        // }
-
         public override bool Contains(UInt160 scriptHash) => accounts.ContainsKey(scriptHash);
 
         public override WalletAccount CreateAccount(byte[] privateKey)

@@ -30,39 +30,5 @@ namespace Neo.BlockchainToolkit.Models
             using var client = new RpcClient(url);
             return await client.GetBranchInfoAsync(index).ConfigureAwait(false);
         }
-
-        public static BranchInfo ReadJson(JsonElement json)
-        {
-            var network = json.GetProperty("network").GetUInt32();
-            var addressVersion = json.GetProperty("address-version").GetByte();
-            var index = json.GetProperty("index").GetUInt32();
-            var indexHash = new UInt256(json.GetProperty("index-hash").GetBytesFromBase64());
-            var rootHash = new UInt256(json.GetProperty("root-hash").GetBytesFromBase64());
-            var contractMapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
-            foreach (var prop in json.GetProperty("contract-map").EnumerateObject())
-            {
-                contractMapBuilder.Add(int.Parse(prop.Name), new UInt160(prop.Value.GetBytesFromBase64()));
-            }
-
-            return new BranchInfo(network, addressVersion, index, indexHash, rootHash, contractMapBuilder.ToImmutable());
-        }
-
-        public void WriteJson(Utf8JsonWriter writer)
-        {
-            writer.WriteStartObject();
-            writer.WriteNumber("network", network);
-            writer.WriteNumber("address-version", addressVersion);
-            writer.WriteNumber("index", index);
-            writer.WriteBase64String("index-hash", indexHash.ToArray());
-            writer.WriteBase64String("root-hash", rootHash.ToArray());
-            writer.WriteStartObject("contract-map");
-            foreach (var (k, v) in contractMap)
-            {
-                writer.WritePropertyName($"{k}");
-                writer.WriteBase64StringValue(v.ToArray());
-            }
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-        }
     }
 }
