@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using Neo.SmartContract;
 using Neo.Wallets;
+using Newtonsoft.Json;
 
 namespace Neo.BlockchainToolkit.Models
 {
@@ -26,6 +27,18 @@ namespace Neo.BlockchainToolkit.Models
             foreach (var account in accounts)
             {
                 this.accounts.Add(account.ScriptHash, account);
+            }
+        }
+
+        public void WriteJson(JsonWriter writer)
+        {
+            using var _ = writer.WriteObject();
+            writer.WriteProperty("name", Name);
+            writer.WriteProperty("version", $"{Version}");
+            using var __ = writer.WritePropertyArray("accounts");
+            foreach (var account in accounts.Values)
+            {
+                account.WriteJson(writer);
             }
         }
 

@@ -6,6 +6,9 @@ namespace Neo.BlockchainToolkit
     {
         public const string EXPRESS_EXTENSION = ".neo-express";
         public const string DEFAULT_EXPRESS_FILENAME = "default" + EXPRESS_EXTENSION;
+        public const string WORKNET_EXTENSION = ".neo-worknet";
+        public const string DEFAULT_WORKNET_FILENAME = "default" + WORKNET_EXTENSION;
+
 
         public static readonly IReadOnlyList<string> MAINNET_RPC_ENDPOINTS = new[]
         {

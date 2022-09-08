@@ -13,72 +13,28 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     static class RpcClientExtensions
     {
+        // public static RpcVersion GetVersion(this RpcClient rpcClient)
+        // {
+        //     var result = rpcClient.RpcSend(RpcClient.GetRpcName());
+        //     return RpcVersion.FromJson((Json.JObject)result);
+        // }
 
-        public static async Task<BranchInfo> GetBranchInfoAsync(this RpcClient rpcClient, uint index)
-        {
-            var versionTask = rpcClient.GetVersionAsync();
-            var blockHashTask = rpcClient.GetBlockHashAsync(index);
-            var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
-            var contractMapTask = GetContractMap(rpcClient, stateRoot.RootHash);
-            
-            await Task.WhenAll(versionTask, blockHashTask, contractMapTask).ConfigureAwait(false);
-
-            var version = await versionTask.ConfigureAwait(false);
-            var blockHash = await blockHashTask.ConfigureAwait(false);
-            var contractMap = await contractMapTask.ConfigureAwait(false);
-
-            return new BranchInfo(
-                version.Protocol.Network,
-                version.Protocol.AddressVersion,
-                index,
-                blockHash,
-                stateRoot.RootHash,
-                contractMap);
-
-            static async Task<IReadOnlyDictionary<int, UInt160>> GetContractMap(RpcClient rpcClient, UInt256 rootHash)
-            {
-                const byte ContractManagement_Prefix_Contract = 8;
-
-                using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
-                memoryOwner.Memory.Span[0] = ContractManagement_Prefix_Contract;
-                var prefix = memoryOwner.Memory.Slice(0, 1);
-
-                var contractMapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
-                var enumerable = rpcClient.EnumerateStatesAsync(rootHash, NativeContract.ContractManagement.Hash, prefix);
-                await foreach (var (key, value) in enumerable)
-                {
-                    if (key.AsSpan().StartsWith(prefix.Span))
-                    {
-                        var state = new StorageItem(value).GetInteroperable<ContractState>();
-                        contractMapBuilder.Add(state.Id, state.Hash);
-                    }
-                }
-                return contractMapBuilder.ToImmutable();
-            }
-        }
-
-        public static RpcVersion GetVersion(this RpcClient rpcClient)
-        {
-            var result = rpcClient.RpcSend(RpcClient.GetRpcName());
-            return RpcVersion.FromJson((Json.JObject)result);
-        }
-
-        public static UInt256 GetBlockHash(this RpcClient rpcClient, uint index)
-        {
-            var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
-            return UInt256.Parse(result.AsString());
-        }
+        // public static UInt256 GetBlockHash(this RpcClient rpcClient, uint index)
+        // {
+        //     var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
+        //     return UInt256.Parse(result.AsString());
+        // }
 
 
         // TODO: remove when https://github.com/neo-project/neo-modules/issues/756 is resolved
-        public static async Task<UInt256> GetBlockHashAsync(this RpcClient rpcClient, uint index)
+        internal static async Task<UInt256> GetBlockHashAsync(this RpcClient rpcClient, uint index)
         {
             var result = await rpcClient.RpcSendAsync("getblockhash", index).ConfigureAwait(false);
             return UInt256.Parse(result.AsString());
         }
 
 
-        public static byte[] GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        internal static byte[] GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             var result = rpcClient.RpcSend(
                 RpcClient.GetRpcName(),
@@ -88,7 +44,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return Convert.FromBase64String(result.AsString());
         }
 
-        public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        internal static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
 
@@ -120,39 +76,39 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static byte[] GetStorage(this RpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)
+        internal static byte[] GetStorage(this RpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)
         {
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), contractHash.ToString(), Convert.ToBase64String(key));
             return Convert.FromBase64String(result.AsString());
         }
 
-        public static RpcStateRoot GetStateRoot(this RpcClient rpcClient, uint index)
+        internal static RpcStateRoot GetStateRoot(this RpcClient rpcClient, uint index)
         {
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
             return RpcStateRoot.FromJson((Json.JObject)result);
         }
 
-        public static async Task<RpcStateRoot> GetStateRootAsync(this RpcClient rpcClient, uint index)
+        internal static async Task<RpcStateRoot> GetStateRootAsync(this RpcClient rpcClient, uint index)
         {
             var result = await rpcClient.RpcSendAsync(RpcClient.GetRpcName(), index).ConfigureAwait(false);
             return RpcStateRoot.FromJson((Json.JObject)result);
         }
 
-        public static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
+        internal static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
         {
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
             return RpcFoundStates.FromJson((Json.JObject)result);
         }
 
-        public static async Task<RpcFoundStates> FindStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
+        internal static async Task<RpcFoundStates> FindStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
         {
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
             var result = await rpcClient.RpcSendAsync(RpcClient.GetRpcName(), @params).ConfigureAwait(false);
             return RpcFoundStates.FromJson((Json.JObject)result);
         }
 
-        public static IEnumerable<(byte[] key, byte[] value)> EnumerateStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        internal static IEnumerable<(byte[] key, byte[] value)> EnumerateStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
         {
             var from = Array.Empty<byte>();
             while (true)
@@ -185,7 +141,7 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
 
-        public static async IAsyncEnumerable<(byte[] key, byte[] value)> EnumerateStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        internal static async IAsyncEnumerable<(byte[] key, byte[] value)> EnumerateStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
         {
             var from = Array.Empty<byte>();
             while (true)
