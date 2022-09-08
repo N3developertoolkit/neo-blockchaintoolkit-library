@@ -47,16 +47,11 @@ namespace Neo.BlockchainToolkit.Persistence
         internal StateServiceStore(ICachingClient client, in BranchInfo branchInfo)
         {
             this.rpcClient = client;
-            this.index = branchInfo.index;
-            this.indexHash = branchInfo.indexHash;
-            this.rootHash = branchInfo.rootHash;
-            this.contractMap = branchInfo.contractMap;
-
-            this.Settings = ProtocolSettings.Default with 
-            {
-                Network = branchInfo.network,
-                AddressVersion = branchInfo.addressVersion,
-            };
+            this.index = branchInfo.Index;
+            this.indexHash = branchInfo.IndexHash;
+            this.rootHash = branchInfo.RootHash;
+            this.contractMap = branchInfo.ContractMap;
+            this.Settings = branchInfo.ProtocolSettings;
         }
 
         public StateServiceStore(string url, in BranchInfo branchInfo, string? cachePath = null)
