@@ -157,7 +157,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        static (byte[] key, byte[] value)[] ValidateFoundStates(UInt256 rootHash, Network.RPC.Models.RpcFoundStates foundStates)
+        internal static (byte[] key, byte[] value)[] ValidateFoundStates(UInt256 rootHash, Network.RPC.Models.RpcFoundStates foundStates)
         {
             if (foundStates.Results.Length > 0)
             {
