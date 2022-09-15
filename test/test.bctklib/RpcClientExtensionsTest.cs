@@ -26,7 +26,7 @@ namespace test.bctklib
             Assert.True(trie.TryGetValue(key, out var expected));
 
             var rpcClient = new TestableRpcClient(() => new JString(Convert.ToBase64String(trie.GetSerializedProof(key))));
-            var actual = rpcClient.GetProvenState(trie.Root.Hash, UInt160.Zero, default);
+            var actual = StateServiceStore.GetProvenState(rpcClient, trie.Root.Hash, UInt160.Zero, default);
             Assert.Equal(expected, actual);
         }
 
@@ -37,7 +37,7 @@ namespace test.bctklib
         public void GetProvenState_returns_null_for_key_not_found_exception(int code, string msg)
         {
             var rpcClient = new TestableRpcClient(() => throw new RpcException(code, msg));
-            var actual = rpcClient.GetProvenState(UInt256.Zero, UInt160.Zero, default);
+            var actual = StateServiceStore.GetProvenState(rpcClient, UInt256.Zero, UInt160.Zero, default);
             Assert.Null(actual);
         }
 
@@ -47,7 +47,7 @@ namespace test.bctklib
         public void GetProvenState_throws_for_other_exception(int code, string msg)
         {
             var rpcClient = new TestableRpcClient(() => throw new RpcException(code, msg));
-            Assert.Throws<RpcException>(() => rpcClient.GetProvenState(UInt256.Zero, UInt160.Zero, default));
+            Assert.Throws<RpcException>(() => StateServiceStore.GetProvenState(rpcClient, UInt256.Zero, UInt160.Zero, default));
         }
 
         static UInt256 rootHash = UInt256.Parse("0xaf05f13fc9e176aae66e06c0fe0b4258b0340e4f4532fe6a808ee65480f10196");
@@ -71,7 +71,7 @@ namespace test.bctklib
 
             var key = Neo.Utility.StrictUTF8.GetBytes("sample.domain");
             var expected = UInt160.Parse("0x06cb35134fce60a8c6445a608b5e43fe827d349e");
-            var state = rpcClient.GetProvenState(rootHash, contractHash, key);
+            var state = StateServiceStore.GetProvenState(rpcClient, rootHash, contractHash, key);
             Assert.NotNull(state);
 
             var actual = new UInt160(state);

@@ -1,13 +1,7 @@
 using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Neo.BlockchainToolkit.Models;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
-using Neo.SmartContract;
-using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -44,38 +38,6 @@ namespace Neo.BlockchainToolkit.Persistence
             return Convert.FromBase64String(result.AsString());
         }
 
-        internal static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
-        {
-            const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
-
-            try
-            {
-                var result = rpcClient.GetProof(rootHash, scriptHash, key);
-                return Utility.VerifyProof(rootHash, result).value;
-            }
-            // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
-            // which returns null for invalid keys instead of throwing an exception.
-            catch (RpcException ex) when (ex.HResult == COR_E_KEYNOTFOUND)
-            {
-                // Trie class throws KeyNotFoundException if key is not in the trie.
-                // RpcClient/Server converts the KeyNotFoundException into an
-                // RpcException with code == COR_E_KEYNOTFOUND.
-
-                return null;
-            }
-            catch (RpcException ex) when (ex.HResult == -100 && ex.Message == "Unknown value")
-            {
-                // Prior to Neo 3.3.0, StateService GetProof method threw a custom exception 
-                // instead of KeyNotFoundException like GetState. This catch clause detected
-                // the custom exception that GetProof used to throw. 
-
-                // TODO: remove this clause once deployed StateService for Neo N3 MainNet and
-                //       TestNet has been verified to be running Neo 3.3.0 or later.
-
-                return null;
-            }
-        }
-
         internal static byte[] GetStorage(this RpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)
         {
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), contractHash.ToString(), Convert.ToBase64String(key));
@@ -108,73 +70,73 @@ namespace Neo.BlockchainToolkit.Persistence
             return RpcFoundStates.FromJson((Json.JObject)result);
         }
 
-        internal static IEnumerable<(byte[] key, byte[] value)> EnumerateStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
-        {
-            var from = Array.Empty<byte>();
-            while (true)
-            {
-                var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from, pageSize);
-                var states = ValidateFoundStates(rootHash, foundStates);
-                for (int i = 0; i < states.Length; i++)
-                {
-                    yield return (states[i].key, states[i].value);
-                }
-                if (!foundStates.Truncated || states.Length == 0) break;
-                from = states[^1].key;
-            }
-        }
+        // internal static IEnumerable<(byte[] key, byte[] value)> EnumerateStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        // {
+        //     var from = Array.Empty<byte>();
+        //     while (true)
+        //     {
+        //         var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from, pageSize);
+        //         var states = ValidateFoundStates(rootHash, foundStates);
+        //         for (int i = 0; i < states.Length; i++)
+        //         {
+        //             yield return (states[i].key, states[i].value);
+        //         }
+        //         if (!foundStates.Truncated || states.Length == 0) break;
+        //         from = states[^1].key;
+        //     }
+        // }
 
-        internal static IEnumerable<(byte[] key, byte[] value)> EnumerateStates(this StateServiceStore.ICachingClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
-        {
-            var from = Array.Empty<byte>();
-            while (true)
-            {
-                var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix, from, pageSize);
-                var states = ValidateFoundStates(rootHash, foundStates);
-                for (int i = 0; i < states.Length; i++)
-                {
-                    yield return (states[i].key, states[i].value);
-                }
-                if (!foundStates.Truncated || states.Length == 0) break;
-                from = states[^1].key;
-            }
-        }
+        // internal static IEnumerable<(byte[] key, byte[] value)> EnumerateStates(this StateServiceStore.ICachingClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        // {
+        //     var from = Array.Empty<byte>();
+        //     while (true)
+        //     {
+        //         var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix, from, pageSize);
+        //         var states = ValidateFoundStates(rootHash, foundStates);
+        //         for (int i = 0; i < states.Length; i++)
+        //         {
+        //             yield return (states[i].key, states[i].value);
+        //         }
+        //         if (!foundStates.Truncated || states.Length == 0) break;
+        //         from = states[^1].key;
+        //     }
+        // }
 
 
-        internal static async IAsyncEnumerable<(byte[] key, byte[] value)> EnumerateStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
-        {
-            var from = Array.Empty<byte>();
-            while (true)
-            {
-                var foundStates = await rpcClient.FindStatesAsync(rootHash, scriptHash, prefix, from.AsMemory(), pageSize).ConfigureAwait(false);
-                var states = ValidateFoundStates(rootHash, foundStates);
-                for (int i = 0; i < states.Length; i++)
-                {
-                    yield return (states[i].key, states[i].value);
-                }
-                if (!foundStates.Truncated || states.Length == 0) break;
-                from = states[^1].key;
-            }
-        }
+        // internal static async IAsyncEnumerable<(byte[] key, byte[] value)> EnumerateStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        // {
+        //     var from = Array.Empty<byte>();
+        //     while (true)
+        //     {
+        //         var foundStates = await rpcClient.FindStatesAsync(rootHash, scriptHash, prefix, from.AsMemory(), pageSize).ConfigureAwait(false);
+        //         var states = ValidateFoundStates(rootHash, foundStates);
+        //         for (int i = 0; i < states.Length; i++)
+        //         {
+        //             yield return (states[i].key, states[i].value);
+        //         }
+        //         if (!foundStates.Truncated || states.Length == 0) break;
+        //         from = states[^1].key;
+        //     }
+        // }
 
-        internal static (byte[] key, byte[] value)[] ValidateFoundStates(UInt256 rootHash, Network.RPC.Models.RpcFoundStates foundStates)
-        {
-            if (foundStates.Results.Length > 0)
-            {
-                ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
-            }
-            if (foundStates.Results.Length > 1)
-            {
-                ValidateProof(rootHash, foundStates.LastProof, foundStates.Results[^1]);
-            }
-            return foundStates.Results;
+        // internal static (byte[] key, byte[] value)[] ValidateFoundStates(UInt256 rootHash, Network.RPC.Models.RpcFoundStates foundStates)
+        // {
+        //     if (foundStates.Results.Length > 0)
+        //     {
+        //         ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
+        //     }
+        //     if (foundStates.Results.Length > 1)
+        //     {
+        //         ValidateProof(rootHash, foundStates.LastProof, foundStates.Results[^1]);
+        //     }
+        //     return foundStates.Results;
 
-            static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
-            {
-                var (storageKey, storageValue) = Utility.VerifyProof(rootHash, proof);
-                if (!result.key.AsSpan().SequenceEqual(storageKey.Key.Span)) throw new Exception("Incorrect StorageKey");
-                if (!result.value.AsSpan().SequenceEqual(storageValue)) throw new Exception("Incorrect StorageItem");
-            }
-        }
+        //     static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
+        //     {
+        //         var (storageKey, storageValue) = Utility.VerifyProof(rootHash, proof);
+        //         if (!result.key.AsSpan().SequenceEqual(storageKey.Key.Span)) throw new Exception("Incorrect StorageKey");
+        //         if (!result.value.AsSpan().SequenceEqual(storageValue)) throw new Exception("Incorrect StorageItem");
+        //     }
+        // }
     }
 }

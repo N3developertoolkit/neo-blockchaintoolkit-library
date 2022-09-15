@@ -1,16 +1,12 @@
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
-using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Models;
-using Neo.BlockchainToolkit.Persistence;
-using Neo.Network.RPC;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
@@ -22,49 +18,6 @@ namespace Neo.BlockchainToolkit
 {
     public static class Extensions
     {
-        public static async Task<BranchInfo> GetBranchInfoAsync(this RpcClient rpcClient, uint index)
-        {
-            var versionTask = rpcClient.GetVersionAsync();
-            var blockHashTask = rpcClient.GetBlockHashAsync(index);
-            var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
-            var contractMapTask = GetContractMap(rpcClient, stateRoot.RootHash);
-
-            await Task.WhenAll(versionTask, blockHashTask, contractMapTask).ConfigureAwait(false);
-
-            var version = await versionTask.ConfigureAwait(false);
-            var blockHash = await blockHashTask.ConfigureAwait(false);
-            var contractMap = await contractMapTask.ConfigureAwait(false);
-
-            return new BranchInfo(
-                version.Protocol.Network,
-                version.Protocol.AddressVersion,
-                index,
-                blockHash,
-                stateRoot.RootHash,
-                contractMap);
-
-            static async Task<IReadOnlyDictionary<int, UInt160>> GetContractMap(RpcClient rpcClient, UInt256 rootHash)
-            {
-                const byte ContractManagement_Prefix_Contract = 8;
-
-                using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
-                memoryOwner.Memory.Span[0] = ContractManagement_Prefix_Contract;
-                var prefix = memoryOwner.Memory[..1];
-
-                var contractMapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
-                var enumerable = rpcClient.EnumerateStatesAsync(rootHash, NativeContract.ContractManagement.Hash, prefix);
-                await foreach (var (key, value) in enumerable)
-                {
-                    if (key.AsSpan().StartsWith(prefix.Span))
-                    {
-                        var state = new StorageItem(value).GetInteroperable<ContractState>();
-                        contractMapBuilder.Add(state.Id, state.Hash);
-                    }
-                }
-                return contractMapBuilder.ToImmutable();
-            }
-        }
-
         public static string ResolveFileName(this IFileSystem fileSystem, string fileName, string extension, Func<string> getDefaultFileName)
         {
             if (string.IsNullOrEmpty(fileName))

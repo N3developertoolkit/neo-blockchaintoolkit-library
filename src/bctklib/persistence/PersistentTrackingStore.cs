@@ -10,6 +10,8 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         const byte UPDATED_KEY = 1;
         const byte DELETED_KEY = 0;
+        readonly static ReadOnlyMemory<byte> UPDATED_PREFIX = (new byte[] { UPDATED_KEY }).AsMemory();
+        readonly static ReadOnlyMemory<byte> DELETED_PREFIX = (new byte[] { DELETED_KEY }).AsMemory();
 
         readonly RocksDb db;
         readonly ColumnFamilyHandle columnFamily;
@@ -18,12 +20,12 @@ namespace Neo.BlockchainToolkit.Persistence
         bool disposed;
 
         public PersistentTrackingStore(RocksDb db, IReadOnlyStore store, bool shared = false)
-            : this(db, db.GetDefaultColumnFamily(), store, false)
+            : this(db, db.GetDefaultColumnFamily(), store, shared)
         {
         }
 
         public PersistentTrackingStore(RocksDb db, string columnFamilyName, IReadOnlyStore store, bool shared = false)
-            : this(db, db.GetColumnFamily(columnFamilyName), store, false)
+            : this(db, db.GetColumnFamily(columnFamilyName), store, shared)
         {
         }
 
@@ -113,7 +115,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     var value = iterator.GetValueSpan();
                     if (value[0] == UPDATED_KEY)
                     {
-                        yield return (iterator.Key(), value.Slice(1).ToArray());
+                        yield return (iterator.Key(), value[1..].ToArray());
                     }
                     else
                     {
@@ -146,11 +148,9 @@ namespace Neo.BlockchainToolkit.Persistence
             if (value is null) throw new NullReferenceException(nameof(value));
 
             key ??= Array.Empty<byte>();
-            // db doesn't have a putv option like write batch, so no choice but to copy value to new array w/ prefix
-            Span<byte> span = stackalloc byte[value.Length + 1];
-            span[0] = UPDATED_KEY;
-            value.CopyTo(span.Slice(1));
-            db.Put(key.AsSpan(), span, columnFamily, writeOptions);
+            using var batch = new WriteBatch();
+            batch.PutVector(columnFamily, key.AsMemory(), UPDATED_PREFIX, value);
+            db.Write(batch);
         }
 
         public void Delete(byte[]? key)
@@ -159,8 +159,7 @@ namespace Neo.BlockchainToolkit.Persistence
             key ??= Array.Empty<byte>();
             if (store.Contains(key))
             {
-                Span<byte> value = stackalloc byte[] { DELETED_KEY };
-                db.Put(key.AsSpan(), value, columnFamily);
+                db.Put(key.AsSpan(), DELETED_PREFIX.Span, columnFamily);
             }
             else
             {

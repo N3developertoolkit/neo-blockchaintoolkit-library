@@ -1,186 +1,173 @@
-// using System;
-// using System.Buffers;
-// using System.Buffers.Binary;
-// using System.IO;
-// using System.Threading.Tasks;
-// using MessagePack;
-// using MessagePack.Formatters;
-// using Neo.IO;
-// using Neo.Json;
-// using Neo.Network.RPC;
-// using Neo.Network.RPC.Models;
-// using RocksDbSharp;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using DotNext.Buffers;
+using DotNext.IO;
+using Neo.IO;
+using Neo.Network.RPC;
+using Neo.SmartContract.Native;
+using RocksDbSharp;
 
-// namespace Neo.BlockchainToolkit.Persistence
-// {
-//     public partial class StateServiceStore
-//     {
-//         internal class RocksDbCacheClient : ICachingClient
-//         {
-//             const byte GetBlockHash_Prefix = 0xC0;
-//             const byte GetStateRootAsync_Prefix = 0xC1;
- 
-//             readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
+namespace Neo.BlockchainToolkit.Persistence
+{
+    public partial class StateServiceStore
+    {
+        internal class RocksDbCacheClient : ICachingClient
+        {
+            static ColumnFamilyHandle GetOrCreateColumnFamily(RocksDb db, string familyName, ColumnFamilyOptions? options = null)
+            {
+                if (!db.TryGetColumnFamily(familyName, out var familyHandle))
+                {
+                    familyHandle = db.CreateColumnFamily(options ?? new ColumnFamilyOptions(), familyName);
+                }
+                return familyHandle;
+            }
 
-//             static ColumnFamilyHandle GetOrCreateColumnFamily(RocksDb db, string familyName, ColumnFamilyOptions? options = null)
-//             {
-//                 if (!db.TryGetColumnFamily(familyName, out var familyHandle))
-//                 {
-//                     familyHandle = db.CreateColumnFamily(options ?? defaultColumnFamilyOptions, familyName);
-//                 }
-//                 return familyHandle;
-//             }
+            readonly RpcClient rpcClient;
+            readonly UInt256 rootHash;
+            readonly RocksDb db;
 
-//             readonly RpcClient rpcClient;
-//             readonly RocksDb db;
+            public RocksDbCacheClient(RpcClient rpcClient, UInt256 rootHash, string cachePath)
+            {
+                this.rpcClient = rpcClient;
+                this.rootHash = rootHash;
 
-//             public RocksDbCacheClient(RpcClient rpcClient, string cachePath)
-//             {
-//                 this.rpcClient = rpcClient;
+                if (!Directory.Exists(cachePath)) Directory.CreateDirectory(cachePath);
+                var columnFamilies = GetColumnFamilies(cachePath);
+                db = RocksDb.Open(new DbOptions().SetCreateIfMissing(true), cachePath, columnFamilies);
 
-//                 if (!Directory.Exists(cachePath)) Directory.CreateDirectory(cachePath);
-//                 db = RocksDbUtility.OpenDb(cachePath);
-//             }
+                static ColumnFamilies GetColumnFamilies(string path)
+                {
+                    if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
+                    {
+                        var columnFamilyOptions = new ColumnFamilyOptions();
+                        var families = new ColumnFamilies();
+                        foreach (var name in names)
+                        {
+                            families.Add(name, columnFamilyOptions);
+                        }
+                        return families;
+                    }
 
-//             public void Dispose()
-//             {
-//                 db.Dispose();
-//             }
+                    return new ColumnFamilies();
+                }
+            }
 
-//             public async Task<UInt256> GetStateRootHashAsync(uint index)
-//             {
-//                 var family = db.GetDefaultColumnFamily();
+            public void Dispose()
+            {
+                db.Dispose();
+            }
 
-//                 const int keyLength = 1 + sizeof(uint);
-//                 var owner = MemoryPool<byte>.Shared.Rent(keyLength);
-//                 var key = owner.Memory.Slice(0, keyLength);
-//                 key.Span[0] = GetStateRootAsync_Prefix;
-//                 BinaryPrimitives.WriteUInt32LittleEndian(key.Span.Slice(1), index);
+            public FoundStates FindStates(UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default)
+            {
+                var dbKey = new ArrayBufferWriter<byte>(UInt160.Length + prefix.Length + from.Length);
+                {
+                    using var writer = new BinaryWriter(dbKey.AsStream());
+                    scriptHash.Serialize(writer);
+                    writer.Write(prefix.Span);
+                    writer.Write(from.Span);
+                    writer.Flush();
+                }
 
-//                 using (var slice = db.GetSlice(key.Span, family))
-//                 {
-//                     if (slice.Valid)
-//                     {
-//                         return new UInt256(slice.GetValue());
-//                     }
-//                 }
+                var family = GetOrCreateColumnFamily(db, $"{nameof(GetContractState)}");
+                using (var slice = db.GetSlice(dbKey.WrittenSpan, family))
+                {
+                    if (slice.Valid)
+                    {
+                        var reader = new SpanReader<byte>(slice.GetValue());
+                        var count = reader.ReadVarInt();
+                        var states = new List<(byte[], byte[])>();
+                        for (ulong i = 0; i < count; i++)
+                        {
+                            var key = reader.ReadVarBytes();
+                            var value = reader.ReadVarBytes();
+                            states.Add((key, value));
+                        }
+                        var truncated = reader.ReadBoolean();
+                        Debug.Assert(reader.RemainingSpan.Length == 0);
+                        return new FoundStates(states, truncated);
+                    }
+                }
 
-//                 var stateApi = new StateAPI(rpcClient);
-//                 var stateRoot = await stateApi.GetStateRootAsync(index).ConfigureAwait(false);
-//                 db.Put(key.Span, stateRoot.RootHash.ToArray().AsSpan(), family);
-//                 return stateRoot.RootHash;
-//             }
+                var found = FindProvenStates(rpcClient, rootHash, scriptHash, prefix.Span, from.Span);
+                var valueSeq = new Nerdbank.Streams.Sequence<byte>();
+                {
+                    using var writer = new BinaryWriter(valueSeq.AsStream());
+                    writer.WriteVarInt(found.States.Count);
+                    for (int i = 0; i < found.States.Count; i++)
+                    {
+                        var (key, value) = found.States[i];
+                        writer.WriteVarBytes(key);
+                        writer.WriteVarBytes(value);
+                    }
+                    writer.Write(found.Truncated);
+                    writer.Flush();
+                }
 
-//             public UInt256 GetBlockHash(uint index)
-//             {
-//                 var family = db.GetDefaultColumnFamily();
-//                 Span<byte> key = stackalloc byte[1 + sizeof(uint)];
-//                 key[0] = GetBlockHash_Prefix;
-//                 BinaryPrimitives.WriteUInt32LittleEndian(key.Slice(1), index);
+                using var batch = new WriteBatch();
+                batch.PutVector(dbKey.WrittenMemory, valueSeq.AsReadOnlySequence, family);
+                db.Write(batch);
 
-//                 using (var slice = db.GetSlice(key, family))
-//                 {
-//                     if (slice.Valid)
-//                     {
-//                         return new UInt256(slice.GetValue());
-//                     }
-//                 }
+                return found;
+            }
 
-//                 var hash = rpcClient.GetBlockHash(index);
-//                 db.Put(key, Neo.IO.Helper.ToArray(hash).AsSpan(), family);
-//                 return hash;
-//             }
+            const byte NON_NULL_PREFIX = 1;
+            const byte NULL_PREFIX = 0;
+            readonly static ReadOnlyMemory<byte> nullPrefix = (new byte[] { NULL_PREFIX }).AsMemory();
+            readonly static ReadOnlyMemory<byte> notNullPrefix = (new byte[] { NON_NULL_PREFIX }).AsMemory();
 
-            
-//             public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
-//             {
-//                 var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
+            public byte[]? GetContractState(UInt160 scriptHash, ReadOnlyMemory<byte> key)
+            {
+                var dbKey = new ArrayBufferWriter<byte>(UInt160.Length + key.Length);
+                {
+                    using var writer = new BinaryWriter(dbKey.AsStream());
+                    scriptHash.Serialize(writer);
+                    writer.Write(key.Span);
+                    writer.Flush();
+                }
 
-//                 var familyName = $"{nameof(GetLedgerStorage)}";
-//                 var family = GetOrCreateColumnFamily(db, familyName);
-//                 using (var slice = db.GetSlice(key.Span, family))
-//                 {
-//                     if (slice.Valid)
-//                     {
-//                         return slice.GetValue().ToArray();
-//                     }
-//                 }
+                var family = GetOrCreateColumnFamily(db, $"{nameof(GetContractState)}");
+                using (var slice = db.GetSlice(dbKey.WrittenSpan, family))
+                {
+                    if (slice.Valid)
+                    {
+                        var span = slice.GetValue();
+                        if (span.Length == 1 && span[0] == NULL_PREFIX) return null;
+                        return span[1..].ToArray();
+                    }
+                }
 
-//                 var storage = rpcClient.GetStorage(contractHash, key.Span);
-//                 db.Put(key.Span, storage, family);
-//                 return storage;
-//             }
+                var state = GetProvenState(rpcClient, rootHash, scriptHash, key.Span);
+                if (state is null)
+                {
+                    db.Put(dbKey.WrittenSpan, nullPrefix.Span, family);
+                }
+                else
+                {
+                    using var batch = new WriteBatch();
+                    batch.PutVector(family, dbKey.WrittenMemory, notNullPrefix, state.AsMemory());
+                    db.Write(batch);
+                }
+                return state;
+            }
 
-//             public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
-//             {
-//                 var familyName = $"{nameof(FindStates)}{rootHash}{scriptHash}";
-//                 var family = GetOrCreateColumnFamily(db, familyName);
+            public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
+            {
+                var family = GetOrCreateColumnFamily(db, $"{nameof(GetLedgerStorage)}");
+                using (var slice = db.GetSlice(key.Span, family))
+                {
+                    if (slice.Valid)
+                    {
+                        return slice.GetValue().ToArray();
+                    }
+                }
 
-//                 var keyLength = prefix.Length + from.Length + (count.HasValue ? sizeof(int) : 0);
-//                 Span<byte> key = stackalloc byte[keyLength];
-//                 prefix.Span.CopyTo(key);
-//                 if (from.Length > 0) from.Span.CopyTo(key.Slice(prefix.Length));
-//                 if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
-
-//                 using (var slice = db.GetSlice(key, family))
-//                 {
-//                     if (slice.Valid)
-//                     {
-//                         var token = JToken.Parse(slice.GetValue());
-//                         if (token is not null && token is JObject jObject)
-//                         {
-//                             return RpcFoundStates.FromJson(jObject);
-//                         }
-//                     }
-//                 }
-
-//                 var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
-//                 var json = (Json.JObject)rpcClient.RpcSend("findstates", @params);
-//                 db.Put(key, json.ToByteArray(false), family);
-//                 return RpcFoundStates.FromJson(json);
-//             }
-
-//             static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter =
-//                 MessagePackSerializerOptions.Standard.Resolver.GetFormatter<byte[]?>();
-
-//             ColumnFamilyHandle GetStateColumnFamily(UInt256 rootHash, UInt160 scriptHash)
-//             {
-//                 var familyName = $"{nameof(GetState)}{rootHash}{scriptHash}";
-//                 return GetOrCreateColumnFamily(db, familyName);
-//             }
-
-//             // method used for testing
-//             internal byte[]? GetCachedState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
-//             {
-//                 var family = GetStateColumnFamily(rootHash, scriptHash);
-//                 return GetCachedState(key.Span, family);
-//             }
-
-//             byte[]? GetCachedState(ReadOnlySpan<byte> key, ColumnFamilyHandle family) => db.Get(key, family);
-
-//             public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
-//             {
-//                 var family = GetStateColumnFamily(rootHash, scriptHash);
-//                 var cachedState = GetCachedState(key.Span, family);
-
-//                 if (cachedState != null)
-//                 {
-//                     var reader = new MessagePackReader(cachedState);
-//                     return byteArrayFormatter.Deserialize(ref reader, MessagePackSerializerOptions.Standard);
-//                 }
-//                 else
-//                 {
-//                     var state = rpcClient.GetProvenState(rootHash, scriptHash, key.Span);
-
-//                     var buffer = new ArrayBufferWriter<byte>();
-//                     var writer = new MessagePackWriter(buffer);
-//                     byteArrayFormatter.Serialize(ref writer, state, MessagePackSerializerOptions.Standard);
-//                     writer.Flush();
-//                     db.Put(key.Span, buffer.WrittenSpan, family);
-
-//                     return state;
-//                 }
-//             }
-//         }
-//     }
-// }
+                var storage = rpcClient.GetStorage(NativeContract.Ledger.Hash, key.Span);
+                db.Put(key.Span, storage, family);
+                return storage;
+            }
+        }
+    }
+}

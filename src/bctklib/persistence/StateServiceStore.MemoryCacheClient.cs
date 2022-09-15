@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using Neo.Network.RPC;
-using Neo.Network.RPC.Models;
+using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -10,14 +10,16 @@ namespace Neo.BlockchainToolkit.Persistence
         internal class MemoryCacheClient : ICachingClient
         {
             readonly RpcClient rpcClient;
-            readonly ConcurrentDictionary<int, RpcFoundStates> foundStates = new();
+            readonly UInt256 rootHash;
+            readonly ConcurrentDictionary<int, FoundStates> foundStates = new();
             readonly ConcurrentDictionary<int, byte[]?> proofs = new();
             readonly ConcurrentDictionary<int, byte[]> storages = new();
             bool disposed = false;
 
-            public MemoryCacheClient(RpcClient rpcClient)
+            public MemoryCacheClient(RpcClient rpcClient, UInt256 rootHash)
             {
                 this.rpcClient = rpcClient;
+                this.rootHash = rootHash;
             }
 
             public void Dispose()
@@ -29,36 +31,30 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
-            public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
+            public FoundStates FindStates(UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default)
             {
                 if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
                 var hash = HashCode.Combine(
-                    rootHash,
                     scriptHash,
                     MemorySequenceComparer.GetHashCode(prefix.Span),
-                    MemorySequenceComparer.GetHashCode(from.Span),
-                    count);
-                return foundStates.GetOrAdd(hash,
-                    _ => rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from.Span, count));
+                    MemorySequenceComparer.GetHashCode(from.Span));
+                return foundStates.GetOrAdd(hash, _ => FindProvenStates(rpcClient, rootHash, scriptHash, prefix.Span, from.Span));
             }
 
-            public byte[]? GetProvenState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
+            public byte[]? GetContractState(UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
                 if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
                 var hash = HashCode.Combine(
-                    rootHash,
                     scriptHash,
                     MemorySequenceComparer.GetHashCode(key.Span));
-                return proofs.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
+                return proofs.GetOrAdd(hash, _ => GetProvenState(rpcClient, rootHash, scriptHash, key.Span));
             }
 
-            public byte[] GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key)
+            public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
             {
                 if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
-                var hash = HashCode.Combine(
-                    contractHash,
-                    MemorySequenceComparer.GetHashCode(key.Span));
-                return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
+                var hash = MemorySequenceComparer.GetHashCode(key.Span);
+                return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(NativeContract.Ledger.Hash, key.Span));
             }
         }
     }

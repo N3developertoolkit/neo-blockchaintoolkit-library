@@ -1,11 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Text.Json;
-using System.Threading.Tasks;
-using Neo.BlockchainToolkit.Persistence;
-using Neo.IO;
-using Neo.Network.RPC;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -24,14 +18,6 @@ namespace Neo.BlockchainToolkit.Models
             AddressVersion = AddressVersion,
             Network = Network,
         };
-
-        public static Task<BranchInfo> GetBranchInfoAsync(string url, uint index) => GetBranchInfoAsync(new Uri(url), index);
-
-        public static async Task<BranchInfo> GetBranchInfoAsync(Uri url, uint index)
-        {
-            using var client = new RpcClient(url);
-            return await client.GetBranchInfoAsync(index).ConfigureAwait(false);
-        }
 
         public static BranchInfo Load(JObject json)
         {

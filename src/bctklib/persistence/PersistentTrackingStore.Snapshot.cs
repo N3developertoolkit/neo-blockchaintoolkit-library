@@ -60,17 +60,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 if (value is null) throw new NullReferenceException(nameof(value));
 
                 key ??= Array.Empty<byte>();
-                var pool = ArrayPool<byte>.Shared;
-                var prefix = pool.Rent(1);
-                try
-                {
-                    prefix[0] = UPDATED_KEY;
-                    writeBatch.PutVector(columnFamily, key, prefix.AsMemory(0, 1), value);
-                }
-                finally
-                {
-                    pool.Return(prefix);
-                }
+                writeBatch.PutVector(columnFamily, key, UPDATED_PREFIX, value);
             }
 
             public void Delete(byte[]? key)
@@ -79,8 +69,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 key ??= Array.Empty<byte>();
                 if (store.Contains(key))
                 {
-                    Span<byte> value = stackalloc byte[] { PersistentTrackingStore.DELETED_KEY };
-                    writeBatch.Put(key.AsSpan(), value, columnFamily);
+                    writeBatch.Put(key.AsSpan(), DELETED_PREFIX.Span, columnFamily);
                 }
                 else
                 {

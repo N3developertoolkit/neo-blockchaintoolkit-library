@@ -4,6 +4,7 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Models;
 using Neo.IO;
 using Neo.Network.RPC;
@@ -18,15 +19,14 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         internal interface ICachingClient : IDisposable
         {
-            byte[] GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key);
-            byte[]? GetProvenState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key);
-            RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null);
+            byte[] GetLedgerStorage(ReadOnlyMemory<byte> key);
+            byte[]? GetContractState(UInt160 scriptHash, ReadOnlyMemory<byte> key);
+            FoundStates FindStates(UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default);
         }
 
-        readonly RpcClient rpcClient;
+        readonly ICachingClient cachingClient;
         readonly uint index;
         readonly UInt256 indexHash;
-        readonly UInt256 rootHash;
         readonly IReadOnlyDictionary<int, UInt160> contractMap;
 
         public ProtocolSettings Settings { get; }
@@ -40,34 +40,145 @@ namespace Neo.BlockchainToolkit.Persistence
         const byte NeoToken_Prefix_VoterRewardPerCommittee = 23;
 
         public StateServiceStore(string url, in BranchInfo branchInfo, string? cachePath = null)
-            : this(GetCachingClient(new Uri(url), cachePath), branchInfo)
+            : this(GetCachingClient(new Uri(url), branchInfo.RootHash, cachePath), branchInfo)
         {
         }
 
         public StateServiceStore(Uri url, in BranchInfo branchInfo, string? cachePath = null)
-            : this(GetCachingClient(url, cachePath), branchInfo)
+            : this(GetCachingClient(url, branchInfo.RootHash, cachePath), branchInfo)
         {
         }
 
-        internal StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo)
+        internal StateServiceStore(ICachingClient cachingClient, in BranchInfo branchInfo)
         {
-            this.rpcClient = rpcClient;
+            this.cachingClient = cachingClient;
             index = branchInfo.Index;
             indexHash = branchInfo.IndexHash;
-            rootHash = branchInfo.RootHash;
             contractMap = branchInfo.ContractMap;
             Settings = branchInfo.ProtocolSettings;
         }
 
-        static RpcClient GetCachingClient(Uri url, string? cachePath)
+        static ICachingClient GetCachingClient(Uri url, UInt256 rootHash, string? cachePath)
         {
             // TODO: fill in this code
-            return new RpcClient(url);
+            var rpcClient = new RpcClient(url);
+            return new MemoryCacheClient(rpcClient, rootHash);
+        }
+
+        internal record FoundStates(IReadOnlyList<(byte[] key, byte[] value)> States, bool Truncated);
+
+        static FoundStates FindProvenStates(RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from)
+        {
+            var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix, from);
+            ValidateFoundStates(rootHash, foundStates);
+            return new FoundStates(foundStates.Results, foundStates.Truncated);
+        }
+
+        static void ValidateFoundStates(UInt256 rootHash, RpcFoundStates foundStates)
+        {
+            if (foundStates.Results.Length > 0)
+            {
+                ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
+            }
+            if (foundStates.Results.Length > 1)
+            {
+                ValidateProof(rootHash, foundStates.LastProof, foundStates.Results[^1]);
+            }
+
+            static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
+            {
+                var (storageKey, storageValue) = Utility.VerifyProof(rootHash, proof);
+                if (!result.key.AsSpan().SequenceEqual(storageKey.Key.Span)) throw new Exception("Incorrect StorageKey");
+                if (!result.value.AsSpan().SequenceEqual(storageValue)) throw new Exception("Incorrect StorageItem");
+            }
+        }
+
+        internal static byte[]? GetProvenState(RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        {
+            const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
+
+            try
+            {
+                var result = rpcClient.GetProof(rootHash, scriptHash, key);
+                return Utility.VerifyProof(rootHash, result).value;
+            }
+            // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
+            // which returns null for invalid keys instead of throwing an exception.
+            catch (RpcException ex) when (ex.HResult == COR_E_KEYNOTFOUND)
+            {
+                // Trie class throws KeyNotFoundException if key is not in the trie.
+                // RpcClient/Server converts the KeyNotFoundException into an
+                // RpcException with code == COR_E_KEYNOTFOUND.
+
+                return null;
+            }
+            catch (RpcException ex) when (ex.HResult == -100 && ex.Message == "Unknown value")
+            {
+                // Prior to Neo 3.3.0, StateService GetProof method threw a custom exception 
+                // instead of KeyNotFoundException like GetState. This catch clause detected
+                // the custom exception that GetProof used to throw. 
+
+                // TODO: remove this clause once deployed StateService for Neo N3 MainNet and
+                //       TestNet has been verified to be running Neo 3.3.0 or later.
+
+                return null;
+            }
+        }
+
+        public static async Task<BranchInfo> GetBranchInfoAsync(RpcClient rpcClient, uint index)
+        {
+            var versionTask = rpcClient.GetVersionAsync();
+            var blockHashTask = rpcClient.GetBlockHashAsync(index);
+            var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
+            var contractMapTask = GetContractMap(rpcClient, stateRoot.RootHash);
+
+            await Task.WhenAll(versionTask, blockHashTask, contractMapTask).ConfigureAwait(false);
+
+            var version = await versionTask.ConfigureAwait(false);
+            var blockHash = await blockHashTask.ConfigureAwait(false);
+            var contractMap = await contractMapTask.ConfigureAwait(false);
+
+            return new BranchInfo(
+                version.Protocol.Network,
+                version.Protocol.AddressVersion,
+                index,
+                blockHash,
+                stateRoot.RootHash,
+                contractMap);
+
+            static async Task<IReadOnlyDictionary<int, UInt160>> GetContractMap(RpcClient rpcClient, UInt256 rootHash)
+            {
+                const byte ContractManagement_Prefix_Contract = 8;
+
+                using var memoryOwner = MemoryPool<byte>.Shared.Rent(1);
+                memoryOwner.Memory.Span[0] = ContractManagement_Prefix_Contract;
+                var prefix = memoryOwner.Memory[..1];
+
+                var contractMapBuilder = System.Collections.Immutable.ImmutableDictionary.CreateBuilder<int, UInt160>();
+                var from = Array.Empty<byte>();
+                while (true)
+                {
+                    var found = await rpcClient.FindStatesAsync(rootHash, NativeContract.ContractManagement.Hash, prefix, from.AsMemory()).ConfigureAwait(false);
+                    ValidateFoundStates(rootHash, found);
+                    for (int i = 0; i < found.Results.Length ; i++)
+                    {
+                        var (key, value) = found.Results[i];
+                        if (key.AsSpan().StartsWith(prefix.Span))
+                        {
+                            var state = new StorageItem(value).GetInteroperable<ContractState>();
+                            contractMapBuilder.Add(state.Id, state.Hash);
+                        }
+                    }
+                    if (!found.Truncated || found.Results.Length == 0) break;
+                    from = found.Results[^1].key;
+                }
+                return contractMapBuilder.ToImmutable();
+            }
         }
 
         public void Dispose()
         {
-            rpcClient.Dispose();
+            cachingClient.Dispose();
             GC.SuppressFinalize(this);
         }
 
@@ -101,7 +212,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     || key[4] == Ledger_Prefix_BlockHash
                     || key[4] == Ledger_Prefix_Transaction);
 
-                return rpcClient.GetStorage(NativeContract.Ledger.Hash, key.AsSpan(4));
+                return cachingClient.GetLedgerStorage(key.AsMemory(4));
             }
 
             // for all other contracts, we simply need to translate the contract ID into the contract
@@ -109,7 +220,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             if (contractMap.TryGetValue(contractId, out var contract))
             {
-                return rpcClient.GetProvenState(rootHash, contract, key.AsSpan(4));
+                return cachingClient.GetContractState(contract, key.AsMemory(4));
             }
 
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
@@ -198,19 +309,18 @@ namespace Neo.BlockchainToolkit.Persistence
             throw new InvalidOperationException($"Invalid contract ID {contractId}");
         }
 
-        IEnumerable<(byte[] key, byte[] value)> EnumerateStates(UInt160 scriptHash, ReadOnlyMemory<byte> prefix, int? pageSize = null)
+        IEnumerable<(byte[] key, byte[] value)> EnumerateStates(UInt160 scriptHash, ReadOnlyMemory<byte> prefix)
         {
             var from = Array.Empty<byte>();
             while (true)
             {
-                var foundStates = rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from, pageSize);
-                var states = RpcClientExtensions.ValidateFoundStates(rootHash, foundStates);
-                for (int i = 0; i < states.Length; i++)
+                var foundStates = cachingClient.FindStates(scriptHash, prefix, from);
+                for (int i = 0; i < foundStates.States.Count; i++)
                 {
-                    yield return states[i];
+                    yield return foundStates.States[i];
                 }
-                if (!foundStates.Truncated || states.Length == 0) break;
-                from = states[^1].key;
+                if (!foundStates.Truncated || foundStates.States.Count == 0) break;
+                from = foundStates.States[^1].key;
             }
         }
 

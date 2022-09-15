@@ -40,12 +40,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="DotNext" Version="4.7.1" />
     <PackageReference Include="MessagePack" Version="2.4.35" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
-    <PackageReference Include="Nerdbank.Streams" Version="2.8.61" />
+    <PackageReference Include="Nerdbank.Streams" Version="2.8.65" />
     <PackageReference Include="OneOf" Version="3.0.223" />
-    <PackageReference Include="rocksdb" Version="7.4.5.31520" />
-    <PackageReference Include="System.IO.Abstractions" Version="17.0.24" />
+    <PackageReference Include="rocksdb" Version="7.5.3.32564" />
+    <PackageReference Include="System.IO.Abstractions" Version="17.2.1" />
   </ItemGroup>
 
   <Choose>
