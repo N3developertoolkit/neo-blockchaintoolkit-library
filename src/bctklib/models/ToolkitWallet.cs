@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text.Json;
 using Neo.SmartContract;
 using Neo.Wallets;
 using Newtonsoft.Json;
@@ -49,7 +48,6 @@ namespace Neo.BlockchainToolkit.Models
         {
             using var _ = writer.WriteObject();
             writer.WriteProperty("name", Name);
-            writer.WriteProperty("version", $"{Version}");
             using var __ = writer.WritePropertyArray("accounts");
             foreach (var account in accounts.Values)
             {

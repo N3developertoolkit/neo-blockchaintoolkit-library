@@ -11,23 +11,27 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             readonly RpcClient rpcClient;
             readonly UInt256 rootHash;
+            readonly bool shared;
             readonly ConcurrentDictionary<int, FoundStates> foundStates = new();
             readonly ConcurrentDictionary<int, byte[]?> proofs = new();
             readonly ConcurrentDictionary<int, byte[]> storages = new();
             bool disposed = false;
 
-            public MemoryCacheClient(RpcClient rpcClient, UInt256 rootHash)
+            public MemoryCacheClient(RpcClient rpcClient, UInt256 rootHash, bool shared = false)
             {
                 this.rpcClient = rpcClient;
                 this.rootHash = rootHash;
+                this.shared = shared;
             }
 
             public void Dispose()
             {
-                if (!disposed)
+                if (disposed) return;
+                disposed = true;
+                if (!shared)
                 {
                     rpcClient.Dispose();
-                    disposed = true;
+                    GC.SuppressFinalize(this);
                 }
             }
 

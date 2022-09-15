@@ -28,40 +28,36 @@ namespace Neo.BlockchainToolkit.Persistence
             readonly RpcClient rpcClient;
             readonly UInt256 rootHash;
             readonly RocksDb db;
+            readonly string columnFamilyPrefix;
+            readonly bool shared;
+            bool disposed = false;
 
-            public RocksDbCacheClient(RpcClient rpcClient, UInt256 rootHash, string cachePath)
+            public RocksDbCacheClient(RpcClient rpcClient, UInt256 rootHash, RocksDb db, string? columnFamilyPrefix = null, bool shared = false)
             {
                 this.rpcClient = rpcClient;
                 this.rootHash = rootHash;
-
-                if (!Directory.Exists(cachePath)) Directory.CreateDirectory(cachePath);
-                var columnFamilies = GetColumnFamilies(cachePath);
-                db = RocksDb.Open(new DbOptions().SetCreateIfMissing(true), cachePath, columnFamilies);
-
-                static ColumnFamilies GetColumnFamilies(string path)
-                {
-                    if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
-                    {
-                        var columnFamilyOptions = new ColumnFamilyOptions();
-                        var families = new ColumnFamilies();
-                        foreach (var name in names)
-                        {
-                            families.Add(name, columnFamilyOptions);
-                        }
-                        return families;
-                    }
-
-                    return new ColumnFamilies();
-                }
+                this.db = db;
+                this.columnFamilyPrefix = string.IsNullOrEmpty(columnFamilyPrefix) 
+                    ? nameof(RocksDbCacheClient) 
+                    : columnFamilyPrefix;
+                this.shared = shared;
             }
 
             public void Dispose()
             {
-                db.Dispose();
+                if (disposed) return;
+                disposed = true;
+                if (!shared)
+                {
+                    rpcClient.Dispose();
+                    db.Dispose();
+                    GC.SuppressFinalize(this);
+                }
             }
 
             public FoundStates FindStates(UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default)
             {
+                if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
                 var dbKey = new ArrayBufferWriter<byte>(UInt160.Length + prefix.Length + from.Length);
                 {
                     using var writer = new BinaryWriter(dbKey.AsStream());
@@ -71,7 +67,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     writer.Flush();
                 }
 
-                var family = GetOrCreateColumnFamily(db, $"{nameof(GetContractState)}");
+                var family = GetOrCreateColumnFamily(db, $"{columnFamilyPrefix}.{nameof(GetContractState)}");
                 using (var slice = db.GetSlice(dbKey.WrittenSpan, family))
                 {
                     if (slice.Valid)
@@ -120,6 +116,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public byte[]? GetContractState(UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
+               if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
                 var dbKey = new ArrayBufferWriter<byte>(UInt160.Length + key.Length);
                 {
                     using var writer = new BinaryWriter(dbKey.AsStream());
@@ -128,7 +125,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     writer.Flush();
                 }
 
-                var family = GetOrCreateColumnFamily(db, $"{nameof(GetContractState)}");
+                var family = GetOrCreateColumnFamily(db, $"{columnFamilyPrefix}.{nameof(GetContractState)}");
                 using (var slice = db.GetSlice(dbKey.WrittenSpan, family))
                 {
                     if (slice.Valid)
@@ -155,7 +152,8 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
             {
-                var family = GetOrCreateColumnFamily(db, $"{nameof(GetLedgerStorage)}");
+                if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
+                var family = GetOrCreateColumnFamily(db, $"{columnFamilyPrefix}.{nameof(GetLedgerStorage)}");
                 using (var slice = db.GetSlice(key.Span, family))
                 {
                     if (slice.Valid)

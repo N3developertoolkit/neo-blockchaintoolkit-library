@@ -39,11 +39,14 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Dispose()
         {
-            if (shared || disposed) return;
+            if (disposed) return;
             disposed = true;
-            db.Dispose();
-            if (store is IDisposable disposable) disposable.Dispose();
-            GC.SuppressFinalize(this);
+            if (!shared)
+            {
+                db.Dispose();
+                if (store is IDisposable disposable) disposable.Dispose();
+                GC.SuppressFinalize(this);
+            }
         }
 
         public byte[]? TryGet(byte[]? key)

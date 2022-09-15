@@ -12,6 +12,7 @@ using Neo.Network.RPC.Models;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
+using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
@@ -39,13 +40,13 @@ namespace Neo.BlockchainToolkit.Persistence
         const byte NeoToken_Prefix_GasPerBlock = 29;
         const byte NeoToken_Prefix_VoterRewardPerCommittee = 23;
 
-        public StateServiceStore(string url, in BranchInfo branchInfo, string? cachePath = null)
-            : this(GetCachingClient(new Uri(url), branchInfo.RootHash, cachePath), branchInfo)
+        public StateServiceStore(string url, in BranchInfo branchInfo, RocksDb? db = null, bool shared = false)
+            : this(GetCachingClient(new Uri(url), branchInfo.RootHash, db, shared), branchInfo)
         {
         }
 
-        public StateServiceStore(Uri url, in BranchInfo branchInfo, string? cachePath = null)
-            : this(GetCachingClient(url, branchInfo.RootHash, cachePath), branchInfo)
+        public StateServiceStore(Uri url, in BranchInfo branchInfo, RocksDb? db = null, bool shared = false)
+            : this(GetCachingClient(url, branchInfo.RootHash, db, shared), branchInfo)
         {
         }
 
@@ -58,11 +59,12 @@ namespace Neo.BlockchainToolkit.Persistence
             Settings = branchInfo.ProtocolSettings;
         }
 
-        static ICachingClient GetCachingClient(Uri url, UInt256 rootHash, string? cachePath)
+        static ICachingClient GetCachingClient(Uri url, UInt256 rootHash, RocksDb? db, bool shared)
         {
-            // TODO: fill in this code
             var rpcClient = new RpcClient(url);
-            return new MemoryCacheClient(rpcClient, rootHash);
+            return db is null
+                ? new MemoryCacheClient(rpcClient, rootHash, shared) 
+                : new RocksDbCacheClient(rpcClient, rootHash, db, shared: shared);
         }
 
         internal record FoundStates(IReadOnlyList<(byte[] key, byte[] value)> States, bool Truncated);
