@@ -16,19 +16,12 @@ namespace Neo.BlockchainToolkit.Persistence
     {
         internal class RocksDbCacheClient : ICachingClient
         {
-            static ColumnFamilyHandle GetOrCreateColumnFamily(RocksDb db, string familyName, ColumnFamilyOptions? options = null)
-            {
-                if (!db.TryGetColumnFamily(familyName, out var familyHandle))
-                {
-                    familyHandle = db.CreateColumnFamily(options ?? new ColumnFamilyOptions(), familyName);
-                }
-                return familyHandle;
-            }
-
             readonly RpcClient rpcClient;
             readonly UInt256 rootHash;
             readonly RocksDb db;
-            readonly string columnFamilyPrefix;
+            readonly ColumnFamilyHandle findStatesColumnFamily;
+            readonly ColumnFamilyHandle getStateColumnFamily;
+            readonly ColumnFamilyHandle ledgerStorageColumnFamily;
             readonly bool shared;
             bool disposed = false;
 
@@ -37,10 +30,15 @@ namespace Neo.BlockchainToolkit.Persistence
                 this.rpcClient = rpcClient;
                 this.rootHash = rootHash;
                 this.db = db;
-                this.columnFamilyPrefix = string.IsNullOrEmpty(columnFamilyPrefix) 
-                    ? nameof(RocksDbCacheClient) 
-                    : columnFamilyPrefix;
                 this.shared = shared;
+
+                columnFamilyPrefix = string.IsNullOrEmpty(columnFamilyPrefix)
+                    ? nameof(RocksDbCacheClient)
+                    : columnFamilyPrefix;
+
+                findStatesColumnFamily = db.GetOrCreateColumnFamily(columnFamilyPrefix + "." + nameof(FindStates));
+                getStateColumnFamily = db.GetOrCreateColumnFamily(columnFamilyPrefix + "." + nameof(GetContractState));
+                ledgerStorageColumnFamily = db.GetOrCreateColumnFamily(columnFamilyPrefix + "." + nameof(GetLedgerStorage));
             }
 
             public void Dispose()
@@ -67,8 +65,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     writer.Flush();
                 }
 
-                var family = GetOrCreateColumnFamily(db, $"{columnFamilyPrefix}.{nameof(GetContractState)}");
-                using (var slice = db.GetSlice(dbKey.WrittenSpan, family))
+                using (var slice = db.GetSlice(dbKey.WrittenSpan, findStatesColumnFamily))
                 {
                     if (slice.Valid)
                     {
@@ -103,7 +100,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
 
                 using var batch = new WriteBatch();
-                batch.PutVector(dbKey.WrittenMemory, valueSeq.AsReadOnlySequence, family);
+                batch.PutVector(dbKey.WrittenMemory, valueSeq.AsReadOnlySequence, findStatesColumnFamily);
                 db.Write(batch);
 
                 return found;
@@ -116,7 +113,7 @@ namespace Neo.BlockchainToolkit.Persistence
 
             public byte[]? GetContractState(UInt160 scriptHash, ReadOnlyMemory<byte> key)
             {
-               if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
+                if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
                 var dbKey = new ArrayBufferWriter<byte>(UInt160.Length + key.Length);
                 {
                     using var writer = new BinaryWriter(dbKey.AsStream());
@@ -125,8 +122,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     writer.Flush();
                 }
 
-                var family = GetOrCreateColumnFamily(db, $"{columnFamilyPrefix}.{nameof(GetContractState)}");
-                using (var slice = db.GetSlice(dbKey.WrittenSpan, family))
+                using (var slice = db.GetSlice(dbKey.WrittenSpan, getStateColumnFamily))
                 {
                     if (slice.Valid)
                     {
@@ -139,12 +135,12 @@ namespace Neo.BlockchainToolkit.Persistence
                 var state = GetProvenState(rpcClient, rootHash, scriptHash, key.Span);
                 if (state is null)
                 {
-                    db.Put(dbKey.WrittenSpan, nullPrefix.Span, family);
+                    db.Put(dbKey.WrittenSpan, nullPrefix.Span, getStateColumnFamily);
                 }
                 else
                 {
                     using var batch = new WriteBatch();
-                    batch.PutVector(family, dbKey.WrittenMemory, notNullPrefix, state.AsMemory());
+                    batch.PutVector(getStateColumnFamily, dbKey.WrittenMemory, notNullPrefix, state.AsMemory());
                     db.Write(batch);
                 }
                 return state;
@@ -153,8 +149,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
             {
                 if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
-                var family = GetOrCreateColumnFamily(db, $"{columnFamilyPrefix}.{nameof(GetLedgerStorage)}");
-                using (var slice = db.GetSlice(key.Span, family))
+                using (var slice = db.GetSlice(key.Span, ledgerStorageColumnFamily))
                 {
                     if (slice.Valid)
                     {
@@ -163,7 +158,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
 
                 var storage = rpcClient.GetStorage(NativeContract.Ledger.Hash, key.Span);
-                db.Put(key.Span, storage, family);
+                db.Put(key.Span, storage, ledgerStorageColumnFamily);
                 return storage;
             }
         }
