@@ -1,17 +1,22 @@
 using System.Collections.Generic;
-using System.Collections.Immutable;
+using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Neo.BlockchainToolkit.Models
 {
+    public readonly record struct ContractInfo(
+        int Id,
+        UInt160 Hash,
+        string Name);
+
     public readonly record struct BranchInfo(
         uint Network,
         byte AddressVersion,
         uint Index,
         UInt256 IndexHash,
         UInt256 RootHash,
-        IReadOnlyDictionary<int, UInt160> ContractMap)
+        IReadOnlyList<ContractInfo> Contracts)
     {
         public ProtocolSettings ProtocolSettings => ProtocolSettings.Default with
         {
@@ -27,18 +32,19 @@ namespace Neo.BlockchainToolkit.Models
             var indexHash = UInt256.Parse(json.Value<string>("index-hash"));
             var rootHash = UInt256.Parse(json.Value<string>("rootHash"));
 
-            var mapBuilder = ImmutableDictionary.CreateBuilder<int, UInt160>();
-            var mapJson = json["contract-map"] as JObject;
-            if (mapJson is not null)
+            var contracts = new List<ContractInfo>();
+            var contractsJson = json["contracts"] as JArray;
+            if (contractsJson is not null)
             {
-                foreach (var (key, value) in mapJson)
+                foreach (var value in contractsJson)
                 {
-                    mapBuilder.Add(
-                        int.Parse(key),
-                        UInt160.Parse(value!.Value<string>()));
+                    var id = value.Value<int>("id");
+                    var hash = UInt160.Parse(value.Value<string>("hash"));
+                    var name = value.Value<string>("name");
+                    contracts.Add(new ContractInfo(id, hash, name));
                 }
             }
-            return new BranchInfo(network, addressVersion, index, indexHash, rootHash, mapBuilder.ToImmutable());
+            return new BranchInfo(network, addressVersion, index, indexHash, rootHash, contracts);
         }
 
         public void WriteJson(JsonWriter writer)
@@ -49,10 +55,13 @@ namespace Neo.BlockchainToolkit.Models
             writer.WriteProperty("index", Index);
             writer.WriteProperty("index-hash", $"{IndexHash}");
             writer.WriteProperty("root-hash", $"{RootHash}");
-            using var __ = writer.WritePropertyObject("contract-map");
-            foreach (var (k, v) in ContractMap)
+            using var __ = writer.WritePropertyArray("contracts");
+            foreach (var contract in Contracts)
             {
-                writer.WriteProperty($"{k}", $"{v}");
+                using var _c = writer.WriteObject();
+                writer.WriteProperty("id", contract.Id);
+                writer.WriteProperty("hash", $"{contract.Hash}");
+                writer.WriteProperty("name", contract.Name);
             }
         }
     }

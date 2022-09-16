@@ -27,7 +27,6 @@ namespace Neo.BlockchainToolkit.Persistence
             return UInt256.Parse(result.AsString());
         }
 
-
         internal static byte[] GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
             var result = rpcClient.RpcSend(
@@ -36,6 +35,38 @@ namespace Neo.BlockchainToolkit.Persistence
                 scriptHash.ToString(),
                 Convert.ToBase64String(key));
             return Convert.FromBase64String(result.AsString());
+        }
+
+        internal static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
+        {
+            const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
+
+            try
+            {
+                var result = rpcClient.GetProof(rootHash, scriptHash, key);
+                return Utility.VerifyProof(rootHash, result).value;
+            }
+            // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
+            // which returns null for invalid keys instead of throwing an exception.
+            catch (RpcException ex) when (ex.HResult == COR_E_KEYNOTFOUND)
+            {
+                // Trie class throws KeyNotFoundException if key is not in the trie.
+                // RpcClient/Server converts the KeyNotFoundException into an
+                // RpcException with code == COR_E_KEYNOTFOUND.
+
+                return null;
+            }
+            catch (RpcException ex) when (ex.HResult == -100 && ex.Message == "Unknown value")
+            {
+                // Prior to Neo 3.3.0, StateService GetProof method threw a custom exception 
+                // instead of KeyNotFoundException like GetState. This catch clause detected
+                // the custom exception that GetProof used to throw. 
+
+                // TODO: remove this clause once deployed StateService for Neo N3 MainNet and
+                //       TestNet has been verified to be running Neo 3.3.0 or later.
+
+                return null;
+            }
         }
 
         internal static byte[] GetStorage(this RpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)

@@ -1,31 +1,12 @@
 using System;
-using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Neo.BlockchainToolkit
 {
-    class DelegateDisposable : IDisposable
-    {
-        readonly Action action;
-        bool disposed = false;
-
-        public DelegateDisposable(Action action)
-        {
-            this.action = action;
-        }
-
-        public void Dispose()
-        {
-            if (!disposed)
-            {
-                action();
-                disposed = true;
-            }
-        }
-    }
     public static class JsonWriterExtensions
     {
-        
         public static IDisposable WriteArray(this JsonWriter writer)
         {
             writer.WriteStartArray();
@@ -111,44 +92,69 @@ namespace Neo.BlockchainToolkit
             writer.WritePropertyName(property);
             writer.WriteValue(value);
         }
-        // public static void WriteJson(this JsonWriter writer, Neo.Json.JObject json)
-        // {
-        //     switch (json)
-        //     {
-        //         case null:
-        //             writer.WriteNull();
-        //             break;
-        //         case Neo.Json.JBoolean boolean:
-        //             writer.WriteValue(boolean.Value);
-        //             break;
-        //         case Neo.Json.JNumber number:
-        //             writer.WriteValue(number.Value);
-        //             break;
-        //         case Neo.IO.Json.JString @string:
-        //             writer.WriteValue(@string.Value);
-        //             break;
-        //         case Neo.IO.Json.JArray @array:
-        //             writer.WriteStartArray();
-        //             using (var _ = AnonymousDisposable.Create(() => writer.WriteEndArray()))
-        //             {
-        //                 foreach (var value in @array)
-        //                 {
-        //                     WriteJson(writer, value);
-        //                 }
-        //             }
-        //             break;
-        //         case Neo.IO.Json.JObject @object:
-        //             writer.WriteStartObject();
-        //             using (var _ = AnonymousDisposable.Create(() => writer.WriteEndObject()))
-        //             {
-        //                 foreach (var (key, value) in @object.Properties)
-        //                 {
-        //                     writer.WritePropertyName(key);
-        //                     WriteJson(writer, value);
-        //                 }
-        //             }
-        //             break;
-        //     }
-        // }
+
+        public static void WriteJson(this JsonWriter writer, Neo.Json.JToken? json)
+        {
+            switch (json)
+            {
+                case null:
+                    writer.WriteNull();
+                    break;
+                case Neo.Json.JBoolean boolean:
+                    writer.WriteValue(boolean.Value);
+                    break;
+                case Neo.Json.JNumber number:
+                    writer.WriteValue(number.Value);
+                    break;
+                case Neo.Json.JString @string:
+                    writer.WriteValue(@string.Value);
+                    break;
+                case Neo.Json.JArray @array:
+                    using (var _ = writer.WriteArray())
+                    {
+                        foreach (var value in @array)
+                        {
+                            WriteJson(writer, value);
+                        }
+                    }
+                    break;
+                case Neo.Json.JObject @object:
+                    using (var _ = writer.WriteObject())
+                    {
+                        foreach (var (key, value) in @object.Properties)
+                        {
+                            writer.WritePropertyName(key);
+                            WriteJson(writer, value);
+                        }
+                    }
+                    break;
+            }
+        }
+
+        public static Neo.Json.JToken? ToNeoJson(this JToken? json)
+        {
+            if (json is null) return null;
+
+            return json.Type switch
+            {
+                JTokenType.Null => null,
+                JTokenType.Boolean => json.Value<bool>(),
+                JTokenType.Float => json.Value<double>(),
+                JTokenType.Integer => json.Value<long>(),
+                JTokenType.String => json.Value<string>(),
+                JTokenType.Array => new Neo.Json.JArray(json.Select(ToNeoJson)),
+                JTokenType.Object => ConvertJObject((JObject)json),
+                _ => throw new NotSupportedException($"{json.Type}"),
+            };
+            static Neo.Json.JObject ConvertJObject(JObject json)
+            {
+                var neoJson = new Neo.Json.JObject();
+                foreach (var (key, value) in json)
+                {
+                    neoJson[key] = ToNeoJson(value);
+                }
+                return neoJson;
+            }
+        }
     }
 }

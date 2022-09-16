@@ -40,7 +40,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNext" Version="4.7.1" />
     <PackageReference Include="MessagePack" Version="2.4.35" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
     <PackageReference Include="Nerdbank.Streams" Version="2.8.65" />
