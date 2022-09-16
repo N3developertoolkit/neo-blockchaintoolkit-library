@@ -83,6 +83,21 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
+        public void Prefetch(UInt160 contractHash)
+        {
+            var info = branchInfo.Contracts.Single(c => c.Hash == contractHash);
+            if (info.Id < 0)
+            {
+                throw new NotSupportedException("Prefetch is not supported for native contracts");
+            }
+            if (cacheClient.TryGetCachedFoundStates(contractHash, null, out var _))
+            {
+                throw new NotSupportedException($"{info.Name} contract ({contractHash}) already fetched");
+            }
+
+            DownloadStates(contractHash);
+        }
+
         public static async Task<BranchInfo> GetBranchInfoAsync(RpcClient rpcClient, uint index)
         {
             var versionTask = rpcClient.GetVersionAsync();
@@ -358,12 +373,21 @@ namespace Neo.BlockchainToolkit.Persistence
                 return values;
             }
 
-            return FindStatesFromService(contractHash, prefix);
+            DownloadStates(contractHash, prefix);
+
+            if (cacheClient.TryGetCachedFoundStates(contractHash, prefix, out values))
+            {
+                return values;
+            }
+            else
+            {
+                throw new Exception($"nameof(DownloadStates) failed");
+            }
         }
 
-        IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> FindStatesFromService(UInt160 contractHash, byte? prefix = null)
+        void DownloadStates(UInt160 contractHash, byte? prefix = null)
         {
-            const string loggerName = nameof(FindStatesFromService);
+            const string loggerName = nameof(DownloadStates);
             var contractName = contractNameMap[contractHash];
             Activity? activity = null;
             if (logger.IsEnabled(loggerName))
@@ -409,7 +433,6 @@ namespace Neo.BlockchainToolkit.Persistence
                     {
                         var (key, value) = found.Results[i];
                         cacheClient.CacheFoundState(contractHash, prefix, key, value);
-                        yield return (key, value);
                     }
                     if (!found.Truncated || found.Results.Length == 0) break;
                     from = found.Results[^1].key;
