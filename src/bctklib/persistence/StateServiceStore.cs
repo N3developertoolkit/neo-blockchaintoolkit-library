@@ -27,12 +27,7 @@ namespace Neo.BlockchainToolkit.Persistence
         }
 
         public const string LoggerCategory = "Neo.BlockchainToolkit.Persistence.StateServiceStore";
-        readonly static DiagnosticSource logger;
-
-        static StateServiceStore()
-        {
-            logger = new DiagnosticListener(LoggerCategory);
-        }
+        readonly static DiagnosticSource logger = new DiagnosticListener(LoggerCategory);
 
         const byte Ledger_Prefix_BlockHash = 9;
         const byte Ledger_Prefix_CurrentBlock = 12;
