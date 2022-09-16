@@ -12,12 +12,13 @@ using Neo.Network.RPC.Models;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
+using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
     public sealed partial class StateServiceStore : IReadOnlyStore, IDisposable
     {
-        public interface ICacheClient : IDisposable
+        internal interface ICacheClient : IDisposable
         {
             bool TryGetCachedStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[]? value);
             void CacheStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, byte[]? value);
@@ -50,12 +51,25 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public ProtocolSettings Settings => branchInfo.ProtocolSettings;
 
-        public StateServiceStore(Uri uri, in BranchInfo branchInfo)
-            : this(new RpcClient(uri), new MemoryCacheClient(), branchInfo)
-        {
-        }
+        public StateServiceStore(string uri, in BranchInfo branchInfo)
+            : this(new Uri(uri), branchInfo) { }
 
-        public StateServiceStore(RpcClient rpcClient, ICacheClient cacheClient, in BranchInfo branchInfo)
+        public StateServiceStore(Uri uri, in BranchInfo branchInfo)
+            : this(new RpcClient(uri), branchInfo) { }
+
+        public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo)
+            : this(rpcClient, new MemoryCacheClient(), branchInfo) { }
+
+        public StateServiceStore(string uri, in BranchInfo branchInfo, RocksDb db, bool shared = false)
+            : this(new Uri(uri), branchInfo, db, shared) { }
+
+        public StateServiceStore(Uri uri, in BranchInfo branchInfo, RocksDb db, bool shared = false)
+            : this(new RpcClient(uri), branchInfo, db, shared) { }
+
+        public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo, RocksDb db, bool shared = false)
+            : this(rpcClient, new RocksDbCacheClient(db, shared), branchInfo) { }
+
+        internal StateServiceStore(RpcClient rpcClient, ICacheClient cacheClient, in BranchInfo branchInfo)
         {
             this.rpcClient = rpcClient;
             this.cacheClient = cacheClient;
@@ -231,10 +245,12 @@ namespace Neo.BlockchainToolkit.Persistence
             if (logger.IsEnabled(loggerName))
             {
                 activity = new Activity(loggerName);
-                logger.StartActivity(activity, new { 
-                    contractHash, 
+                logger.StartActivity(activity, new
+                {
+                    contractHash,
                     contractName = contractNameMap[contractHash],
-                    prefix = Convert.ToHexString(key.Span)});
+                    prefix = Convert.ToHexString(key.Span)
+                });
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -324,7 +340,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 var comparer = direction == SeekDirection.Forward
                    ? MemorySequenceComparer.Default
                    : MemorySequenceComparer.Reverse;
-                
+
                 return states
                     .Where(kvp => kvp.key.Span.StartsWith(key.Span))
                     .Select(kvp =>
@@ -358,10 +374,12 @@ namespace Neo.BlockchainToolkit.Persistence
             if (logger.IsEnabled(loggerName))
             {
                 activity = new Activity(loggerName);
-                logger.StartActivity(activity, new { 
-                    contractHash, 
+                logger.StartActivity(activity, new
+                {
+                    contractHash,
                     contractName = contractNameMap[contractHash],
-                    prefix });
+                    prefix
+                });
             }
 
             var count = 0;
@@ -386,9 +404,11 @@ namespace Neo.BlockchainToolkit.Persistence
                     count += found.Results.Length;
                     if (logger.IsEnabled(loggerName) && found.Truncated)
                     {
-                        logger.Write($"{loggerName}.Found", new {
+                        logger.Write($"{loggerName}.Found", new
+                        {
                             total = count,
-                            found = found.Results.Length});
+                            found = found.Results.Length
+                        });
                     }
                     for (int i = 0; i < found.Results.Length; i++)
                     {

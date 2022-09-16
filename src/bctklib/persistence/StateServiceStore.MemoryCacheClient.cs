@@ -7,9 +7,9 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     public sealed partial class StateServiceStore
     {
-        public sealed class MemoryCacheClient : ICacheClient
+        internal sealed class MemoryCacheClient : ICacheClient
         {
-            readonly ConcurrentDictionary<UInt160, IDictionary<ReadOnlyMemory<byte>, byte[]?>> storageMap = new();
+            readonly ConcurrentDictionary<int, byte[]?> storageMap = new();
             readonly ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap = new();
             private bool disposed;
 
@@ -21,33 +21,43 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
+            static int GetStorageKey(UInt160 contractHash, byte? prefix)
+            {
+                var hashBuilder = new HashCode();
+                hashBuilder.Add(contractHash);
+                if (prefix.HasValue) hashBuilder.Add(prefix.Value);
+                return hashBuilder.ToHashCode();
+            }
+
+            static int GetStorageKey(UInt160 contractHash, ReadOnlyMemory<byte> key)
+            {
+                var hashBuilder = new HashCode();
+                hashBuilder.Add(contractHash);
+                hashBuilder.AddBytes(key.Span);
+                return hashBuilder.ToHashCode();
+            }
+
             public bool TryGetCachedStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[]? value)
             {
-                if (storageMap.TryGetValue(contractHash, out var contractMap))
-                {
-                    return contractMap.TryGetValue(key, out value);
-                }
-                value = null;
-                return false;
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, key);
+                return storageMap.TryGetValue(hash, out value);
             }
 
             public void CacheStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, byte[]? value)
             {
-                var contractMap = storageMap.GetOrAdd(contractHash, 
-                    _ => new ConcurrentDictionary<ReadOnlyMemory<byte>, byte[]?>(MemorySequenceComparer.Default));
-                if (!contractMap.TryAdd(key, value)) throw new Exception($"Key already exists {Convert.ToHexString(key.Span)}");
-            }
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
 
-            public void CacheFoundState(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key, byte[] value)
-            {
-                var hash = prefix.HasValue ? HashCode.Combine(contractHash, prefix.Value) : contractHash.GetHashCode();
-                var foundStates = foundStateMap.GetOrAdd(hash, _ => new List<(ReadOnlyMemory<byte>, byte[])>());
-                foundStates.Add((key, value));
+                var hash = GetStorageKey(contractHash, key);
+                if (!storageMap.TryAdd(hash, value)) throw new Exception($"Key already exists {Convert.ToHexString(key.Span)}");
             }
 
             public bool TryGetCachedFoundStates(UInt160 contractHash, byte? prefix, out IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> value)
             {
-                var hash = prefix.HasValue ? HashCode.Combine(contractHash, prefix.Value) : contractHash.GetHashCode();
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, prefix);
                 if (foundStateMap.TryGetValue(hash, out var list))
                 {
                     value = list;
@@ -56,6 +66,15 @@ namespace Neo.BlockchainToolkit.Persistence
 
                 value = Enumerable.Empty<(ReadOnlyMemory<byte> key, byte[] value)>();
                 return false;
+            }
+
+            public void CacheFoundState(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key, byte[] value)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, prefix);
+                var foundStates = foundStateMap.GetOrAdd(hash, _ => new List<(ReadOnlyMemory<byte>, byte[])>());
+                foundStates.Add((key, value));
             }
         }
     }
