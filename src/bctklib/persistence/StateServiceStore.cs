@@ -376,19 +376,20 @@ namespace Neo.BlockchainToolkit.Persistence
                 return values;
             }
 
-            DownloadStates(contractHash, prefix);
+            var count = DownloadStates(contractHash, prefix);
+
+            // TODO: cache that this contract/prefix has no state
+            if (count == 0) return Enumerable.Empty<(ReadOnlyMemory<byte> key, byte[] value)>();
 
             if (cacheClient.TryGetCachedFoundStates(contractHash, prefix, out values))
             {
                 return values;
             }
-            else
-            {
-                return Enumerable.Empty<(ReadOnlyMemory<byte> key, byte[] value)>();
-            }
+
+            throw new Exception("DownloadStates failed");
         }
 
-        async Task DownloadStatesAsync(UInt160 contractHash, byte? prefix = null)
+        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix = null)
         {
             const string loggerName = nameof(DownloadStatesAsync);
             Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
@@ -403,6 +404,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     var found = await rpcClient.FindStatesAsync(branchInfo.RootHash, contractHash, prefixOwner.Memory, from).ConfigureAwait(false);
                     if (WriteFoundStates(contractHash, prefix, found, out from, ref count, loggerName)) break;
                 }
+                return count;
             }
             finally
             {
@@ -410,7 +412,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        void DownloadStates(UInt160 contractHash, byte? prefix = null)
+        int DownloadStates(UInt160 contractHash, byte? prefix = null)
         {
             const string loggerName = nameof(DownloadStates);
             Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
@@ -425,6 +427,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     var found = rpcClient.FindStates(branchInfo.RootHash, contractHash, prefixOwner.Memory.Span, from);
                     if (WriteFoundStates(contractHash, prefix, found, out from, ref count, loggerName)) break;
                 }
+                return count;
             }
             finally
             {
