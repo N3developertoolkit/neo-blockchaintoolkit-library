@@ -12,6 +12,8 @@ using Neo.Network.RPC.Models;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
+using OneOf;
+using OneOf.Types;
 using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
@@ -83,19 +85,20 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public void Prefetch(UInt160 contractHash)
+        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash)
         {
             var info = branchInfo.Contracts.Single(c => c.Hash == contractHash);
             if (info.Id < 0)
             {
-                throw new NotSupportedException("Prefetch is not supported for native contracts");
+                return new Error<string>("Prefetch is not supported for native contracts");
             }
             if (cacheClient.TryGetCachedFoundStates(contractHash, null, out var _))
             {
-                throw new NotSupportedException($"{info.Name} contract ({contractHash}) already fetched");
+                return new Error<string>($"{info.Name} contract ({contractHash}) already fetched");
             }
 
-            DownloadStates(contractHash);
+            await DownloadStatesAsync(contractHash).ConfigureAwait(false);
+            return default(Success);
         }
 
         public static async Task<BranchInfo> GetBranchInfoAsync(RpcClient rpcClient, uint index)
@@ -385,65 +388,109 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
+        async Task DownloadStatesAsync(UInt160 contractHash, byte? prefix = null)
+        {
+            const string loggerName = nameof(DownloadStatesAsync);
+            Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
+            var count = 0;
+            var stopwatch = Stopwatch.StartNew();
+            using var prefixOwner = GetPrefixOwner(prefix);
+            try
+            {
+                var from = Array.Empty<byte>();
+                while (true)
+                {
+                    var found = await rpcClient.FindStatesAsync(branchInfo.RootHash, contractHash, prefixOwner.Memory, from).ConfigureAwait(false);
+                    if (WriteFoundStates(contractHash, prefix, found, out from, ref count, loggerName)) break;
+                }
+            }
+            finally
+            {
+                DownloadStatesStop(activity, count, stopwatch);
+            }
+        }
+
         void DownloadStates(UInt160 contractHash, byte? prefix = null)
         {
             const string loggerName = nameof(DownloadStates);
-            var contractName = contractNameMap[contractHash];
-            Activity? activity = null;
+            Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
+            var count = 0;
+            var stopwatch = Stopwatch.StartNew();
+            using var prefixOwner = GetPrefixOwner(prefix);
+            try
+            {
+                var from = Array.Empty<byte>();
+                while (true)
+                {
+                    var found = rpcClient.FindStates(branchInfo.RootHash, contractHash, prefixOwner.Memory.Span, from);
+                    if (WriteFoundStates(contractHash, prefix, found, out from, ref count, loggerName)) break;
+                }
+            }
+            finally
+            {
+                DownloadStatesStop(activity, count, stopwatch);
+            }
+        }
+
+        Activity? DownloadStatesStart(string loggerName, UInt160 contractHash, byte? prefix)
+        {
             if (logger.IsEnabled(loggerName))
             {
-                activity = new Activity(loggerName);
+                var activity = new Activity(loggerName);
                 logger.StartActivity(activity, new
                 {
                     contractHash,
                     contractName = contractNameMap[contractHash],
                     prefix
                 });
+                return activity;
             }
+            return null;
+        }
 
-            var count = 0;
-            var stopwatch = Stopwatch.StartNew();
-
-            ReadOnlyMemory<byte> prefixBuffer = default;
-            byte[]? rentedBuffer = null;
-            if (prefix.HasValue)
+        static void DownloadStatesStop(Activity? activity, int count, Stopwatch stopwatch)
+        {
+            stopwatch.Stop();
+            if (activity is not null)
             {
-                rentedBuffer = ArrayPool<byte>.Shared.Rent(1);
-                rentedBuffer[0] = prefix.Value;
-                prefixBuffer = rentedBuffer.AsMemory(0, 1);
+                logger.StopActivity(activity, new { count, elapsed = stopwatch.Elapsed });
             }
+        }
 
-            try
+        static IMemoryOwner<byte> GetPrefixOwner(byte? prefix)
+        {
+            if (!prefix.HasValue) return NullMemoryOwner<byte>.Instance;
+            var owner = ExactMemoryOwner<byte>.Rent(1);
+            owner.Memory.Span[0] = prefix.Value;
+            return owner;
+        }
+
+        bool WriteFoundStates(UInt160 contractHash, byte? prefix, RpcFoundStates found, out byte[] from, ref int count, string loggerName)
+        {
+            ValidateFoundStates(branchInfo.RootHash, found);
+            count += found.Results.Length;
+            if (logger.IsEnabled(loggerName) && found.Truncated)
             {
-                var from = Array.Empty<byte>();
-                while (true)
+                logger.Write($"{loggerName}.Found", new
                 {
-                    var found = rpcClient.FindStates(branchInfo.RootHash, contractHash, prefixBuffer.Span, from);
-                    ValidateFoundStates(branchInfo.RootHash, found);
-                    count += found.Results.Length;
-                    if (logger.IsEnabled(loggerName) && found.Truncated)
-                    {
-                        logger.Write($"{loggerName}.Found", new
-                        {
-                            total = count,
-                            found = found.Results.Length
-                        });
-                    }
-                    for (int i = 0; i < found.Results.Length; i++)
-                    {
-                        var (key, value) = found.Results[i];
-                        cacheClient.CacheFoundState(contractHash, prefix, key, value);
-                    }
-                    if (!found.Truncated || found.Results.Length == 0) break;
-                    from = found.Results[^1].key;
-                }
+                    total = count,
+                    found = found.Results.Length
+                });
             }
-            finally
+            for (int i = 0; i < found.Results.Length; i++)
             {
-                stopwatch.Stop();
-                if (rentedBuffer is not null) ArrayPool<byte>.Shared.Return(rentedBuffer);
-                if (activity is not null) logger.StopActivity(activity, new { count, elapsed = stopwatch.Elapsed });
+                var (key, value) = found.Results[i];
+                cacheClient.CacheFoundState(contractHash, prefix, key, value);
             }
+
+            if (!found.Truncated || found.Results.Length == 0)
+            {
+                from = Array.Empty<byte>();
+                return true;
+            }
+
+            from = found.Results[^1].key;
+            return false;
         }
     }
 }
