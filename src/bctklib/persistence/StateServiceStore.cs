@@ -384,7 +384,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
             else
             {
-                throw new Exception($"nameof(DownloadStates) failed");
+                return Enumerable.Empty<(ReadOnlyMemory<byte> key, byte[] value)>();
             }
         }
 

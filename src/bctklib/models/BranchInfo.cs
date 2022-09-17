@@ -30,7 +30,7 @@ namespace Neo.BlockchainToolkit.Models
             var addressVersion = json.Value<byte>("address-version");
             var index = json.Value<uint>("index");
             var indexHash = UInt256.Parse(json.Value<string>("index-hash"));
-            var rootHash = UInt256.Parse(json.Value<string>("rootHash"));
+            var rootHash = UInt256.Parse(json.Value<string>("root-hash"));
 
             var contracts = new List<ContractInfo>();
             var contractsJson = json["contracts"] as JArray;
