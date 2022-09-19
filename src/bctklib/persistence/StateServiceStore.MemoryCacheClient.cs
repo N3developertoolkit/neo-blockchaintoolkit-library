@@ -77,6 +77,14 @@ namespace Neo.BlockchainToolkit.Persistence
                 return new Snapshot(foundStateMap, hash);
             }
 
+            public void DropCachedFoundStates(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, prefix);
+                _ = foundStateMap.TryRemove(hash, out _);
+            }
+
             class Snapshot : ICacheSnapshot
             {
                 readonly ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap;

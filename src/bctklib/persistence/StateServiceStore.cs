@@ -4,6 +4,7 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Models;
 using Neo.IO;
@@ -25,7 +26,7 @@ namespace Neo.BlockchainToolkit.Persistence
             bool TryGetCachedStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[]? value);
             void CacheStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, byte[]? value);
             bool TryGetCachedFoundStates(UInt160 contractHash, byte? prefix, out IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> value);
-            // void CacheFoundState(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key, byte[] value);
+            void DropCachedFoundStates(UInt160 contractHash, byte? prefix);
             ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix);
         }
 
@@ -92,7 +93,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash)
+        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash, CancellationToken token)
         {
             var info = branchInfo.Contracts.Single(c => c.Hash == contractHash);
             if (info.Id < 0)
@@ -104,7 +105,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 return new Error<string>($"{info.Name} contract ({contractHash}) already fetched");
             }
 
-            await DownloadStatesAsync(contractHash).ConfigureAwait(false);
+            await DownloadStatesAsync(contractHash, null, token).ConfigureAwait(false);
             return default(Success);
         }
 
@@ -380,10 +381,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 return values;
             }
 
-            var count = DownloadStates(contractHash, prefix);
-
-            // TODO: cache that this contract/prefix has no state
-            if (count == 0) return Enumerable.Empty<(ReadOnlyMemory<byte> key, byte[] value)>();
+            var count = DownloadStates(contractHash, prefix, CancellationToken.None);
 
             if (cacheClient.TryGetCachedFoundStates(contractHash, prefix, out values))
             {
@@ -393,7 +391,7 @@ namespace Neo.BlockchainToolkit.Persistence
             throw new Exception("DownloadStates failed");
         }
 
-        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix = null)
+        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix, CancellationToken token)
         {
             const string loggerName = nameof(DownloadStatesAsync);
             Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
@@ -406,10 +404,17 @@ namespace Neo.BlockchainToolkit.Persistence
                 using var snapshot = cacheClient.GetFoundStatesSnapshot(contractHash, prefix);
                 while (true)
                 {
+                    token.ThrowIfCancellationRequested();
                     var found = await rpcClient.FindStatesAsync(branchInfo.RootHash, contractHash, prefixOwner.Memory, from).ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
                     if (WriteFoundStates(found, snapshot, out from, ref count, loggerName)) break;
                 }
                 return count;
+            }
+            catch
+            {
+                cacheClient.DropCachedFoundStates(contractHash, prefix);
+                throw;
             }
             finally
             {
@@ -417,7 +422,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        int DownloadStates(UInt160 contractHash, byte? prefix = null)
+        int DownloadStates(UInt160 contractHash, byte? prefix, CancellationToken token)
         {
             const string loggerName = nameof(DownloadStates);
             Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
@@ -430,18 +435,24 @@ namespace Neo.BlockchainToolkit.Persistence
                 using var snapshot = cacheClient.GetFoundStatesSnapshot(contractHash, prefix);
                 while (true)
                 {
+                    token.ThrowIfCancellationRequested();
                     var found = rpcClient.FindStates(branchInfo.RootHash, contractHash, prefixOwner.Memory.Span, from);
+                    token.ThrowIfCancellationRequested();
                     if (WriteFoundStates(found, snapshot, out from, ref count, loggerName)) break;
                 }
                 snapshot.Commit();
                 return count;
+            }
+            catch
+            {
+                cacheClient.DropCachedFoundStates(contractHash, prefix);
+                throw;
             }
             finally
             {
                 DownloadStatesStop(activity, count, stopwatch);
             }
         }
-
 
         Activity? DownloadStatesStart(string loggerName, UInt160 contractHash, byte? prefix)
         {

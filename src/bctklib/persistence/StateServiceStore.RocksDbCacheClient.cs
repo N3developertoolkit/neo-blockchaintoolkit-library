@@ -108,6 +108,23 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
+            public ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
+                var familyName = GetFamilyName(contractHash, prefix);
+                var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
+                return new Snapshot(db, columnFamily);
+            }
+
+            public void DropCachedFoundStates(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
+
+                var familyName = GetFamilyName(contractHash, prefix);
+                db.DropColumnFamily(familyName);
+            }
+
+
             class Snapshot : ICacheSnapshot
             {
                 readonly RocksDb db;
@@ -134,14 +151,6 @@ namespace Neo.BlockchainToolkit.Persistence
                 {
                     db.Write(writeBatch);
                 }
-            }
-
-            public ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix)
-            {
-                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
-                var familyName = GetFamilyName(contractHash, prefix);
-                var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
-                return new Snapshot(db, columnFamily);
             }
         }
     }
