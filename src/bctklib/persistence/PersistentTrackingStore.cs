@@ -49,6 +49,12 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
+        public void Reset()
+        {
+            if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
+            using var iterator = db.NewIterator(columnFamily);
+        }
+
         public byte[]? TryGet(byte[]? key)
         {
             if (disposed || db.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(RocksDbStore));
