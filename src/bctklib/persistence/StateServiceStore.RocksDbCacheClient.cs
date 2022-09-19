@@ -108,13 +108,40 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
-            public void CacheFoundState(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key, byte[] value)
+            class Snapshot : ICacheSnapshot
+            {
+                readonly RocksDb db;
+                readonly ColumnFamilyHandle columnFamily;
+                readonly WriteBatch writeBatch = new();
+
+                public Snapshot(RocksDb db, ColumnFamilyHandle columnFamily)
+                {
+                    this.db = db;
+                    this.columnFamily = columnFamily;
+                }
+
+                public void Dispose()
+                {
+                    writeBatch.Dispose();
+                }
+
+                public void Add(ReadOnlyMemory<byte> key, byte[] value)
+                {
+                    writeBatch.Put(key.Span, value.AsSpan(), columnFamily);
+                }
+
+                public void Commit()
+                {
+                    db.Write(writeBatch);
+                }
+            }
+
+            public ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix)
             {
                 if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
-
                 var familyName = GetFamilyName(contractHash, prefix);
                 var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
-                db.Put(key.Span, value.AsSpan(), columnFamily);
+                return new Snapshot(db, columnFamily);
             }
         }
     }

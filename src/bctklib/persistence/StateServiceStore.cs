@@ -25,7 +25,14 @@ namespace Neo.BlockchainToolkit.Persistence
             bool TryGetCachedStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[]? value);
             void CacheStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, byte[]? value);
             bool TryGetCachedFoundStates(UInt160 contractHash, byte? prefix, out IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> value);
-            void CacheFoundState(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key, byte[] value);
+            // void CacheFoundState(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key, byte[] value);
+            ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix);
+        }
+
+        internal interface ICacheSnapshot : IDisposable
+        {
+            void Add(ReadOnlyMemory<byte> key, byte[] value);
+            void Commit();
         }
 
         public const string LoggerCategory = "Neo.BlockchainToolkit.Persistence.StateServiceStore";
@@ -396,10 +403,11 @@ namespace Neo.BlockchainToolkit.Persistence
             try
             {
                 var from = Array.Empty<byte>();
+                using var snapshot = cacheClient.GetFoundStatesSnapshot(contractHash, prefix);
                 while (true)
                 {
                     var found = await rpcClient.FindStatesAsync(branchInfo.RootHash, contractHash, prefixOwner.Memory, from).ConfigureAwait(false);
-                    if (WriteFoundStates(contractHash, prefix, found, out from, ref count, loggerName)) break;
+                    if (WriteFoundStates(found, snapshot, out from, ref count, loggerName)) break;
                 }
                 return count;
             }
@@ -419,11 +427,13 @@ namespace Neo.BlockchainToolkit.Persistence
             try
             {
                 var from = Array.Empty<byte>();
+                using var snapshot = cacheClient.GetFoundStatesSnapshot(contractHash, prefix);
                 while (true)
                 {
                     var found = rpcClient.FindStates(branchInfo.RootHash, contractHash, prefixOwner.Memory.Span, from);
-                    if (WriteFoundStates(contractHash, prefix, found, out from, ref count, loggerName)) break;
+                    if (WriteFoundStates(found, snapshot, out from, ref count, loggerName)) break;
                 }
+                snapshot.Commit();
                 return count;
             }
             finally
@@ -461,7 +471,7 @@ namespace Neo.BlockchainToolkit.Persistence
             return owner;
         }
 
-        bool WriteFoundStates(UInt160 contractHash, byte? prefix, RpcFoundStates found, out byte[] from, ref int count, string loggerName)
+        bool WriteFoundStates(RpcFoundStates found, ICacheSnapshot snapshot, out byte[] from, ref int count, string loggerName)
         {
             ValidateFoundStates(branchInfo.RootHash, found);
             count += found.Results.Length;
@@ -472,7 +482,7 @@ namespace Neo.BlockchainToolkit.Persistence
             for (int i = 0; i < found.Results.Length; i++)
             {
                 var (key, value) = found.Results[i];
-                cacheClient.CacheFoundState(contractHash, prefix, key, value);
+                snapshot.Add(key, value);
             }
 
             if (!found.Truncated || found.Results.Length == 0)
