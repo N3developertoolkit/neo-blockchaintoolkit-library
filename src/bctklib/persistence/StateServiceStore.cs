@@ -249,6 +249,8 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
+
+
         byte[]? GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, Func<byte[]?> getStorageFromService)
         {
             if (cacheClient.TryGetCachedStorage(contractHash, key, out var value)) return value;
@@ -258,12 +260,7 @@ namespace Neo.BlockchainToolkit.Persistence
             if (logger.IsEnabled(loggerName))
             {
                 activity = new Activity(loggerName);
-                logger.StartActivity(activity, new
-                {
-                    contractHash,
-                    contractName = contractNameMap[contractHash],
-                    prefix = Convert.ToHexString(key.Span)
-                });
+                logger.StartActivity(activity, new GetStorageStart(contractHash, contractNameMap[contractHash], key));
             }
 
             var stopwatch = Stopwatch.StartNew();
@@ -276,7 +273,7 @@ namespace Neo.BlockchainToolkit.Persistence
             finally
             {
                 stopwatch.Stop();
-                if (activity is not null) logger.StopActivity(activity, new { elapsed = stopwatch.Elapsed });
+                if (activity is not null) logger.StopActivity(activity, new GetStorageStop(stopwatch.Elapsed));
             }
         }
 
@@ -435,17 +432,13 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
+
         Activity? DownloadStatesStart(string loggerName, UInt160 contractHash, byte? prefix)
         {
             if (logger.IsEnabled(loggerName))
             {
                 var activity = new Activity(loggerName);
-                logger.StartActivity(activity, new
-                {
-                    contractHash,
-                    contractName = contractNameMap[contractHash],
-                    prefix
-                });
+                logger.StartActivity(activity, new DownloadStatesStart(contractHash, contractNameMap[contractHash], prefix));
                 return activity;
             }
             return null;
@@ -456,7 +449,7 @@ namespace Neo.BlockchainToolkit.Persistence
             stopwatch.Stop();
             if (activity is not null)
             {
-                logger.StopActivity(activity, new { count, elapsed = stopwatch.Elapsed });
+                logger.StopActivity(activity, new DownloadStatesStop(count, stopwatch.Elapsed));
             }
         }
 
@@ -474,11 +467,7 @@ namespace Neo.BlockchainToolkit.Persistence
             count += found.Results.Length;
             if (logger.IsEnabled(loggerName) && found.Truncated)
             {
-                logger.Write($"{loggerName}.Found", new
-                {
-                    total = count,
-                    found = found.Results.Length
-                });
+                logger.Write($"{loggerName}.Found", new DownloadStatesFound(count, found.Results.Length));
             }
             for (int i = 0; i < found.Results.Length; i++)
             {
