@@ -166,7 +166,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
             else
             {
-                db.Remove(key);
+                db.Remove(key, columnFamily);
             }
         }
 
