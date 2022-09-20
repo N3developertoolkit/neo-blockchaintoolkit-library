@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Neo.BlockchainToolkit.Models;
+using Neo.BlockchainToolkit.Utilities;
 using Neo.IO;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;

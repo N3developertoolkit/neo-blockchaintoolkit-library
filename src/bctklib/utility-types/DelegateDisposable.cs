@@ -1,6 +1,6 @@
 using System;
 
-namespace Neo.BlockchainToolkit
+namespace Neo.BlockchainToolkit.Utilities
 {
     class DelegateDisposable : IDisposable
     {

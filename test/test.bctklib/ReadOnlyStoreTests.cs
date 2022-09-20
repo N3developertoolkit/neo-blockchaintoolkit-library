@@ -4,6 +4,7 @@ using System.Linq;
 using FluentAssertions;
 using Neo.BlockchainToolkit;
 using Neo.BlockchainToolkit.Persistence;
+using Neo.BlockchainToolkit.Utilities;
 using Neo.Persistence;
 using Xunit;
 

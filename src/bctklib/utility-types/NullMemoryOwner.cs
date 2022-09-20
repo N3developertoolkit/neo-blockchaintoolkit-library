@@ -1,7 +1,7 @@
 using System;
 using System.Buffers;
 
-namespace Neo.BlockchainToolkit.Persistence
+namespace Neo.BlockchainToolkit.Utilities
 {
     class NullMemoryOwner<T> : IMemoryOwner<T>
     {

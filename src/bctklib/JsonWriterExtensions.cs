@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Neo.BlockchainToolkit.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 

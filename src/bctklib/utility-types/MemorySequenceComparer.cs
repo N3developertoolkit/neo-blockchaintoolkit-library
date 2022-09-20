@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Neo.BlockchainToolkit
+namespace Neo.BlockchainToolkit.Utilities
 {
     public class MemorySequenceComparer : IEqualityComparer<ReadOnlyMemory<byte>>, IComparer<ReadOnlyMemory<byte>>
     {

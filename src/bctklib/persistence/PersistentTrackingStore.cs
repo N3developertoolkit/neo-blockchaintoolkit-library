@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Neo.BlockchainToolkit.Utilities;
 using Neo.Persistence;
 using RocksDbSharp;
 
