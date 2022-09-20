@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Neo.BlockchainToolkit.Utilities;
 using Neo.Persistence;
 using OneOf;
 using None = OneOf.Types.None;

@@ -1,185 +1,156 @@
 using System;
-using System.Buffers;
-using System.Buffers.Binary;
-using System.IO;
-using System.Text;
-using MessagePack;
-using MessagePack.Formatters;
-using Neo.Json;
-using Neo.Network.RPC;
-using Neo.Network.RPC.Models;
+using System.Collections.Generic;
+using System.Linq;
 using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
     public partial class StateServiceStore
     {
-        internal class RocksDbCacheClient : ICachingClient
+        internal sealed class RocksDbCacheClient : ICacheClient
         {
-            readonly static ColumnFamilyOptions defaultColumnFamilyOptions = new ColumnFamilyOptions();
-
-            static ColumnFamilyHandle GetOrCreateColumnFamily(RocksDb db, string familyName, ColumnFamilyOptions? options = null)
-            {
-                if (!db.TryGetColumnFamily(familyName, out var familyHandle))
-                {
-                    familyHandle = db.CreateColumnFamily(options ?? defaultColumnFamilyOptions, familyName);
-                }
-                return familyHandle;
-            }
-
-            readonly RpcClient rpcClient;
             readonly RocksDb db;
+            readonly bool shared;
+            bool disposed;
 
-            public RocksDbCacheClient(RpcClient rpcClient, string cachePath)
+            public RocksDbCacheClient(RocksDb db, bool shared)
             {
-                this.rpcClient = rpcClient;
-
-                if (!Directory.Exists(cachePath)) Directory.CreateDirectory(cachePath);
-                var columnFamilies = GetColumnFamilies(cachePath);
-                db = RocksDb.Open(new DbOptions().SetCreateIfMissing(true), cachePath, columnFamilies);
-
-                static ColumnFamilies GetColumnFamilies(string path)
-                {
-                    if (RocksDb.TryListColumnFamilies(new DbOptions(), path, out var names))
-                    {
-                        var columnFamilyOptions = new ColumnFamilyOptions();
-                        var families = new ColumnFamilies();
-                        foreach (var name in names)
-                        {
-                            families.Add(name, columnFamilyOptions);
-                        }
-                        return families;
-                    }
-
-                    return new ColumnFamilies();
-                }
+                this.db = db;
+                this.shared = shared;
             }
 
             public void Dispose()
             {
-                db.Dispose();
-            }
-
-            public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
-            {
-                var familyName = $"{nameof(FindStates)}{rootHash}{scriptHash}";
-                var family = GetOrCreateColumnFamily(db, familyName);
-
-                var keyLength = prefix.Length + from.Length + (count.HasValue ? sizeof(int) : 0);
-                Span<byte> key = stackalloc byte[keyLength];
-                prefix.Span.CopyTo(key);
-                if (from.Length > 0) from.Span.CopyTo(key.Slice(prefix.Length));
-                if (count.HasValue) BinaryPrimitives.WriteInt32LittleEndian(key.Slice(prefix.Length + from.Length), count.Value);
-
-                var json = GetCachedJson(key, family, () =>
+                if (!disposed)
                 {
-                    var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
-                    return (Json.JObject)rpcClient.RpcSend("findstates", @params);
-                });
-                return RpcFoundStates.FromJson(json);
-            }
-
-            public UInt256 GetBlockHash(uint index)
-            {
-                var family = db.GetDefaultColumnFamily();
-                var json = GetCachedJson($"{nameof(GetBlockHash)}{index}", family,
-                    () => (Json.JObject)rpcClient.RpcSend("getblockhash", index));
-                return UInt256.Parse(json.AsString());
-            }
-
-            static readonly IMessagePackFormatter<byte[]?> byteArrayFormatter =
-                MessagePackSerializerOptions.Standard.Resolver.GetFormatter<byte[]?>();
-
-            ColumnFamilyHandle GetColumnFamily(UInt256 rootHash, UInt160 scriptHash)
-            {
-                var familyName = $"{nameof(GetState)}{rootHash}{scriptHash}";
-                return GetOrCreateColumnFamily(db, familyName);
-            }
-
-            // method used for testing
-            internal byte[]? GetCachedState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
-            {
-                var family = GetColumnFamily(rootHash, scriptHash);
-                return GetCachedState(key.Span, family);
-            }
-
-            byte[]? GetCachedState(ReadOnlySpan<byte> key, ColumnFamilyHandle family) => db.Get(key, family);
-
-            public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
-            {
-                var family = GetColumnFamily(rootHash, scriptHash);
-                var cachedState = GetCachedState(key.Span, family);
-
-                if (cachedState != null)
-                {
-                    var reader = new MessagePackReader(cachedState);
-                    return byteArrayFormatter.Deserialize(ref reader, MessagePackSerializerOptions.Standard);
-                }
-                else
-                {
-                    var state = rpcClient.GetProvenState(rootHash, scriptHash, key.Span);
-
-                    var buffer = new ArrayBufferWriter<byte>();
-                    var writer = new MessagePackWriter(buffer);
-                    byteArrayFormatter.Serialize(ref writer, state, MessagePackSerializerOptions.Standard);
-                    writer.Flush();
-                    db.Put(key.Span, buffer.WrittenSpan, family);
-
-                    return state;
+                    if (!shared) db.Dispose();
+                    disposed = true;
                 }
             }
 
-            public RpcStateRoot GetStateRoot(uint index)
+            static string GetFamilyName(UInt160 contractHash, byte? prefix)
             {
-                var family = db.GetDefaultColumnFamily();
-                var json = GetCachedJson($"{nameof(GetStateRoot)}{index}", family,
-                    () => (Json.JObject)rpcClient.RpcSend("getstateroot", index));
-                return RpcStateRoot.FromJson(json);
+                return prefix.HasValue
+                    ? $"{contractHash}{prefix.Value}"
+                    : $"{contractHash}";
             }
 
-            public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
+            static string GetFamilyName(UInt160 contractHash) => $"G{contractHash}";
+
+            const byte NULL_PREFIX = 0;
+            readonly static ReadOnlyMemory<byte> nullPrefix = (new byte[] { NULL_PREFIX }).AsMemory();
+            readonly static ReadOnlyMemory<byte> notNullPrefix = (new byte[] { NULL_PREFIX + 1 }).AsMemory();
+
+            public bool TryGetCachedStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[]? value)
             {
-                var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
 
-                var familyName = $"{nameof(GetLedgerStorage)}";
-                var family = GetOrCreateColumnFamily(db, familyName);
-                var json = GetCachedJson(key.Span, family,
-                    () => (Json.JObject)rpcClient.RpcSend("getstorage", contractHash.ToString(), Convert.ToBase64String(key.Span)));
-                return Convert.FromBase64String(json.AsString());
-            }
-
-            readonly static Encoding encoding = Encoding.UTF8;
-
-            static IMemoryOwner<byte> GetKeyBuffer(string text, out int count)
-            {
-                count = encoding.GetByteCount(text);
-                var owner = MemoryPool<byte>.Shared.Rent(count);
-                if (encoding.GetBytes(text, owner.Memory.Span) != count)
-                    throw new InvalidOperationException();
-                return owner;
-            }
-
-            JObject GetCachedJson(string key, ColumnFamilyHandle family, Func<JObject> factory)
-            {
-                using var keyBuffer = GetKeyBuffer(key, out var count);
-                return GetCachedJson(keyBuffer.Memory.Slice(0, count).Span, family, factory);
-            }
-
-            JObject GetCachedJson(ReadOnlySpan<byte> key, ColumnFamilyHandle family, Func<JObject> factory)
-            {
-                var value = db.Get(key, family);
-                if (value != null)
+                var familyName = GetFamilyName(contractHash);
+                if (db.TryGetColumnFamily(familyName, out var columnFamily))
                 {
-                    var token = JToken.Parse(value);
-                    if (token != null && token is JObject jObject)
+                    using var slice = db.GetSlice(key.Span, columnFamily);
+                    if (slice.Valid)
                     {
-                        return jObject;
+                        var span = slice.GetValue();
+                        value = span.Length != 1 || span[0] != NULL_PREFIX
+                            ? span[1..].ToArray()
+                            : null;
+                        return true;
                     }
                 }
 
-                var json = factory();
-                db.Put(key, json.ToByteArray(false), family);
-                return json;
+                value = null;
+                return false;
+            }
+
+            public void CacheStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, byte[]? value)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
+
+                var familyName = GetFamilyName(contractHash);
+                var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
+
+                if (value is null)
+                {
+                    db.Put(key.Span, nullPrefix.Span, columnFamily);
+                }
+                else
+                {
+                    using var batch = new WriteBatch();
+                    batch.PutVector(columnFamily, key, notNullPrefix, value.AsMemory());
+                    db.Write(batch);
+                }
+            }
+
+            public bool TryGetCachedFoundStates(UInt160 contractHash, byte? prefix, out IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> value)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
+
+                var familyName = GetFamilyName(contractHash, prefix);
+                if (db.TryGetColumnFamily(familyName, out var columnFamily))
+                {
+                    value = GetCachedFoundStates(columnFamily);
+                    return true;
+                }
+
+                value = Enumerable.Empty<(ReadOnlyMemory<byte>, byte[])>();
+                return false;
+
+                IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> GetCachedFoundStates(ColumnFamilyHandle columnFamily)
+                {
+                    using var iterator = db.NewIterator(columnFamily);
+                    iterator.Seek(default(ReadOnlySpan<byte>));
+                    while (iterator.Valid())
+                    {
+                        yield return (iterator.Key(), iterator.Value());
+                        iterator.Next();
+                    }
+                }
+            }
+
+            public ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
+                var familyName = GetFamilyName(contractHash, prefix);
+                var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
+                return new Snapshot(db, columnFamily);
+            }
+
+            public void DropCachedFoundStates(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
+
+                var familyName = GetFamilyName(contractHash, prefix);
+                db.DropColumnFamily(familyName);
+            }
+
+
+            class Snapshot : ICacheSnapshot
+            {
+                readonly RocksDb db;
+                readonly ColumnFamilyHandle columnFamily;
+                readonly WriteBatch writeBatch = new();
+
+                public Snapshot(RocksDb db, ColumnFamilyHandle columnFamily)
+                {
+                    this.db = db;
+                    this.columnFamily = columnFamily;
+                }
+
+                public void Dispose()
+                {
+                    writeBatch.Dispose();
+                }
+
+                public void Add(ReadOnlyMemory<byte> key, byte[] value)
+                {
+                    writeBatch.Put(key.Span, value.AsSpan(), columnFamily);
+                }
+
+                public void Commit()
+                {
+                    db.Write(writeBatch);
+                }
             }
         }
     }

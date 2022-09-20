@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using Neo.BlockchainToolkit.Utilities;
 using Neo.Persistence;
 using OneOf;
 using None = OneOf.Types.None;

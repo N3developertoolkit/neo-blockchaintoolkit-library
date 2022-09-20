@@ -35,126 +35,33 @@ namespace Neo.BlockchainToolkit.Persistence
             return new ReadOnlySpan<byte>((byte*)valuePtr, (int)valueLength);
         }
 
-        public static void PutVector(this WriteBatch writeBatch, ColumnFamilyHandle columnFamily, ReadOnlyMemory<byte> key, params ReadOnlyMemory<byte>[] values)
+        public static void PutVector(this WriteBatch writeBatch, ReadOnlyMemory<byte> key, ReadOnlySequence<byte> value, ColumnFamilyHandle? columnFamily = null)
         {
-            var pool = ArrayPool<ReadOnlyMemory<byte>>.Shared;
-            var keys = pool.Rent(1);
-            try
+            if (value.IsSingleSegment)
             {
-                keys[0] = key;
-                PutVector(writeBatch, keys.AsSpan(0, 1), values, columnFamily);
+                writeBatch.Put(key.Span, value.FirstSpan, columnFamily);
             }
-            finally
+            else
             {
-                pool.Return(keys);
-            }
-        }
-
-        public static void PutVector(this WriteBatch writeBatch, ReadOnlyMemory<byte> key, params ReadOnlyMemory<byte>[] values)
-        {
-            var pool = ArrayPool<ReadOnlyMemory<byte>>.Shared;
-            var keys = pool.Rent(1);
-            try
-            {
-                keys[0] = key;
-                PutVector(writeBatch, keys.AsSpan(0, 1), values);
-            }
-            finally
-            {
-                pool.Return(keys);
-            }
-        }
-
-        public unsafe static void PutVector(this WriteBatch writeBatch, ReadOnlySpan<ReadOnlyMemory<byte>> keys, ReadOnlySpan<ReadOnlyMemory<byte>> values, ColumnFamilyHandle? columnFamily = null)
-        {
-            var intPtrPool = ArrayPool<IntPtr>.Shared;
-            var uintPtrPool = ArrayPool<UIntPtr>.Shared;
-            IntPtr[]? keysListArray = null, valuesListArray = null;
-            UIntPtr[]? keysListSizesArray = null, valuesListSizesArray = null;
-
-            try
-            {
-                var keysLength = keys.Length;
-                (keysListArray, keysListSizesArray) = keysLength < 256
-                    ? (null, null)
-                    : (intPtrPool.Rent(keysLength), uintPtrPool.Rent(keysLength));
-                Span<IntPtr> keysList = keysLength < 256
-                    ? stackalloc IntPtr[keysLength]
-                    : keysListArray.AsSpan(0, keysLength);
-                Span<UIntPtr> keysListSizes = keysLength < 256
-                    ? stackalloc UIntPtr[keysLength]
-                    : keysListSizesArray.AsSpan(0, keysLength);
-                using var keyHandles = CopyVector(keys, keysList, keysListSizes);
-
-                var valuesLength = values.Length;
-                (valuesListArray, valuesListSizesArray) = valuesLength < 256
-                    ? (null, null)
-                    : (intPtrPool.Rent(valuesLength), uintPtrPool.Rent(valuesLength));
-                Span<IntPtr> valuesList = valuesLength < 256
-                    ? stackalloc IntPtr[valuesLength]
-                    : valuesListArray.AsSpan(0, valuesLength);
-                Span<UIntPtr> valuesListSizes = valuesLength < 256
-                    ? stackalloc UIntPtr[valuesLength]
-                    : valuesListSizesArray.AsSpan(0, valuesLength);
-                using var valuesDisposable = CopyVector(values, valuesList, valuesListSizes);
-
-                fixed (void* keysListPtr = keysList,
-                    keysListSizesPtr = keysListSizes,
-                    valuesListPtr = valuesList,
-                    valuesListSizesPtr = valuesListSizes)
+                var segmentCount = 0;
+                foreach (var _ in value) { segmentCount++; }
+                var pool = ArrayPool<ReadOnlyMemory<byte>>.Shared;
+                var keys = pool.Rent(1);
+                var values = pool.Rent(segmentCount);
+                try
                 {
-                    if (columnFamily is null)
+                    keys[0] = key;
+                    var index = 0;
+                    foreach (var memory in value)
                     {
-                        writeBatch.Putv(
-                            keysLength, (IntPtr)keysListPtr, (IntPtr)keysListSizesPtr,
-                            valuesLength, (IntPtr)valuesListPtr, (IntPtr)valuesListSizesPtr);
+                        values[index++] = memory;
                     }
-                    else
-                    {
-                        writeBatch.PutvCf(columnFamily.Handle,
-                            keysLength, (IntPtr)keysListPtr, (IntPtr)keysListSizesPtr,
-                            valuesLength, (IntPtr)valuesListPtr, (IntPtr)valuesListSizesPtr);
-                    }
+                    writeBatch.PutVector(keys.AsSpan(0, 1), values.AsSpan(0, segmentCount), columnFamily);
                 }
-            }
-            finally
-            {
-                if (keysListArray is not null) intPtrPool.Return(keysListArray);
-                if (keysListSizesArray is not null) uintPtrPool.Return(keysListSizesArray);
-                if (valuesListArray is not null) intPtrPool.Return(valuesListArray);
-                if (valuesListSizesArray is not null) uintPtrPool.Return(valuesListSizesArray);
-            }
-
-            static unsafe IDisposable CopyVector(ReadOnlySpan<ReadOnlyMemory<byte>> items, Span<IntPtr> itemsList, Span<UIntPtr> itemsListSizes)
-            {
-                var disposable = new MemoryHandleManager(items.Length);
-                for (var i = 0; i < items.Length; i++)
+                finally
                 {
-                    var handle = items[i].Pin();
-                    disposable.Add(handle);
-                    itemsList[i] = (IntPtr)handle.Pointer;
-                    itemsListSizes[i] = (UIntPtr)items[i].Length;
-                }
-                return disposable;
-            }
-        }
-
-        class MemoryHandleManager : IDisposable
-        {
-            readonly IList<MemoryHandle> handles;
-
-            public MemoryHandleManager(int capacity)
-            {
-                handles = new List<MemoryHandle>(capacity);
-            }
-
-            public void Add(MemoryHandle handle) => handles.Add(handle);
-
-            public void Dispose()
-            {
-                for (int i = 0; i < handles.Count; i++)
-                {
-                    handles[i].Dispose();
+                    pool.Return(keys);
+                    pool.Return(values);
                 }
             }
         }
@@ -191,6 +98,13 @@ namespace Neo.BlockchainToolkit.Persistence
             => string.IsNullOrEmpty(columnFamilyName)
                 ? db.GetDefaultColumnFamily()
                 : db.GetColumnFamily(columnFamilyName);
+
+        public static ColumnFamilyHandle GetOrCreateColumnFamily(this RocksDb db, string? columnFamilyName, ColumnFamilyOptions? options = null)
+            => string.IsNullOrEmpty(columnFamilyName)
+                ? db.GetDefaultColumnFamily()
+                : db.TryGetColumnFamily(columnFamilyName, out var familyHandle)
+                    ? familyHandle
+                    : db.CreateColumnFamily(options ?? new ColumnFamilyOptions(), columnFamilyName);
 
         private const string ADDRESS_FILENAME = "ADDRESS" + Constants.EXPRESS_EXTENSION;
 
