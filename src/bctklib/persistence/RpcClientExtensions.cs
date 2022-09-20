@@ -1,52 +1,37 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using Neo.Cryptography.MPTTrie;
-using Neo.IO;
+using System.Threading.Tasks;
 using Neo.Network.RPC;
 using Neo.Network.RPC.Models;
-using Neo.SmartContract;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
     static class RpcClientExtensions
     {
-        internal const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
-
-        public static RpcVersion GetVersion(this RpcClient rpcClient)
+        // TODO: remove when https://github.com/neo-project/neo-modules/issues/756 is resolved
+        internal static async Task<UInt256> GetBlockHashAsync(this RpcClient rpcClient, uint index)
         {
-            var result = rpcClient.RpcSend(RpcClient.GetRpcName());
-            return RpcVersion.FromJson((Json.JObject)result);
-        }
-
-        public static UInt256 GetBlockHash(this RpcClient rpcClient, uint index)
-        {
-            var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
+            var result = await rpcClient.RpcSendAsync("getblockhash", index).ConfigureAwait(false);
             return UInt256.Parse(result.AsString());
         }
 
-        public static byte[] GetStorage(this RpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)
+        internal static byte[] GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            var result = rpcClient.RpcSend(RpcClient.GetRpcName(), contractHash.ToString(), Convert.ToBase64String(key));
+            var result = rpcClient.RpcSend(
+                RpcClient.GetRpcName(),
+                rootHash.ToString(),
+                scriptHash.ToString(),
+                Convert.ToBase64String(key));
             return Convert.FromBase64String(result.AsString());
         }
 
-        public static RpcStateRoot GetStateRoot(this RpcClient rpcClient, uint index)
+        internal static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {
-            var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
-            return RpcStateRoot.FromJson((Json.JObject)result);
-        }
+            const int COR_E_KEYNOTFOUND = unchecked((int)0x80131577);
 
-        public static byte[]? GetProvenState(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
-        {
             try
             {
-                var result = rpcClient.RpcSend("getproof",
-                    rootHash.ToString(),
-                    scriptHash.ToString(),
-                    Convert.ToBase64String(key));
-                var proof = Convert.FromBase64String(result.AsString());
-                return Utility.VerifyProof(rootHash, proof).value;
+                var result = rpcClient.GetProof(rootHash, scriptHash, key);
+                return Utility.VerifyProof(rootHash, result).value;
             }
             // GetProvenState has to match the semantics of IReadOnlyStore.TryGet
             // which returns null for invalid keys instead of throwing an exception.
@@ -71,27 +56,36 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
+        internal static byte[] GetStorage(this RpcClient rpcClient, UInt160 contractHash, ReadOnlySpan<byte> key)
+        {
+            var result = rpcClient.RpcSend(RpcClient.GetRpcName(), contractHash.ToString(), Convert.ToBase64String(key));
+            return Convert.FromBase64String(result.AsString());
+        }
+
+        internal static RpcStateRoot GetStateRoot(this RpcClient rpcClient, uint index)
+        {
+            var result = rpcClient.RpcSend(RpcClient.GetRpcName(), index);
+            return RpcStateRoot.FromJson((Json.JObject)result);
+        }
+
+        internal static async Task<RpcStateRoot> GetStateRootAsync(this RpcClient rpcClient, uint index)
+        {
+            var result = await rpcClient.RpcSendAsync(RpcClient.GetRpcName(), index).ConfigureAwait(false);
+            return RpcStateRoot.FromJson((Json.JObject)result);
+        }
+
+        internal static RpcFoundStates FindStates(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> prefix, ReadOnlySpan<byte> from = default, int? count = null)
         {
             var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix, from, count);
             var result = rpcClient.RpcSend(RpcClient.GetRpcName(), @params);
-            var foundStates = RpcFoundStates.FromJson((Json.JObject)result);
-            if (foundStates.Results.Length > 0)
-            {
-                ValidateProof(rootHash, foundStates.FirstProof, foundStates.Results[0]);
-            }
-            if (foundStates.Results.Length > 1)
-            {
-                ValidateProof(rootHash, foundStates.LastProof, foundStates.Results[^1]);
-            }
-            return foundStates;
+            return RpcFoundStates.FromJson((Json.JObject)result);
+        }
 
-            static void ValidateProof(UInt256 rootHash, byte[]? proof, (byte[] key, byte[] value) result)
-            {
-                var (storageKey, storageValue) = Utility.VerifyProof(rootHash, proof);
-                if (!result.key.AsSpan().SequenceEqual(storageKey.Key.Span)) throw new Exception("Incorrect StorageKey");
-                if (!result.value.AsSpan().SequenceEqual(storageValue)) throw new Exception("Incorrect StorageItem");
-            }
+        internal static async Task<RpcFoundStates> FindStatesAsync(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
+        {
+            var @params = StateAPI.MakeFindStatesParams(rootHash, scriptHash, prefix.Span, from.Span, count);
+            var result = await rpcClient.RpcSendAsync(RpcClient.GetRpcName(), @params).ConfigureAwait(false);
+            return RpcFoundStates.FromJson((Json.JObject)result);
         }
     }
 }

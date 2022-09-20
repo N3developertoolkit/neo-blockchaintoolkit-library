@@ -27,6 +27,6 @@ namespace Neo.BlockchainToolkit.Models
         public bool IsDefault { get; set; }
 
         [JsonProperty("contract")]
-        public AccountContract Contract { get; set; } = new AccountContract();
+        public AccountContract? Contract { get; set; }
     }
 }

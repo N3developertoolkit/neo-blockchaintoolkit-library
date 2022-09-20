@@ -1,104 +1,124 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
-using Neo.Network.RPC;
-using Neo.Network.RPC.Models;
+using System.Linq;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class StateServiceStore
+    public sealed partial class StateServiceStore
     {
-        internal class MemoryCacheClient : ICachingClient
+        internal sealed class MemoryCacheClient : ICacheClient
         {
-            readonly RpcClient rpcClient;
-
-            LockingDictionary<uint, RpcStateRoot> stateRoots = new();
-            LockingDictionary<uint, UInt256> blockHashes = new();
-            LockingDictionary<int, RpcFoundStates> foundStates = new();
-            LockingDictionary<int, byte[]?> retrievedStates = new();
-            LockingDictionary<int, byte[]> storages = new();
-
-            public MemoryCacheClient(RpcClient rpcClient)
-            {
-                this.rpcClient = rpcClient;
-            }
+            readonly ConcurrentDictionary<int, byte[]?> storageMap = new();
+            readonly ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap = new();
+            private bool disposed;
 
             public void Dispose()
             {
-                rpcClient.Dispose();
-            }
-
-            public RpcFoundStates FindStates(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> prefix, ReadOnlyMemory<byte> from = default, int? count = null)
-            {
-                var hash = HashCode.Combine(
-                    rootHash,
-                    scriptHash,
-                    MemorySequenceComparer.GetHashCode(prefix.Span),
-                    MemorySequenceComparer.GetHashCode(from.Span),
-                    count);
-                return foundStates.GetOrAdd(hash,
-                    _ => rpcClient.FindStates(rootHash, scriptHash, prefix.Span, from.Span, count));
-            }
-
-            public UInt256 GetBlockHash(uint index)
-            {
-                return blockHashes.GetOrAdd(index, i => rpcClient.GetBlockHash(i));
-            }
-
-            public byte[]? GetState(UInt256 rootHash, UInt160 scriptHash, ReadOnlyMemory<byte> key)
-            {
-                var doo = new Dictionary<int, RpcFoundStates>();
-
-                var hash = HashCode.Combine(rootHash, scriptHash, MemorySequenceComparer.GetHashCode(key.Span));
-                return retrievedStates.GetOrAdd(hash, _ => rpcClient.GetProvenState(rootHash, scriptHash, key.Span));
-            }
-
-            public RpcStateRoot GetStateRoot(uint index)
-            {
-                return stateRoots.GetOrAdd(index, i => rpcClient.GetStateRoot(i));
-            }
-
-            public byte[] GetLedgerStorage(ReadOnlyMemory<byte> key)
-            {
-                var contractHash = Neo.SmartContract.Native.NativeContract.Ledger.Hash;
-                var hash = MemorySequenceComparer.GetHashCode(key.Span);
-                return storages.GetOrAdd(hash, _ => rpcClient.GetStorage(contractHash, key.Span));
-            }
-
-            class LockingDictionary<TKey, TValue> where TKey : notnull
-            {
-                readonly Dictionary<TKey, TValue> cache = new();
-                readonly ReaderWriterLockSlim cacheLock = new();
-
-                public TValue GetOrAdd(in TKey key, Func<TKey, TValue> factory)
+                if (!disposed)
                 {
-                    cacheLock.EnterUpgradeableReadLock();
-                    try
-                    {
-                        if (cache.TryGetValue(key, out var value)) return value;
+                    disposed = true;
+                }
+            }
 
-                        value = factory(key);
-                        cacheLock.EnterWriteLock();
-                        try
-                        {
-                            if (cache.TryGetValue(key, out var _value))
-                            {
-                                value = _value;
-                            }
-                            else
-                            {
-                                cache.Add(key, value);
-                            }
-                            return value;
-                        }
-                        finally
-                        {
-                            cacheLock.ExitWriteLock();
-                        }
-                    }
-                    finally
+            static int GetStorageKey(UInt160 contractHash, byte? prefix)
+            {
+                var hashBuilder = new HashCode();
+                hashBuilder.Add(contractHash);
+                if (prefix.HasValue) hashBuilder.Add(prefix.Value);
+                return hashBuilder.ToHashCode();
+            }
+
+            static int GetStorageKey(UInt160 contractHash, ReadOnlyMemory<byte> key)
+            {
+                var hashBuilder = new HashCode();
+                hashBuilder.Add(contractHash);
+                hashBuilder.AddBytes(key.Span);
+                return hashBuilder.ToHashCode();
+            }
+
+            public bool TryGetCachedStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, out byte[]? value)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, key);
+                return storageMap.TryGetValue(hash, out value);
+            }
+
+            public void CacheStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, byte[]? value)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, key);
+                if (!storageMap.TryAdd(hash, value)) throw new Exception($"Key already exists {Convert.ToHexString(key.Span)}");
+            }
+
+            public bool TryGetCachedFoundStates(UInt160 contractHash, byte? prefix, out IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> value)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, prefix);
+                if (foundStateMap.TryGetValue(hash, out var list))
+                {
+                    value = list;
+                    return true;
+                }
+
+                value = Enumerable.Empty<(ReadOnlyMemory<byte> key, byte[] value)>();
+                return false;
+            }
+
+            public ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, prefix);
+                if (foundStateMap.ContainsKey(hash)) throw new Exception($"{contractHash}-{prefix} already cached");
+                return new Snapshot(foundStateMap, hash);
+            }
+
+            public void DropCachedFoundStates(UInt160 contractHash, byte? prefix)
+            {
+                if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient));
+
+                var hash = GetStorageKey(contractHash, prefix);
+                _ = foundStateMap.TryRemove(hash, out _);
+            }
+
+            class Snapshot : ICacheSnapshot
+            {
+                readonly ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap;
+                readonly int hash;
+                readonly List<(ReadOnlyMemory<byte> key, byte[] value)> entries = new ();
+                bool disposed = false;
+
+                public Snapshot(ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap, int hash)
+                {
+                    this.foundStateMap = foundStateMap;
+                    this.hash = hash;
+                }
+
+                public void Dispose()
+                {
+                    if (!disposed)
                     {
-                        cacheLock.ExitUpgradeableReadLock();
+                        entries.Clear();
+                        disposed = true;
+                    }
+                }
+
+                public void Add(ReadOnlyMemory<byte> key, byte[] value)
+                {
+                    if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient.Snapshot));
+                    entries.Add((key, value));
+                }
+
+                public void Commit()
+                {
+                    if (disposed) throw new ObjectDisposedException(nameof(MemoryCacheClient.Snapshot));
+                    if (!foundStateMap.TryAdd(hash, entries))
+                    {
+                        throw new Exception("Failed to add cached entries");
                     }
                 }
             }

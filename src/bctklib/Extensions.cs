@@ -7,7 +7,6 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Numerics;
 using Neo.BlockchainToolkit.Models;
-using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
@@ -19,6 +18,22 @@ namespace Neo.BlockchainToolkit
 {
     public static class Extensions
     {
+        public static string ResolveFileName(this IFileSystem fileSystem, string fileName, string extension, Func<string> getDefaultFileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+            {
+                fileName = getDefaultFileName();
+            }
+
+            if (!fileSystem.Path.IsPathFullyQualified(fileName))
+            {
+                fileName = fileSystem.Path.Combine(fileSystem.Directory.GetCurrentDirectory(), fileName);
+            }
+
+            return extension.Equals(fileSystem.Path.GetExtension(fileName), StringComparison.OrdinalIgnoreCase)
+                ? fileName : fileName + extension;
+        }
+
         public static ExpressChain LoadChain(this IFileSystem fileSystem, string path)
         {
             var serializer = new JsonSerializer();

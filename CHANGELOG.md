@@ -30,6 +30,29 @@ may not exactly match a publicly released version.
   from Smart Contract Framework source (#61)
   * scfx-gen tool to generate Neo Core platform structure definitions
 
+## [Unreleased]
+
+### Added
+
+* `ToolkitWallet` a shared implementation of Neo Wallet for developer scenarios
+* `BranchInfo` model type
+* Diagnostic model types
+* `EnableAnsiEscapeSequences` utility method
+* `ResolveFileName` extension method
+* `JsonWriterExtensions` extension methods
+* worknet extension constants
+
+### Changed
+
+* PersistentTrackingStore class uses column family named `PersistentTrackingStore` by default
+* Reworked `StateServiceStore` to load as much info asyncronously ahead of time (using `BranchInfo` record),
+  handle remote logic directly and redefined `ICacheClient` to only handle caching responsibilities
+
+### Removed
+
+* RocksDB extension methods that have recently been encorporated into [rocksdb-sharp library](https://github.com/curiosity-ai/rocksdb-sharp)
+
+
 ## [3.4.13] - 2202-08-17
 
 ### Changed
