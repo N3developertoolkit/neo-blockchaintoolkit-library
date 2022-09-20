@@ -327,7 +327,6 @@ namespace Neo.BlockchainToolkit.Persistence
                 return ConvertStates(key, states);
             }
 
-
             if (contractId == NativeContract.NEO.Id)
             {
                 var prefix = key.Span[0];
@@ -338,7 +337,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method for {nameof(NeoToken)} with {prefix} prefix");
                 }
 
-                var states = FindStates(NativeContract.RoleManagement.Hash, prefix);
+                var states = FindStates(NativeContract.NEO.Hash, prefix);
                 return ConvertStates(key, states);
             }
 
@@ -360,7 +359,7 @@ namespace Neo.BlockchainToolkit.Persistence
                    : MemorySequenceComparer.Reverse;
 
                 return states
-                    .Where(kvp => kvp.key.Span.StartsWith(key.Span))
+                    .Where(kvp => key.Length == 0 || comparer.Compare(kvp.key, key) >= 0)
                     .Select(kvp =>
                     {
                         var k = new byte[kvp.key.Length + 4];
