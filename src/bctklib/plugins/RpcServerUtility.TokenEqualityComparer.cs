@@ -5,7 +5,7 @@ using System.Linq;
 namespace Neo.BlockchainToolkit.Plugins
 {
 
-    static partial class RpcServerUtility
+    public static partial class ToolkitRpcServer
     {
         class TokenEqualityComparer : IEqualityComparer<(UInt160 scriptHash, ReadOnlyMemory<byte> tokenId)>
         {

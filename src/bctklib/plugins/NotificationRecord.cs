@@ -4,19 +4,19 @@ using Neo.Network.P2P.Payloads;
 using Neo.SmartContract;
 using Neo.VM;
 
+using NeoArray = Neo.VM.Types.Array;
+
 namespace Neo.BlockchainToolkit.Plugins
 {
     public class NotificationRecord : ISerializable
     {
         public UInt160 ScriptHash { get; private set; } = null!;
         public string EventName { get; private set; } = null!;
-        public Neo.VM.Types.Array State { get; private set; } = null!;
+        public NeoArray State { get; private set; } = null!;
         public InventoryType InventoryType { get; private set; }
         public UInt256 InventoryHash { get; private set; } = UInt256.Zero;
 
-        public NotificationRecord()
-        {
-        }
+        public NotificationRecord() { }
 
         public NotificationRecord(NotifyEventArgs notification)
         {
@@ -30,7 +30,7 @@ namespace Neo.BlockchainToolkit.Plugins
             }
         }
 
-        public NotificationRecord(UInt160 scriptHash, string eventName, Neo.VM.Types.Array state, InventoryType inventoryType, UInt256 inventoryHash)
+        public NotificationRecord(UInt160 scriptHash, string eventName, NeoArray state, InventoryType inventoryType, UInt256 inventoryHash)
         {
             ScriptHash = scriptHash;
             EventName = eventName;
@@ -48,8 +48,7 @@ namespace Neo.BlockchainToolkit.Plugins
         public void Deserialize(ref MemoryReader reader)
         {
             ScriptHash = reader.ReadSerializable<UInt160>();
-            State = (Neo.VM.Types.Array)BinarySerializer.Deserialize(
-                ref reader, ExecutionEngineLimits.Default, null);
+            State = (NeoArray)BinarySerializer.Deserialize(ref reader, ExecutionEngineLimits.Default, null);
             EventName = reader.ReadVarString();
             InventoryHash = reader.ReadSerializable<UInt256>();
             InventoryType = (InventoryType)reader.ReadByte();

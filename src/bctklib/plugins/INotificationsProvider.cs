@@ -3,12 +3,7 @@ using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-    public readonly record struct NotificationInfo(uint BlockIndex, 
-        ushort TxIndex,
-        ushort NotificationIndex,
-        NotificationRecord Notification);
-
-    interface INotificationsProvider
+    public interface INotificationsProvider
     {
         IEnumerable<NotificationInfo> GetNotifications(
             SeekDirection direction = SeekDirection.Forward, 

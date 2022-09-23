@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Neo.IO;
 using Neo.Json;
@@ -9,12 +10,12 @@ using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
 using Neo.Plugins;
 using Neo.VM;
+
 using ApplicationExecuted = Neo.Ledger.Blockchain.ApplicationExecuted;
-using System.Diagnostics;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-    class ToolkitPersistencePlugin : Plugin, INotificationsProvider
+    public class ToolkitPersistencePlugin : Plugin, INotificationsProvider
     {
         const string APP_LOGS_STORE_PATH = "app-logs-store";
         const string NOTIFICATIONS_STORE_PATH = "notifications-store";

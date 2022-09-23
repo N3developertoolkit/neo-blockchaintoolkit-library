@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Neo;
 using Neo.Ledger;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
@@ -10,7 +9,7 @@ using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-    class ToolkitLogPlugin : Plugin
+    public class ToolkitLogPlugin : Plugin
     {
         NeoSystem? neoSystem;
         readonly Action<string> writeLine;

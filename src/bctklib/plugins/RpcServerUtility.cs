@@ -22,38 +22,7 @@ using StackItemType = Neo.VM.Types.StackItemType;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-    public record Nep17Balance(
-        UInt160 AssetHash,
-        string Name,
-        string Symbol,
-        byte Decimals,
-        BigInteger Balance,
-        uint LastUpdatedBlock);
-
-    public record Nep11TokenBalance(
-        ReadOnlyMemory<byte> TokenId,
-        BigInteger Balance,
-        uint LastUpdatedBlock);
-
-    public record Nep11Balance(
-        UInt160 AssetHash,
-        string Name,
-        string Symbol,
-        byte Decimals,
-        IReadOnlyList<Nep11TokenBalance> Balances);
-
-    public record TransferRecord(
-        ulong Timestamp,
-        UInt160 Asset, 
-        UInt160 From,
-        UInt160 To,
-        BigInteger Amount,
-        uint BlockIndex,
-        ushort TransferNotifyIndex,
-        UInt256 TxHash,
-        ReadOnlyMemory<byte> TokenId);
-
-    static partial class RpcServerUtility
+    public static partial class ToolkitRpcServer
     {
         const string TRANSFER = "Transfer";
         const string NEP_11 = "NEP-11";
