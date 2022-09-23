@@ -8,15 +8,15 @@ using Neo.Plugins;
 using Neo.SmartContract;
 using Neo.SmartContract.Native;
 
-namespace NeoExpress.Node
+namespace Neo.BlockchainToolkit.Plugins
 {
-    class ExpressLogPlugin : Plugin
+    class ToolkitLogPlugin : Plugin
     {
         NeoSystem? neoSystem;
         readonly Action<string> writeLine;
         readonly Action<string> writeError;
 
-        public ExpressLogPlugin(Action<string> writeLine, Action<string> writeError)
+        public ToolkitLogPlugin(Action<string> writeLine, Action<string> writeError)
         {
             this.writeLine = writeLine;
             this.writeError = writeError;
