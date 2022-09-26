@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Neo.BlockchainToolkit.Persistence;
 using Neo.IO;
 using Neo.Json;
 using Neo.Ledger;
@@ -10,99 +11,87 @@ using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
 using Neo.Plugins;
 using Neo.VM;
-
+using RocksDbSharp;
 using ApplicationExecuted = Neo.Ledger.Blockchain.ApplicationExecuted;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
     public sealed class ToolkitPersistencePlugin : Plugin, INotificationsProvider
     {
-        const string APP_LOGS_STORE_PATH = "app-logs-store";
-        const string NOTIFICATIONS_STORE_PATH = "notifications-store";
+        const string APP_LOGS_FAMILY_NAME = $"{nameof(ToolkitPersistencePlugin)}.app-logs";
+        const string NOTIFICATIONS_FAMILY_NAME = $"{nameof(ToolkitPersistencePlugin)}.notifications";
 
-        IStore? appLogsStore;
-        IStore? notificationsStore;
-        ISnapshot? appLogsSnapshot;
-        ISnapshot? notificationsSnapshot;
+        readonly RocksDb db;
+        readonly ColumnFamilyHandle appLogsFamily;
+        readonly ColumnFamilyHandle notificationsFamily;
+        WriteBatch? writeBatch = null;
+        bool disposed = false;
 
-        public ToolkitPersistencePlugin()
+        public ToolkitPersistencePlugin(RocksDb db)
         {
             Blockchain.Committing += OnCommitting;
             Blockchain.Committed += OnCommitted;
+            this.db = db;
+            appLogsFamily = db.GetOrCreateColumnFamily(APP_LOGS_FAMILY_NAME);
+            notificationsFamily = db.GetOrCreateColumnFamily(NOTIFICATIONS_FAMILY_NAME);
         }
 
         public override void Dispose()
         {
-            Blockchain.Committing -= OnCommitting;
-            Blockchain.Committed -= OnCommitted;
-            appLogsSnapshot?.Dispose();
-            appLogsStore?.Dispose();
-            notificationsSnapshot?.Dispose();
-            notificationsStore?.Dispose();
-        }
-
-        protected override void OnSystemLoaded(NeoSystem system)
-        {
-            if (appLogsStore is not null) throw new Exception($"{nameof(OnSystemLoaded)} already called");
-            if (notificationsStore is not null) throw new Exception($"{nameof(OnSystemLoaded)} already called");
-
-            appLogsStore = system.LoadStore(APP_LOGS_STORE_PATH);
-            notificationsStore = system.LoadStore(NOTIFICATIONS_STORE_PATH);
-
-            base.OnSystemLoaded(system);
+            if (!disposed)
+            {
+                Blockchain.Committing -= OnCommitting;
+                Blockchain.Committed -= OnCommitted;
+                writeBatch?.Dispose();
+                disposed = true;
+            }
         }
 
         public JObject? GetAppLog(UInt256 hash)
         {
-            if (appLogsStore is null) throw new NullReferenceException(nameof(appLogsStore));
-            var value = appLogsStore.TryGet(hash.ToArray());
+            if (disposed) throw new ObjectDisposedException(nameof(ToolkitPersistencePlugin));
+
+            var value = db.Get(hash.ToArray(), appLogsFamily);
             return value is not null && value.Length != 0
                 ? JToken.Parse(Neo.Utility.StrictUTF8.GetString(value)) as JObject
                 : null;
         }
-
-        static readonly Lazy<byte[]> backwardsNotificationsPrefix = new(() =>
-        {
-            var buffer = new byte[sizeof(uint) + sizeof(ushort)];
-            BinaryPrimitives.WriteUInt32BigEndian(buffer, uint.MaxValue);
-            BinaryPrimitives.WriteUInt16BigEndian(buffer.AsSpan(sizeof(uint)), ushort.MaxValue);
-            return buffer;
-        });
 
         public IEnumerable<NotificationInfo> GetNotifications(
             SeekDirection direction = SeekDirection.Forward,
             IReadOnlySet<UInt160>? contracts = null,
             IReadOnlySet<string>? eventNames = null)
         {
-            if (notificationsStore is null) throw new NullReferenceException(nameof(notificationsStore));
+            if (disposed) throw new ObjectDisposedException(nameof(ToolkitPersistencePlugin));
 
-            var prefix = direction == SeekDirection.Forward
-                ? Array.Empty<byte>()
-                : backwardsNotificationsPrefix.Value;
+            var forward = direction == SeekDirection.Forward;
+            var iterator = db.NewIterator(notificationsFamily);
 
-            return notificationsStore.Seek(prefix, direction)
-                .Select(t => ParseNotification(t.Key, t.Value))
-                .Where(t => contracts is null || contracts.Contains(t.Notification.ScriptHash))
-                .Where(t => eventNames is null || eventNames.Contains(t.Notification.EventName));
-
-            static NotificationInfo ParseNotification(byte[] key, byte[] value)
+            _ = forward ? iterator.SeekToFirst() : iterator.SeekToLast();
+            while (iterator.Valid())
             {
-                var blockIndex = BinaryPrimitives.ReadUInt32BigEndian(key.AsSpan(0, sizeof(uint)));
-                var txIndex = BinaryPrimitives.ReadUInt16BigEndian(key.AsSpan(sizeof(uint), sizeof(ushort)));
-                var notIndex = BinaryPrimitives.ReadUInt16BigEndian(key.AsSpan(sizeof(uint) + sizeof(ushort), sizeof(ushort)));
+                var info = ParseNotification(iterator.GetKeySpan(), iterator.Value());
+                if (contracts?.Contains(info.Notification.ScriptHash) ?? false) continue;
+                if (eventNames?.Contains(info.Notification.EventName) ?? false) continue;
+                yield return info;
+                _ = forward ? iterator.Next() : iterator.Prev();
+            }
+
+            static NotificationInfo ParseNotification(ReadOnlySpan<byte> key, byte[] value)
+            {
+                var blockIndex = BinaryPrimitives.ReadUInt32BigEndian(key.Slice(0, sizeof(uint)));
+                var txIndex = BinaryPrimitives.ReadUInt16BigEndian(key.Slice(sizeof(uint), sizeof(ushort)));
+                var notIndex = BinaryPrimitives.ReadUInt16BigEndian(key.Slice(sizeof(uint) + sizeof(ushort), sizeof(ushort)));
                 return new NotificationInfo(blockIndex, txIndex, notIndex, value.AsSerializable<NotificationRecord>());
             }
         }
 
         void OnCommitting(NeoSystem system, Block block, DataCache snapshot, IReadOnlyList<ApplicationExecuted> executions)
         {
-            if (appLogsStore is null) throw new NullReferenceException(nameof(appLogsStore));
-            if (notificationsStore is null) throw new NullReferenceException(nameof(notificationsStore));
+            if (disposed) return;
 
-            appLogsSnapshot?.Dispose();
-            notificationsSnapshot?.Dispose();
-            appLogsSnapshot = appLogsStore.GetSnapshot();
-            notificationsSnapshot = notificationsStore.GetSnapshot();
+            writeBatch?.Dispose();
+            writeBatch = new RocksDbSharp.WriteBatch();
 
             if (executions.Count > ushort.MaxValue) throw new Exception("ApplicationExecuted List too big");
 
@@ -117,7 +106,10 @@ namespace Neo.BlockchainToolkit.Plugins
                 if (appExec.Transaction is null) continue;
 
                 var txJson = TxLogToJson(appExec);
-                appLogsSnapshot.Put(appExec.Transaction.Hash.ToArray(), Neo.Utility.StrictUTF8.GetBytes(txJson.ToString()));
+                writeBatch.Put(
+                    appExec.Transaction.Hash.ToArray(),
+                    Neo.Utility.StrictUTF8.GetBytes(txJson.ToString()),
+                    appLogsFamily);
 
                 if (appExec.VMState != VMState.FAULT)
                 {
@@ -131,7 +123,7 @@ namespace Neo.BlockchainToolkit.Plugins
                             notificationIndex.AsSpan(sizeof(uint) + sizeof(ushort), sizeof(ushort)),
                             (ushort)j);
                         var record = new NotificationRecord(appExec.Notifications[j]);
-                        notificationsSnapshot.Put(notificationIndex.ToArray(), record.ToArray());
+                        writeBatch.Put(notificationIndex, record.ToArray(), notificationsFamily);
                     }
                 }
             }
@@ -139,14 +131,23 @@ namespace Neo.BlockchainToolkit.Plugins
             var blockJson = BlockLogToJson(block, executions);
             if (blockJson is not null)
             {
-                appLogsSnapshot.Put(block.Hash.ToArray(), Neo.Utility.StrictUTF8.GetBytes(blockJson.ToString()));
+                writeBatch.Put(
+                    block.Hash.ToArray(),
+                    Neo.Utility.StrictUTF8.GetBytes(blockJson.ToString()),
+                    appLogsFamily);
             }
         }
 
         void OnCommitted(NeoSystem system, Block block)
         {
-            appLogsSnapshot?.Commit();
-            notificationsSnapshot?.Commit();
+            if (disposed) return;
+
+            if (writeBatch is not null)
+            {
+                db.Write(writeBatch);
+                writeBatch.Dispose();
+                writeBatch = null;
+            }
         }
 
         // TxLogToJson and BlockLogToJson copied from Neo.Plugins.LogReader in the ApplicationLogs plugin
@@ -157,10 +158,11 @@ namespace Neo.BlockchainToolkit.Plugins
             Debug.Assert(appExec.Transaction is not null);
 
             JObject execution = ApplicationExecutedToJson(appExec);
-            JObject txJson = new();
-            txJson["txid"] = appExec.Transaction.Hash.ToString();
-            txJson["executions"] = new List<JObject>() { execution }.ToArray();
-            return txJson;
+            return new JObject()
+            {
+                ["txid"] = $"{appExec.Transaction.Hash}",
+                ["executions"] = new JArray(execution)
+            };
         }
 
         static JObject? BlockLogToJson(Block block, IReadOnlyList<ApplicationExecuted> executions)
@@ -173,47 +175,54 @@ namespace Neo.BlockchainToolkit.Plugins
             }
             if (executionsJson.Count == 0) return null;
 
-            JObject blockJson = new();
-            blockJson["blockhash"] = block.Hash.ToString();
-            blockJson["executions"] = executionsJson;
-            return blockJson;
+            return new JObject()
+            {
+                ["blockhash"] = $"{block.Hash}",
+                ["executions"] = executionsJson
+            };
         }
 
         static JObject ApplicationExecutedToJson(ApplicationExecuted appExec)
         {
-            JObject json = new();
-            json["trigger"] = appExec.Trigger;
-            json["vmstate"] = appExec.VMState;
-            json["exception"] = appExec.Exception?.GetBaseException().Message;
-            json["gasconsumed"] = appExec.GasConsumed.ToString();
-            try
+            return new JObject()
             {
-                json["stack"] = appExec.Stack
-                    .Select(q => q.ToJson())
-                    .ToArray();
-            }
-            catch (InvalidOperationException)
+                ["trigger"] = appExec.Trigger,
+                ["vmstate"] = appExec.VMState,
+                ["exception"] = appExec.Exception?.GetBaseException().Message,
+                ["gasconsumed"] = appExec.GasConsumed.ToString(),
+                ["stack"] = StackItemsToJson(appExec.Stack),
+                ["notifications"] = new JArray(appExec.Notifications
+                    .Select(n => new JObject()
+                    {
+                        ["contract"] = n.ScriptHash.ToString(),
+                        ["eventname"] = n.EventName,
+                        ["state"] = ArrayToJson(n.State),
+                    }))
+            };
+
+            static JToken StackItemsToJson(VM.Types.StackItem[] items) 
             {
-                json["stack"] = "error: recursive reference";
-            }
-            json["notifications"] = appExec.Notifications
-                .Select(q =>
+                try
                 {
-                    JObject notification = new();
-                    notification["contract"] = q.ScriptHash.ToString();
-                    notification["eventname"] = q.EventName;
-                    try
-                    {
-                        notification["state"] = q.State.ToJson();
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        notification["state"] = "error: recursive reference";
-                    }
-                    return notification;
-                })
-                .ToArray();
-            return json;
+                    return new JArray(items.Select(i => i.ToJson()));
+                }
+                catch (InvalidOperationException)
+                {
+                    return new JString("error: recursive reference");
+                }
+            }
+
+            static JToken ArrayToJson(VM.Types.Array array)
+            {
+                try
+                {
+                    return array.ToJson();
+                }
+                catch (InvalidOperationException)
+                {
+                    return new JString("error: recursive reference");
+                }
+            }
         }
     }
 }
