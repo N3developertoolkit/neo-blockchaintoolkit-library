@@ -6,7 +6,7 @@ using Neo.Persistence;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public class CheckpointStore : ICheckpointStore, IDisposable
+    public sealed class CheckpointStore : ICheckpointStore, IDisposable
     {
         readonly RocksDbStore store;
         readonly string checkpointTempPath;
@@ -19,7 +19,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
         }
 
-        public CheckpointStore(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null)
+        public CheckpointStore(string checkpointPath, uint? network = null, byte? addressVersion = null, UInt160? scriptHash = null, string? columnFamilyName = null)
         {
             checkpointTempPath = RocksDbUtility.GetTempPath();
             var metadata = RocksDbUtility.RestoreCheckpoint(checkpointPath, checkpointTempPath, network, addressVersion, scriptHash);
@@ -29,9 +29,8 @@ namespace Neo.BlockchainToolkit.Persistence
                 Network = metadata.network,
                 AddressVersion = metadata.addressVersion,
             };
-
             var db = RocksDbUtility.OpenReadOnlyDb(checkpointTempPath);
-            this.store = new RocksDbStore(db, readOnly: true);
+            store = new RocksDbStore(db, columnFamilyName, readOnly: true);
         }
 
         public void Dispose()
@@ -43,7 +42,6 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 Directory.Delete(checkpointTempPath, true);
             }
-            GC.SuppressFinalize(this);
         }
 
         public IEnumerable<(byte[] Key, byte[] Value)> Seek(byte[] key, SeekDirection direction) => store.Seek(key, direction);

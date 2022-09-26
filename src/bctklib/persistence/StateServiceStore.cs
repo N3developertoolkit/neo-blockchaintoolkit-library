@@ -80,14 +80,14 @@ namespace Neo.BlockchainToolkit.Persistence
         public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo)
             : this(rpcClient, new MemoryCacheClient(), branchInfo) { }
 
-        public StateServiceStore(string uri, in BranchInfo branchInfo, RocksDb db, bool shared = false)
-            : this(new Uri(uri), branchInfo, db, shared) { }
+        public StateServiceStore(string uri, in BranchInfo branchInfo, RocksDb db, bool shared = false, string? familyNamePrefix = null)
+            : this(new Uri(uri), branchInfo, db, shared, familyNamePrefix) { }
 
-        public StateServiceStore(Uri uri, in BranchInfo branchInfo, RocksDb db, bool shared = false)
-            : this(new RpcClient(uri), branchInfo, db, shared) { }
+        public StateServiceStore(Uri uri, in BranchInfo branchInfo, RocksDb db, bool shared = false, string? familyNamePrefix = null)
+            : this(new RpcClient(uri), branchInfo, db, shared, familyNamePrefix) { }
 
-        public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo, RocksDb db, bool shared = false)
-            : this(rpcClient, new RocksDbCacheClient(db, shared), branchInfo) { }
+        public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo, RocksDb db, bool shared = false, string? familyNamePrefix = null)
+            : this(rpcClient, new RocksDbCacheClient(db, shared, familyNamePrefix ?? nameof(StateServiceStore)), branchInfo) { }
 
         internal StateServiceStore(RpcClient rpcClient, ICacheClient cacheClient, in BranchInfo branchInfo)
         {

@@ -18,8 +18,8 @@ namespace Neo.BlockchainToolkit.Plugins
 {
     public sealed class ToolkitPersistencePlugin : Plugin, INotificationsProvider
     {
-        const string APP_LOGS_FAMILY_NAME = $"{nameof(ToolkitPersistencePlugin)}.app-logs";
-        const string NOTIFICATIONS_FAMILY_NAME = $"{nameof(ToolkitPersistencePlugin)}.notifications";
+        const string APP_LOGS_FAMILY_NAME = $".app-logs";
+        const string NOTIFICATIONS_FAMILY_NAME = $".notifications";
 
         readonly RocksDb db;
         readonly ColumnFamilyHandle appLogsFamily;
@@ -27,13 +27,13 @@ namespace Neo.BlockchainToolkit.Plugins
         WriteBatch? writeBatch = null;
         bool disposed = false;
 
-        public ToolkitPersistencePlugin(RocksDb db)
+        public ToolkitPersistencePlugin(RocksDb db, string familyNamePrefix = nameof(ToolkitPersistencePlugin))
         {
             Blockchain.Committing += OnCommitting;
             Blockchain.Committed += OnCommitted;
             this.db = db;
-            appLogsFamily = db.GetOrCreateColumnFamily(APP_LOGS_FAMILY_NAME);
-            notificationsFamily = db.GetOrCreateColumnFamily(NOTIFICATIONS_FAMILY_NAME);
+            appLogsFamily = db.GetOrCreateColumnFamily(familyNamePrefix + APP_LOGS_FAMILY_NAME);
+            notificationsFamily = db.GetOrCreateColumnFamily(familyNamePrefix + NOTIFICATIONS_FAMILY_NAME);
         }
 
         public override void Dispose()

@@ -5,7 +5,7 @@ using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class RocksDbStore : IStore
+    public sealed partial class RocksDbStore : IStore
     {
         readonly RocksDb db;
         readonly ColumnFamilyHandle columnFamily;
@@ -13,22 +13,12 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly bool shared;
         bool disposed;
 
-        internal RocksDbStore(RocksDb db, bool readOnly = false)
-            : this(db, db.GetDefaultColumnFamily(), readOnly, false)
+        public RocksDbStore(RocksDb db, string? columnFamilyName = null, bool readOnly = false, bool shared = false)
+            : this(db, db.GetColumnFamilyOrDefault(columnFamilyName), readOnly, shared)
         {
         }
 
-        public RocksDbStore(RocksDb db, string? columnFamilyName, bool readOnly = false)
-            : this(db, db.GetColumnFamilyOrDefault(columnFamilyName), readOnly, false)
-        {
-        }
-
-        public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false)
-            : this(db, columnFamily, readOnly, false)
-        {
-        }
-
-        public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly, bool shared)
+        internal RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false, bool shared = false)
         {
             this.db = db;
             this.columnFamily = columnFamily;
@@ -38,10 +28,12 @@ namespace Neo.BlockchainToolkit.Persistence
 
         public void Dispose()
         {
-            if (disposed || shared) return;
+            if (disposed) return;
+            if (!shared) 
+            {
+                db.Dispose();
+            }
             disposed = true;
-            db.Dispose();
-            GC.SuppressFinalize(this);
         }
 
         public byte[]? TryGet(byte[]? key)
