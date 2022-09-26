@@ -38,6 +38,18 @@ namespace Neo.BlockchainToolkit.Plugins
 
         public static IReadOnlyList<string> Nep11PropertyNames => nep11PropertyNames.Value;
 
+        public record Nep11Balance(
+            UInt160 AssetHash,
+            string Name,
+            string Symbol,
+            byte Decimals,
+            IReadOnlyList<Nep11TokenBalance> Balances);
+
+        public record Nep11TokenBalance(
+            ReadOnlyMemory<byte> TokenId,
+            BigInteger Balance,
+            uint LastUpdatedBlock);
+
         public static IEnumerable<Nep11Balance> GetNep11Balances(DataCache snapshot, INotificationsProvider notificationProvider, UInt160 address, ProtocolSettings settings)
         {
             List<(UInt160 scriptHash, ReadOnlyMemory<byte> tokenId, BigInteger balance)> tokens = new();
@@ -93,7 +105,7 @@ namespace Neo.BlockchainToolkit.Plugins
             {
                 var (name, symbol, decimals) = snapshot.GetTokenDetails(asset.Key, settings);
 
-                List<Nep11TokenBalance> tokenBalances = new(); 
+                List<Nep11TokenBalance> tokenBalances = new();
 
                 foreach (var (_, tokenId, balance) in asset)
                 {
@@ -126,6 +138,14 @@ namespace Neo.BlockchainToolkit.Plugins
                 }
             }
         }
+
+        public record Nep17Balance(
+            UInt160 AssetHash,
+            string Name,
+            string Symbol,
+            byte Decimals,
+            BigInteger Balance,
+            uint LastUpdatedBlock);
 
         public static IEnumerable<Nep17Balance> GetNep17Balances(DataCache snapshot, INotificationsProvider notificationProvider, UInt160 address, ProtocolSettings settings)
         {
@@ -209,11 +229,11 @@ namespace Neo.BlockchainToolkit.Plugins
 
                 var amount = notification.State[2].GetInteger();
                 var tokenId = standard == NEP_11
-                    ? (ReadOnlyMemory<byte>)(ByteString)notification.State[3] 
+                    ? (ReadOnlyMemory<byte>)(ByteString)notification.State[3]
                     : default;
 
                 yield return new TransferRecord(
-                    header.Timestamp, asset, from, to, amount, header.Index,notIndex, notification.InventoryHash, tokenId);
+                    header.Timestamp, asset, from, to, amount, header.Index, notIndex, notification.InventoryHash, tokenId);
             }
         }
 
@@ -283,7 +303,7 @@ namespace Neo.BlockchainToolkit.Plugins
                 {
                     var symbol = engine.ResultStack.Pop().GetString()!;
                     var decimals = (byte)engine.ResultStack.Pop().GetInteger();
-                    
+
                     return (name, symbol, decimals);
                 }
             }
