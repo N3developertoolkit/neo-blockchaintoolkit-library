@@ -15,7 +15,7 @@ using ApplicationExecuted = Neo.Ledger.Blockchain.ApplicationExecuted;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-    public class ToolkitPersistencePlugin : Plugin, INotificationsProvider
+    public sealed class ToolkitPersistencePlugin : Plugin, INotificationsProvider
     {
         const string APP_LOGS_STORE_PATH = "app-logs-store";
         const string NOTIFICATIONS_STORE_PATH = "notifications-store";
@@ -197,7 +197,8 @@ namespace Neo.BlockchainToolkit.Plugins
                 json["stack"] = "error: recursive reference";
             }
             json["notifications"] = appExec.Notifications
-                .Select(q => {
+                .Select(q =>
+                {
                     JObject notification = new();
                     notification["contract"] = q.ScriptHash.ToString();
                     notification["eventname"] = q.EventName;

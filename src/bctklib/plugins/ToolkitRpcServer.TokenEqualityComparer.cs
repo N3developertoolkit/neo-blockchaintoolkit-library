@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-
     public static partial class ToolkitRpcServer
     {
         class TokenEqualityComparer : IEqualityComparer<(UInt160 scriptHash, ReadOnlyMemory<byte> tokenId)>

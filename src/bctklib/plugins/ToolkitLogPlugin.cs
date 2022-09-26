@@ -9,7 +9,7 @@ using Neo.SmartContract.Native;
 
 namespace Neo.BlockchainToolkit.Plugins
 {
-    public class ToolkitLogPlugin : Plugin
+    public sealed class ToolkitLogPlugin : Plugin
     {
         NeoSystem? neoSystem;
         readonly Action<string> writeLine;
