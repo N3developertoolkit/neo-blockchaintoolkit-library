@@ -43,7 +43,7 @@ namespace Neo.BlockchainToolkit.Plugins
             string Name,
             string Symbol,
             byte Decimals,
-            IReadOnlyList<Nep11TokenBalance> Balances);
+            IReadOnlyList<Nep11TokenBalance> Tokens);
 
         public record Nep11TokenBalance(
             ReadOnlyMemory<byte> TokenId,
@@ -199,7 +199,6 @@ namespace Neo.BlockchainToolkit.Plugins
 
         public static IEnumerable<TransferRecord> GetNep17Transfers(DataCache snapshot, INotificationsProvider notificationProvider, UInt160 address, ulong startTime, ulong endTime)
             => GetTransfers(snapshot, NEP_17, notificationProvider, address, startTime, endTime);
-
 
         static IEnumerable<TransferRecord> GetTransfers(DataCache snapshot, string standard, INotificationsProvider notificationProvider, UInt160 address, ulong startTime, ulong endTime)
         {
