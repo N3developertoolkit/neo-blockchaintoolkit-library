@@ -18,7 +18,7 @@ namespace Neo.BlockchainToolkit.Persistence
         {
         }
 
-        internal RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false, bool shared = false)
+        public RocksDbStore(RocksDb db, ColumnFamilyHandle columnFamily, bool readOnly = false, bool shared = false)
         {
             this.db = db;
             this.columnFamily = columnFamily;
