@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -108,7 +109,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash, CancellationToken token)
+        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash, CancellationToken token, Action<RpcFoundStates> callback = null)
         {
             var info = branchInfo.Contracts.Single(c => c.Hash == contractHash);
 
@@ -124,7 +125,7 @@ namespace Neo.BlockchainToolkit.Persistence
                         if (!cacheClient.TryGetCachedFoundStates(contractHash, prefixes[i], out var _))
                         {
                             anyPrefixDownloaded = true;
-                            await DownloadStatesAsync(contractHash, prefixes[i], token).ConfigureAwait(false);
+                            await DownloadStatesAsync(contractHash, prefixes[i], token, callback).ConfigureAwait(false);
                         }
                     }
 
@@ -145,7 +146,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 else
                 {
-                    await DownloadStatesAsync(contractHash, null, token).ConfigureAwait(false);
+                    await DownloadStatesAsync(contractHash, null, token, callback).ConfigureAwait(false);
                     return default(Success);
                 }
             }
@@ -191,8 +192,16 @@ namespace Neo.BlockchainToolkit.Persistence
                         var (key, value) = found.Results[i];
                         if (key.AsSpan().StartsWith(prefix.Span))
                         {
-                            var state = new StorageItem(value).GetInteroperable<ContractState>();
-                            contracts.Add(new ContractInfo(state.Id, state.Hash, state.Manifest.Name));
+                            // Temporary fix --> https://github.com/neo-project/neo/issues/2829
+                            try
+                            {
+                                var state = new StorageItem(value).GetInteroperable<ContractState>();
+                                contracts.Add(new ContractInfo(state.Id, state.Hash, state.Manifest.Name));
+                            }
+                            catch
+                            {
+
+                            }
                         }
                     }
                     if (!found.Truncated || found.Results.Length == 0) break;
@@ -444,7 +453,7 @@ namespace Neo.BlockchainToolkit.Persistence
             throw new Exception("DownloadStates failed");
         }
 
-        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix, CancellationToken token)
+        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix, CancellationToken token, Action<RpcFoundStates> callback)
         {
             const string loggerName = nameof(DownloadStatesAsync);
             Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
@@ -460,8 +469,10 @@ namespace Neo.BlockchainToolkit.Persistence
                     token.ThrowIfCancellationRequested();
                     var found = await rpcClient.FindStatesAsync(branchInfo.RootHash, contractHash, prefixOwner.Memory, from).ConfigureAwait(false);
                     token.ThrowIfCancellationRequested();
+                    if (callback is not null) callback(found);
                     if (WriteFoundStates(found, snapshot, out from, ref count, loggerName)) break;
                 }
+                snapshot.Commit();
                 return count;
             }
             catch
