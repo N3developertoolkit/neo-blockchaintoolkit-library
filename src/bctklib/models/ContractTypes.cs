@@ -24,14 +24,14 @@ namespace Neo.BlockchainToolkit.Models
         const string UNSPECIFIED = "#Unspecified";
         const string ARRAY_PREFIX = "#Array<";
         const string MAP_PREFIX = "#Map<";
+        const string ITERATOR_PREFIX = "#Iterator<";
         const string INTEROP_PREFIX = "#Interop<";
         protected const string NEO_NAMESPACE = "#Neo.";
 
-#if (!SCFXGEN)
         public static bool TryParsePrimitive(ReadOnlySpan<char> typeName, [MaybeNullWhen(false)] out PrimitiveType type)
         {
             if (typeName[0] == '#'
-                && Enum.TryParse<PrimitiveType>(typeName.Slice(1), out var primitive))
+                && Enum.TryParse<PrimitiveType>(typeName[1..], out var primitive))
             {
                 type = primitive;
                 return true;
@@ -47,7 +47,7 @@ namespace Neo.BlockchainToolkit.Models
             {
                 if (typeName.Equals(UNSPECIFIED))
                 {
-                    type = ContractType.Unspecified;
+                    type = Unspecified;
                     return true;
                 }
 
@@ -65,12 +65,12 @@ namespace Neo.BlockchainToolkit.Models
                     // support 'Array<>' syntax for untyped arrays
                     if (arrayArg.IsEmpty)
                     {
-                        type = new ArrayContractType(ContractType.Unspecified);
+                        type = new ArrayContractType(Unspecified);
                         return true;
                     }
 
                     var arrayType = TryParse(new string(arrayArg), structs, out var _type)
-                        ? _type : ContractType.Unspecified;
+                        ? _type : Unspecified;
                     type = new ArrayContractType(arrayType);
                     return true;
                 }
@@ -83,20 +83,38 @@ namespace Neo.BlockchainToolkit.Models
                     // support 'Map<>' syntax for untyped maps
                     if (mapArgs.IsEmpty)
                     {
-                        type = new MapContractType(PrimitiveType.ByteArray, ContractType.Unspecified);
+                        type = new MapContractType(PrimitiveType.ByteArray, Unspecified);
                         return true;
                     }
 
                     var colonIndex = mapArgs.IndexOf(':');
                     if (colonIndex != -1)
                     {
-                        var keyType = TryParsePrimitive(mapArgs.Slice(0, colonIndex), out var _key)
+                        var keyType = TryParsePrimitive(mapArgs[..colonIndex], out var _key)
                             ? _key : PrimitiveType.ByteArray;
-                        var valueType = TryParse(new string(mapArgs.Slice(colonIndex + 1)), structs, out var _value)
-                            ? _value : ContractType.Unspecified;
+                        var valueType = TryParse(new string(mapArgs[(colonIndex + 1)..]), structs, out var _value)
+                            ? _value : Unspecified;
                         type = new MapContractType(keyType, valueType);
                         return true;
                     }
+                }
+
+                if (typeName.StartsWith(ITERATOR_PREFIX)
+                    && typeName[^1] == '>')
+                {
+                    var iteratorArg = typeName.AsSpan()[ITERATOR_PREFIX.Length..^1];
+
+                    // support '#Iterator<>' syntax for untyped iterators
+                    if (iteratorArg.IsEmpty)
+                    {
+                        type = new IteratorContractType(Unspecified);
+                        return true;
+                    }
+
+                    var iteratorType = TryParse(new string(iteratorArg), structs, out var _type)
+                        ? _type : Unspecified;
+                    type = new IteratorContractType(iteratorType);
+                    return true;
                 }
 
                 if (typeName.StartsWith(INTEROP_PREFIX)
@@ -106,7 +124,7 @@ namespace Neo.BlockchainToolkit.Models
                     type = new InteropContractType(new string(interopArg));
                     return true;
                 }
-                
+
                 if (typeName.StartsWith(NEO_NAMESPACE)
                     && NativeStructs.TryGetType(typeName, out var @struct))
                 {
@@ -122,10 +140,9 @@ namespace Neo.BlockchainToolkit.Models
                 }
             }
 
-            type = ContractType.Unspecified;
+            type = Unspecified;
             return false;
         }
-#endif
     }
 
     public record UnspecifiedContractType() : ContractType;
@@ -135,38 +152,38 @@ namespace Neo.BlockchainToolkit.Models
         public static PrimitiveContractType AsContractType(PrimitiveType type)
             => type switch
             {
-                PrimitiveType.Address => PrimitiveContractType.Address,
-                PrimitiveType.Boolean => PrimitiveContractType.Boolean,
-                PrimitiveType.ByteArray => PrimitiveContractType.ByteArray,
-                PrimitiveType.Hash160 => PrimitiveContractType.Hash160,
-                PrimitiveType.Hash256 => PrimitiveContractType.Hash256,
-                PrimitiveType.Integer => PrimitiveContractType.Integer,
-                PrimitiveType.PublicKey => PrimitiveContractType.PublicKey,
-                PrimitiveType.Signature => PrimitiveContractType.Signature,
-                PrimitiveType.String => PrimitiveContractType.String,
+                PrimitiveType.Address => Address,
+                PrimitiveType.Boolean => Boolean,
+                PrimitiveType.ByteArray => ByteArray,
+                PrimitiveType.Hash160 => Hash160,
+                PrimitiveType.Hash256 => Hash256,
+                PrimitiveType.Integer => Integer,
+                PrimitiveType.PublicKey => PublicKey,
+                PrimitiveType.Signature => Signature,
+                PrimitiveType.String => String,
                 _ => throw new NotSupportedException($"Unknown {nameof(PrimitiveType)} {type}"),
             };
 
-        public readonly static PrimitiveContractType Address = new PrimitiveContractType(PrimitiveType.Address);
-        public readonly static PrimitiveContractType Boolean = new PrimitiveContractType(PrimitiveType.Boolean);
-        public readonly static PrimitiveContractType ByteArray = new PrimitiveContractType(PrimitiveType.ByteArray);
-        public readonly static PrimitiveContractType Hash160 = new PrimitiveContractType(PrimitiveType.Hash160);
-        public readonly static PrimitiveContractType Hash256 = new PrimitiveContractType(PrimitiveType.Hash256);
-        public readonly static PrimitiveContractType Integer = new PrimitiveContractType(PrimitiveType.Integer);
-        public readonly static PrimitiveContractType PublicKey = new PrimitiveContractType(PrimitiveType.PublicKey);
-        public readonly static PrimitiveContractType Signature = new PrimitiveContractType(PrimitiveType.Signature);
-        public readonly static PrimitiveContractType String = new PrimitiveContractType(PrimitiveType.String);
+        public readonly static PrimitiveContractType Address = new(PrimitiveType.Address);
+        public readonly static PrimitiveContractType Boolean = new(PrimitiveType.Boolean);
+        public readonly static PrimitiveContractType ByteArray = new(PrimitiveType.ByteArray);
+        public readonly static PrimitiveContractType Hash160 = new(PrimitiveType.Hash160);
+        public readonly static PrimitiveContractType Hash256 = new(PrimitiveType.Hash256);
+        public readonly static PrimitiveContractType Integer = new(PrimitiveType.Integer);
+        public readonly static PrimitiveContractType PublicKey = new(PrimitiveType.PublicKey);
+        public readonly static PrimitiveContractType Signature = new(PrimitiveType.Signature);
+        public readonly static PrimitiveContractType String = new(PrimitiveType.String);
     }
 
     public record StructContractType : ContractType
     {
         public string Name { get; } = string.Empty;
-        public string ShortName 
+        public string ShortName
         {
             get
             {
                 var index = Name.LastIndexOf('.');
-                return index == -1 ? Name : Name.Substring(index + 1);
+                return index == -1 ? Name : Name[(index + 1)..];
             }
         }
 
@@ -182,8 +199,8 @@ namespace Neo.BlockchainToolkit.Models
         {
             if (!name.StartsWith(NEO_NAMESPACE) && !IsValidName(name)) throw new ArgumentException(null, nameof(name));
 
-            this.Name = name;
-            this.Fields = fields;
+            Name = name;
+            Fields = fields;
         }
 
         public static bool IsValidName(ReadOnlySpan<char> typeName)
@@ -194,9 +211,13 @@ namespace Neo.BlockchainToolkit.Models
     }
 
     public record ArrayContractType(ContractType Type) : ContractType;
+
     public record MapContractType(PrimitiveType KeyType, ContractType ValueType) : ContractType;
+
+    public record IteratorContractType(ContractType Type) : ContractType;
+
     public record InteropContractType(string Type) : ContractType
     {
-        public readonly static InteropContractType Unknown = new InteropContractType(string.Empty);
+        public readonly static InteropContractType Unknown = new(string.Empty);
     }
 }
