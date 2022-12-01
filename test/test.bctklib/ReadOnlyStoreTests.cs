@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using FluentAssertions;
-using Neo.BlockchainToolkit;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.BlockchainToolkit.Utilities;
 using Neo.Persistence;
@@ -12,7 +11,6 @@ namespace test.bctklib;
 
 using static Utility;
 
-
 [SuppressMessage("IClassFixture", "xUnit1033")]
 public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixture<RocksDbFixture>, IDisposable
 {
@@ -20,7 +18,7 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
 
     readonly CheckpointFixture checkpointFixture;
     readonly RocksDbFixture rocksDbFixture;
-    readonly CleanupPath path = new CleanupPath();
+    readonly CleanupPath path = new();
 
     public ReadOnlyStoreTests(RocksDbFixture rocksDbFixture, CheckpointFixture checkpointFixture)
     {
@@ -84,24 +82,23 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
 
         using var db = RocksDbUtility.OpenDb(path);
         var column = db.GetDefaultColumnFamily();
-
         TestStoreSharing(shared => new RocksDbStore(db, column, readOnly: true, shared));
     }
 
     [Fact]
     public void persistent_tracking_store_sharing()
     {
-        var memoryStore = new Neo.Persistence.MemoryStore();
-        foreach (var item in TestData)
+        var memoryStore = new MemoryStore();
+        foreach (var (key, value) in TestData)
         {
-            memoryStore.Put(item.key, item.value);
+            memoryStore.Put(key, value);
         }
 
         using var db = RocksDbUtility.OpenDb(path);
         var column = db.GetDefaultColumnFamily();
-
         TestStoreSharing(shared => new PersistentTrackingStore(db, column, memoryStore, shared));
     }
+
 
     [Theory, CombinatorialData]
     public void tryget_value_for_valid_key(StoreType storeType)

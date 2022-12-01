@@ -7,7 +7,7 @@ using RocksDbSharp;
 
 namespace Neo.BlockchainToolkit.Persistence
 {
-    public partial class PersistentTrackingStore : IStore
+    public sealed partial class PersistentTrackingStore : IStore
     {
         const byte UPDATED_KEY = 1;
         const byte DELETED_KEY = 0;
@@ -20,17 +20,12 @@ namespace Neo.BlockchainToolkit.Persistence
         readonly bool shared;
         bool disposed;
 
-        public PersistentTrackingStore(RocksDb db, IReadOnlyStore store, bool shared = false)
-            : this(db, nameof(PersistentTrackingStore), store, shared)
+        public PersistentTrackingStore(RocksDb db, IReadOnlyStore store, bool shared = false, string familyName = nameof(PersistentTrackingStore))
+            : this(db, db.GetOrCreateColumnFamily(familyName), store, shared)
         {
         }
 
-        public PersistentTrackingStore(RocksDb db, string columnFamilyName, IReadOnlyStore store, bool shared = false)
-            : this(db, db.GetOrCreateColumnFamily(columnFamilyName), store, shared)
-        {
-        }
-
-        public PersistentTrackingStore(RocksDb db, ColumnFamilyHandle columnFamily, IReadOnlyStore store, bool shared = false)
+        internal PersistentTrackingStore(RocksDb db, ColumnFamilyHandle columnFamily, IReadOnlyStore store, bool shared = false)
         {
             this.db = db;
             this.columnFamily = columnFamily;
@@ -38,16 +33,16 @@ namespace Neo.BlockchainToolkit.Persistence
             this.shared = shared;
         }
 
+
         public void Dispose()
         {
             if (disposed) return;
-            disposed = true;
             if (!shared)
             {
                 db.Dispose();
                 if (store is IDisposable disposable) disposable.Dispose();
-                GC.SuppressFinalize(this);
             }
+            disposed = true;
         }
 
         public void Reset()

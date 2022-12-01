@@ -11,12 +11,14 @@ namespace Neo.BlockchainToolkit.Persistence
         {
             readonly RocksDb db;
             readonly bool shared;
+            readonly string familyNamePrefix;
             bool disposed;
 
-            public RocksDbCacheClient(RocksDb db, bool shared)
+            public RocksDbCacheClient(RocksDb db, bool shared, string familyNamePrefix)
             {
                 this.db = db;
                 this.shared = shared;
+                this.familyNamePrefix = familyNamePrefix;
             }
 
             public void Dispose()
@@ -28,14 +30,17 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
             }
 
-            static string GetFamilyName(UInt160 contractHash, byte? prefix)
+            // Note, CachedFoundState uses a period delinator while CachedStorage uses a dash.
+            //       This is purposeful to avoid column name collisions
+
+            string GetCachedFoundStateFamilyName(UInt160 contractHash, byte? prefix)
             {
                 return prefix.HasValue
-                    ? $"{contractHash}{prefix.Value}"
-                    : $"{contractHash}";
+                    ? $"{familyNamePrefix}.{contractHash}.{prefix.Value}"
+                    : $"{familyNamePrefix}.{contractHash}";
             }
 
-            static string GetFamilyName(UInt160 contractHash) => $"G{contractHash}";
+            string GetCachedStorageFamilyName(UInt160 contractHash) => $"{familyNamePrefix}-{contractHash}";
 
             const byte NULL_PREFIX = 0;
             readonly static ReadOnlyMemory<byte> nullPrefix = (new byte[] { NULL_PREFIX }).AsMemory();
@@ -45,7 +50,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
 
-                var familyName = GetFamilyName(contractHash);
+                var familyName = GetCachedStorageFamilyName(contractHash);
                 if (db.TryGetColumnFamily(familyName, out var columnFamily))
                 {
                     using var slice = db.GetSlice(key.Span, columnFamily);
@@ -67,7 +72,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
 
-                var familyName = GetFamilyName(contractHash);
+                var familyName = GetCachedStorageFamilyName(contractHash);
                 var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
 
                 if (value is null)
@@ -86,7 +91,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
 
-                var familyName = GetFamilyName(contractHash, prefix);
+                var familyName = GetCachedFoundStateFamilyName(contractHash, prefix);
                 if (db.TryGetColumnFamily(familyName, out var columnFamily))
                 {
                     value = GetCachedFoundStates(columnFamily);
@@ -111,7 +116,7 @@ namespace Neo.BlockchainToolkit.Persistence
             public ICacheSnapshot GetFoundStatesSnapshot(UInt160 contractHash, byte? prefix)
             {
                 if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
-                var familyName = GetFamilyName(contractHash, prefix);
+                var familyName = GetCachedFoundStateFamilyName(contractHash, prefix);
                 var columnFamily = RocksDbUtility.GetOrCreateColumnFamily(db, familyName);
                 return new Snapshot(db, columnFamily);
             }
@@ -120,7 +125,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 if (disposed) throw new ObjectDisposedException(nameof(RocksDbCacheClient));
 
-                var familyName = GetFamilyName(contractHash, prefix);
+                var familyName = GetCachedFoundStateFamilyName(contractHash, prefix);
                 db.DropColumnFamily(familyName);
             }
 

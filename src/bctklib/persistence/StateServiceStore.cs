@@ -40,6 +40,8 @@ namespace Neo.BlockchainToolkit.Persistence
         public const string LoggerCategory = "Neo.BlockchainToolkit.Persistence.StateServiceStore";
         readonly static DiagnosticSource logger = new DiagnosticListener(LoggerCategory);
 
+        const byte ContractMgmt_Prefix_Contract = 8;
+        const byte ContractMgmt_Prefix_ContractHash = 12;
         const byte Ledger_Prefix_BlockHash = 9;
         const byte Ledger_Prefix_CurrentBlock = 12;
         const byte Ledger_Prefix_Block = 5;
@@ -47,6 +49,18 @@ namespace Neo.BlockchainToolkit.Persistence
         const byte NEO_Prefix_Candidate = 33;
         const byte NEO_Prefix_GasPerBlock = 29;
         const byte NEO_Prefix_VoterRewardPerCommittee = 23;
+        const byte Oracle_Prefix_Request = 7;
+        const byte RoleMgmt_Prefix_NeoFSAlphabetNode = (byte)Role.NeoFSAlphabetNode;
+        const byte RoleMgmt_Prefix_Oracle = (byte)Role.Oracle;
+        const byte RoleMgmt_Prefix_StateValidator = (byte)Role.StateValidator;
+
+        static readonly IReadOnlyDictionary<int, IReadOnlyList<byte>> contractSeekMap = new Dictionary<int, IReadOnlyList<byte>>()
+        {
+            { NativeContract.ContractManagement.Id, new [] { ContractMgmt_Prefix_Contract, ContractMgmt_Prefix_ContractHash } },
+            { NativeContract.NEO.Id, new [] { NEO_Prefix_Candidate, NEO_Prefix_GasPerBlock } },
+            { NativeContract.Oracle.Id, new [] { Oracle_Prefix_Request } },
+            { NativeContract.RoleManagement.Id, new [] { RoleMgmt_Prefix_NeoFSAlphabetNode, RoleMgmt_Prefix_Oracle, RoleMgmt_Prefix_StateValidator } }
+        };
 
         readonly RpcClient rpcClient;
         readonly ICacheClient cacheClient;
@@ -66,14 +80,14 @@ namespace Neo.BlockchainToolkit.Persistence
         public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo)
             : this(rpcClient, new MemoryCacheClient(), branchInfo) { }
 
-        public StateServiceStore(string uri, in BranchInfo branchInfo, RocksDb db, bool shared = false)
-            : this(new Uri(uri), branchInfo, db, shared) { }
+        public StateServiceStore(string uri, in BranchInfo branchInfo, RocksDb db, bool shared = false, string? familyNamePrefix = null)
+            : this(new Uri(uri), branchInfo, db, shared, familyNamePrefix) { }
 
-        public StateServiceStore(Uri uri, in BranchInfo branchInfo, RocksDb db, bool shared = false)
-            : this(new RpcClient(uri), branchInfo, db, shared) { }
+        public StateServiceStore(Uri uri, in BranchInfo branchInfo, RocksDb db, bool shared = false, string? familyNamePrefix = null)
+            : this(new RpcClient(uri), branchInfo, db, shared, familyNamePrefix) { }
 
-        public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo, RocksDb db, bool shared = false)
-            : this(rpcClient, new RocksDbCacheClient(db, shared), branchInfo) { }
+        public StateServiceStore(RpcClient rpcClient, in BranchInfo branchInfo, RocksDb db, bool shared = false, string? familyNamePrefix = null)
+            : this(rpcClient, new RocksDbCacheClient(db, shared, familyNamePrefix ?? nameof(StateServiceStore)), branchInfo) { }
 
         internal StateServiceStore(RpcClient rpcClient, ICacheClient cacheClient, in BranchInfo branchInfo)
         {
@@ -97,17 +111,44 @@ namespace Neo.BlockchainToolkit.Persistence
         public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash, CancellationToken token)
         {
             var info = branchInfo.Contracts.Single(c => c.Hash == contractHash);
+
             if (info.Id < 0)
             {
-                return new Error<string>("Prefetch is not supported for native contracts");
-            }
-            if (cacheClient.TryGetCachedFoundStates(contractHash, null, out var _))
-            {
-                return new Error<string>($"{info.Name} contract ({contractHash}) already fetched");
-            }
+                // if prefetch of a native contract was requested, prefetch each prefix listed in contractSeekMap
+                if (contractSeekMap.TryGetValue(info.Id, out var prefixes))
+                {
+                    var anyPrefixDownloaded = false;
+                    
+                    for (int i = 0; i < prefixes.Count; i++)
+                    {
+                        if (!cacheClient.TryGetCachedFoundStates(contractHash, prefixes[i], out var _))
+                        {
+                            anyPrefixDownloaded = true;
+                            await DownloadStatesAsync(contractHash, prefixes[i], token).ConfigureAwait(false);
+                        }
+                    }
 
-            await DownloadStatesAsync(contractHash, null, token).ConfigureAwait(false);
-            return default(Success);
+                    return anyPrefixDownloaded
+                        ? default(Success)
+                        : new Error<string>($"{info.Name} contract ({contractHash}) already fetched");
+                }
+                else
+                {
+                    return new Error<string>($"Prefetch is not supported for ${info.Name} native contract");
+                }
+            }
+            else
+            {
+                if (cacheClient.TryGetCachedFoundStates(contractHash, null, out var _))
+                {
+                    return new Error<string>($"{info.Name} contract ({contractHash}) already fetched");
+                }
+                else
+                {
+                    await DownloadStatesAsync(contractHash, null, token).ConfigureAwait(false);
+                    return default(Success);
+                }
+            }
         }
 
         public static async Task<BranchInfo> GetBranchInfoAsync(RpcClient rpcClient, uint index)
@@ -222,33 +263,39 @@ namespace Neo.BlockchainToolkit.Persistence
                     $"{nameof(StateServiceStore)} does not support TryGet method for {nameof(LedgerContract)} with {Convert.ToHexString(key.Span)} key");
             }
 
-            if (contractId == NativeContract.RoleManagement.Id)
+            if (contractId == NativeContract.NEO.Id
+                && key.Span[0] == NEO_Prefix_VoterRewardPerCommittee)
             {
-                var prefix = key.Span[0];
-                if (Enum.IsDefined((Role)prefix))
-                {
-                    return GetFromStates(NativeContract.RoleManagement.Hash, prefix, key);
-                }
-            }
-
-            if (contractId == NativeContract.NEO.Id)
-            {
-                var prefix = key.Span[0];
-                if (prefix != NEO_Prefix_Candidate
-                    && prefix != NEO_Prefix_GasPerBlock
-                    && prefix != NEO_Prefix_VoterRewardPerCommittee)
-                {
-                    GetFromStates(NativeContract.NEO.Hash, prefix, key);
-                }
+                // as of Neo 3.4, the NeoToken contract only seeks over VoterRewardPerCommittee data.
+                // This exception will never be triggered unless a future NeoToken contract update uses does a keyed read
+                // for a record with this prefix 
+                throw new NotSupportedException(
+                    $"{nameof(StateServiceStore)} does not support TryGet method for {nameof(NeoToken)} with {Convert.ToHexString(key.Span)} key");
             }
 
             var contractHash = contractMap[contractId];
+
             if (contractId < 0)
             {
-                return GetStorage(NativeContract.Ledger.Hash, key,
+                // contractSeekMap contains info on which native contract ids / prefixes can use seek methods
+                // For prefixes that need seek capability, ensure all records with that prefix are cached locally
+                // then retrieve the specifically keyed value from cache.
+                if (contractSeekMap.TryGetValue(contractId, out var prefixes))
+                {
+                    var prefix = key.Span[0];
+                    if (prefixes.Contains(prefix))
+                    {
+                        return GetFromStates(contractHash, prefix, key);
+                    }
+                }
+
+                // otherwise, retrieve and cache the keyed value 
+                return GetStorage(contractHash, key,
                     () => rpcClient.GetProvenState(branchInfo.RootHash, contractHash, key.Span));
             }
 
+            // since there is no way to know the data usage patterns for deployed contracts download
+            // and cache all records for that contract then retrieve the keyed value from cache
             return GetFromStates(contractHash, null, key);
 
             byte[]? GetFromStates(UInt160 contractHash, byte? prefix, ReadOnlyMemory<byte> key)
@@ -257,8 +304,6 @@ namespace Neo.BlockchainToolkit.Persistence
                     .FirstOrDefault(kvp => MemorySequenceComparer.Equals(kvp.key.Span, key.Span)).value;
             }
         }
-
-
 
         byte[]? GetStorage(UInt160 contractHash, ReadOnlyMemory<byte> key, Func<byte[]?> getStorageFromService)
         {
@@ -315,41 +360,49 @@ namespace Neo.BlockchainToolkit.Persistence
                 throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method for {nameof(LedgerContract)} with {prefix} prefix");
             }
 
-            // for RoleManagement, 
-            if (contractId == NativeContract.RoleManagement.Id)
+            if (contractId == NativeContract.NEO.Id
+                && key.Span[0] == NEO_Prefix_VoterRewardPerCommittee)
             {
-                var prefix = key.Span[0];
-                if (!Enum.IsDefined((Role)prefix))
-                {
-                    throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method for {nameof(RoleManagement)} with {prefix} prefix");
-                }
+                // For committee members, a new VoterRewardPerCommittee record is created every epoch
+                // (21 blocks / 5 minutes). Since the number of committee members == the number of 
+                // blocks in an epoch, this averages one record per block. Given that mainnet is 2.2 
+                // million blocks as of Sept 2022, downloading all these records is not feasible.
 
-                var states = FindStates(NativeContract.RoleManagement.Hash, prefix);
-                return ConvertStates(key, states);
+                // VoterRewardPerCommittee records are used to determine GAS token rewards for committee 
+                // members. Since GAS reward calculation for committee members is not a relevant scenario
+                // for Neo contract developers, StateServiceStore simply returns an empty array
+
+                return Array.Empty<(byte[], byte[])>();
             }
 
-            if (contractId == NativeContract.NEO.Id)
-            {
-                var prefix = key.Span[0];
-                if (prefix != NEO_Prefix_Candidate
-                    && prefix != NEO_Prefix_GasPerBlock
-                    && prefix != NEO_Prefix_VoterRewardPerCommittee)
-                {
-                    throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method for {nameof(NeoToken)} with {prefix} prefix");
-                }
-
-                var states = FindStates(NativeContract.NEO.Hash, prefix);
-                return ConvertStates(key, states);
-            }
-
+            var contractHash = contractMap[contractId];
             if (contractId < 0)
             {
-                var contract = branchInfo.Contracts.Single(c => c.Id == contractId);
-                throw new NotSupportedException($"{nameof(StateServiceStore)} does not support Seek method for native {contract.Name} contract");
+                var prefix = key.Span[0];
+                if (contractSeekMap.TryGetValue(contractId, out var prefixes))
+                {
+                    if (prefixes.Contains(prefix))
+                    {
+                        var states = FindStates(contractHash, prefix);
+                        return ConvertStates(key, states);
+                    }
+                    else
+                    {
+                        var contractName = contractNameMap[contractHash];
+                        throw new NotSupportedException(
+                            $"{nameof(StateServiceStore)} does not support Seek method for {contractName} with {prefix} prefix");
+                    }
+                }
+                else
+                {
+                    var contractName = contractNameMap[contractHash];
+                    throw new NotSupportedException(
+                        $"{nameof(StateServiceStore)} does not support Seek method for {contractName}");
+                }
             }
 
             {
-                var states = FindStates(contractMap[contractId]);
+                var states = FindStates(contractMap[contractId], null);
                 return ConvertStates(key, states);
             }
 
@@ -372,7 +425,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> FindStates(UInt160 contractHash, byte? prefix = null)
+        IEnumerable<(ReadOnlyMemory<byte> key, byte[] value)> FindStates(UInt160 contractHash, byte? prefix)
         {
             if (disposed) throw new ObjectDisposedException(nameof(StateServiceStore));
 

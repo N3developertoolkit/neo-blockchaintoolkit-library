@@ -13,6 +13,7 @@ using Neo.SmartContract.Native;
 using Neo.VM;
 using Newtonsoft.Json;
 using JsonSerializer = Newtonsoft.Json.JsonSerializer;
+using StackItem = Neo.VM.Types.StackItem;
 
 namespace Neo.BlockchainToolkit
 {
@@ -181,7 +182,7 @@ namespace Neo.BlockchainToolkit
             static char GetHexValue(int i) => (i < 10) ? (char)(i + '0') : (char)(i - 10 + 'A');
         }
 
-        static readonly Lazy<IReadOnlyDictionary<uint, string>> sysCallNames = new Lazy<IReadOnlyDictionary<uint, string>>(
+        static readonly Lazy<IReadOnlyDictionary<uint, string>> sysCallNames = new(
             () => ApplicationEngine.Services.ToImmutableDictionary(kvp => kvp.Value.Hash, kvp => kvp.Value.Name));
 
         public static string GetComment(this Instruction instruction, int ip, IReadOnlyList<MethodToken>? tokens = null)
@@ -318,6 +319,61 @@ namespace Neo.BlockchainToolkit
                 var key = new KeyBuilder(NativeContract.Ledger.Id, Prefix_Block).ToArray();
                 return snapshot.Find(key).Any();
             }
+        }
+
+        public static int GetSize(this StackItem item, uint? maxSize = null)
+        {
+            maxSize ??= ExecutionEngineLimits.Default.MaxItemSize;
+            int size = 0;
+            var serialized = new List<VM.Types.CompoundType>();
+            var unserialized = new Stack<StackItem>();
+            unserialized.Push(item);
+            while (unserialized.Count > 0)
+            {
+                item = unserialized.Pop();
+                size++;
+                switch (item)
+                {
+                    case VM.Types.Null _:
+                        break;
+                    case VM.Types.Boolean _:
+                        size += sizeof(bool);
+                        break;
+                    case VM.Types.Integer _:
+                    case VM.Types.ByteString _:
+                    case VM.Types.Buffer _:
+                        {
+                            var span = item.GetSpan();
+                            size += IO.Helper.GetVarSize(span.Length);
+                            size += span.Length;
+                        }
+                        break;
+                    case VM.Types.Array array:
+                        if (serialized.Any(p => ReferenceEquals(p, array)))
+                            throw new NotSupportedException();
+                        serialized.Add(array);
+                        size += IO.Helper.GetVarSize(array.Count);
+                        for (int i = array.Count - 1; i >= 0; i--)
+                            unserialized.Push(array[i]);
+                        break;
+                    case VM.Types.Map map:
+                        if (serialized.Any(p => ReferenceEquals(p, map)))
+                            throw new NotSupportedException();
+                        serialized.Add(map);
+                        size += IO.Helper.GetVarSize(map.Count);
+                        foreach (var pair in map.Reverse())
+                        {
+                            unserialized.Push(pair.Value);
+                            unserialized.Push(pair.Key);
+                        }
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
+            }
+
+            if (size > maxSize.Value) throw new InvalidOperationException();
+            return size;
         }
     }
 }
