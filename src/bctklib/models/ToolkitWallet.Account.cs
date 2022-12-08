@@ -32,20 +32,20 @@ namespace Neo.BlockchainToolkit.Models
                     && token.Type != JTokenType.Null)
                 {
                     if (token.Type != JTokenType.String) throw new Exception();
-                    keyPair = new KeyPair(Convert.FromBase64String(token.Value<string>()));
+                    keyPair = new KeyPair(Convert.FromBase64String(token.Value<string>() ?? ""));
                 }
 
                 Contract? contract = null;
                 if (json.TryGetValue("contract", out token)
                     && token.Type != JTokenType.Null)
                 {
-                    var script = Convert.FromBase64String(token.Value<string>("script"));
+                    var script = Convert.FromBase64String(token.Value<string>("script") ?? "");
                     var @params = Array.Empty<ContractParameterType>();
                     var paramArray = token["parameters"] as JArray;
                     if (paramArray is not null)
                     {
                         @params = paramArray
-                            .Select(t => Enum.Parse<ContractParameterType>(t.Value<string>()))
+                            .Select(t => Enum.Parse<ContractParameterType>(t.Value<string>() ?? ""))
                             .ToArray();
                     }
                     contract = new Contract() { Script = script, ParameterList = @params };
