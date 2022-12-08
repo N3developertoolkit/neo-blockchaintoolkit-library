@@ -47,10 +47,11 @@ jobs:
         dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
         dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
     - name: Code Coverage Summary
-      uses: irongut/CodeCoverageSummary@v1.3.0
+      uses: 5monkeys/cobertura-action@v13
       with:
-        filename: test/test.bctklib/TestResults/*/coverage.cobertura.xml
-        format: markdown
+        path: test/test.bctklib/TestResults/*/coverage.cobertura.xml
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        minimum_coverage: 0
 
   package:
     needs: build
