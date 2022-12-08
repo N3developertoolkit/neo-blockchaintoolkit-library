@@ -109,7 +109,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
         }
 
-        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash, CancellationToken token, Action<RpcFoundStates> callback = null)
+        public async Task<OneOf<Success, Error<string>>> PrefetchAsync(UInt160 contractHash, CancellationToken token, Action<RpcFoundStates>? callback = null)
         {
             var info = branchInfo.Contracts.Single(c => c.Hash == contractHash);
 
@@ -125,7 +125,7 @@ namespace Neo.BlockchainToolkit.Persistence
                         if (!cacheClient.TryGetCachedFoundStates(contractHash, prefixes[i], out var _))
                         {
                             anyPrefixDownloaded = true;
-                            await DownloadStatesAsync(contractHash, prefixes[i], token, callback).ConfigureAwait(false);
+                            await DownloadStatesAsync(contractHash, prefixes[i], callback, token).ConfigureAwait(false);
                         }
                     }
 
@@ -146,7 +146,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 }
                 else
                 {
-                    await DownloadStatesAsync(contractHash, null, token, callback).ConfigureAwait(false);
+                    await DownloadStatesAsync(contractHash, null, callback, token).ConfigureAwait(false);
                     return default(Success);
                 }
             }
@@ -457,7 +457,7 @@ namespace Neo.BlockchainToolkit.Persistence
             throw new Exception("DownloadStates failed");
         }
 
-        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix, CancellationToken token, Action<RpcFoundStates> callback)
+        async Task<int> DownloadStatesAsync(UInt160 contractHash, byte? prefix, Action<RpcFoundStates>? callback, CancellationToken token)
         {
             const string loggerName = nameof(DownloadStatesAsync);
             Activity? activity = DownloadStatesStart(loggerName, contractHash, prefix);
@@ -473,7 +473,7 @@ namespace Neo.BlockchainToolkit.Persistence
                     token.ThrowIfCancellationRequested();
                     var found = await rpcClient.FindStatesAsync(branchInfo.RootHash, contractHash, prefixOwner.Memory, from).ConfigureAwait(false);
                     token.ThrowIfCancellationRequested();
-                    if (callback is not null) callback(found);
+                    callback?.Invoke(found);
                     if (WriteFoundStates(found, snapshot, out from, ref count, loggerName)) break;
                 }
                 snapshot.Commit();
