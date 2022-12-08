@@ -89,7 +89,7 @@ namespace Neo.BlockchainToolkit.Persistence
             {
                 readonly ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap;
                 readonly int hash;
-                readonly List<(ReadOnlyMemory<byte> key, byte[] value)> entries = new ();
+                readonly List<(ReadOnlyMemory<byte> key, byte[] value)> entries = new();
                 bool disposed = false;
 
                 public Snapshot(ConcurrentDictionary<int, IList<(ReadOnlyMemory<byte>, byte[])>> foundStateMap, int hash)

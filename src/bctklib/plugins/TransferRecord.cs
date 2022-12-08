@@ -5,7 +5,7 @@ namespace Neo.BlockchainToolkit.Plugins
 {
     public record TransferRecord(
         ulong Timestamp,
-        UInt160 Asset, 
+        UInt160 Asset,
         UInt160 From,
         UInt160 To,
         BigInteger Amount,

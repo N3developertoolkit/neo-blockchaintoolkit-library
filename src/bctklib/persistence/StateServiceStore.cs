@@ -118,7 +118,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 if (contractSeekMap.TryGetValue(info.Id, out var prefixes))
                 {
                     var anyPrefixDownloaded = false;
-                    
+
                     for (int i = 0; i < prefixes.Count; i++)
                     {
                         if (!cacheClient.TryGetCachedFoundStates(contractHash, prefixes[i], out var _))
