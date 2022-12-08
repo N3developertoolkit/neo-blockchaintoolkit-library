@@ -418,8 +418,7 @@ namespace Neo.BlockchainToolkit
 
             static byte[] ParseBinary(JToken json)
             {
-                var value = json.Value<string>();
-
+                var value = json.Value<string>() ?? "";
                 Span<byte> span = stackalloc byte[value.Length / 4 * 3];
                 if (Convert.TryFromBase64String(value, span, out var written))
                 {

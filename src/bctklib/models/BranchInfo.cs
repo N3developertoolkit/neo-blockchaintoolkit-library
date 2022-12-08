@@ -40,7 +40,7 @@ namespace Neo.BlockchainToolkit.Models
                 {
                     var id = value.Value<int>("id");
                     var hash = UInt160.Parse(value.Value<string>("hash"));
-                    var name = value.Value<string>("name");
+                    var name = value.Value<string>("name") ?? "";
                     contracts.Add(new ContractInfo(id, hash, name));
                 }
             }
