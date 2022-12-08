@@ -29,7 +29,7 @@ namespace Neo.BlockchainToolkit.Persistence
         public void Dispose()
         {
             if (disposed) return;
-            if (!shared) 
+            if (!shared)
             {
                 db.Dispose();
             }

@@ -7,12 +7,12 @@ namespace Neo.BlockchainToolkit.Persistence
 {
     static class RpcClientExtensions
     {
-        // TODO: remove when https://github.com/neo-project/neo-modules/issues/756 is resolved
-        internal static async Task<UInt256> GetBlockHashAsync(this RpcClient rpcClient, uint index)
-        {
-            var result = await rpcClient.RpcSendAsync("getblockhash", index).ConfigureAwait(false);
-            return UInt256.Parse(result.AsString());
-        }
+        // // TODO: remove when https://github.com/neo-project/neo-modules/issues/756 is resolved
+        // internal static async Task<UInt256> GetBlockHashAsync(this RpcClient rpcClient, uint index)
+        // {
+        //     var result = await rpcClient.RpcSendAsync("getblockhash", index).ConfigureAwait(false);
+        //     return UInt256.Parse(result.AsString());
+        // }
 
         internal static byte[] GetProof(this RpcClient rpcClient, UInt256 rootHash, UInt160 scriptHash, ReadOnlySpan<byte> key)
         {

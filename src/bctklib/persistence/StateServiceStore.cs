@@ -119,7 +119,7 @@ namespace Neo.BlockchainToolkit.Persistence
                 if (contractSeekMap.TryGetValue(info.Id, out var prefixes))
                 {
                     var anyPrefixDownloaded = false;
-                    
+
                     for (int i = 0; i < prefixes.Count; i++)
                     {
                         if (!cacheClient.TryGetCachedFoundStates(contractHash, prefixes[i], out var _))
@@ -155,7 +155,11 @@ namespace Neo.BlockchainToolkit.Persistence
         public static async Task<BranchInfo> GetBranchInfoAsync(RpcClient rpcClient, uint index)
         {
             var versionTask = rpcClient.GetVersionAsync();
-            var blockHashTask = rpcClient.GetBlockHashAsync(index);
+            var blockHashTask = rpcClient.GetBlockHashAsync(index)
+                .ContinueWith(task => UInt256.Parse(task.Result),
+                              cancellationToken: default,
+                              TaskContinuationOptions.OnlyOnRanToCompletion,
+                              TaskScheduler.Default);
             var stateRoot = await rpcClient.GetStateRootAsync(index).ConfigureAwait(false);
             var contractsTask = GetContracts(rpcClient, stateRoot.RootHash);
 
