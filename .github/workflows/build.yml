@@ -29,11 +29,11 @@ jobs:
         os: [macos-11, macos-12, ubuntu-20.04, ubuntu-22.04, windows-2019, windows-2022]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     - name: Install RocksDB Dependencies
@@ -46,22 +46,21 @@ jobs:
         dotnet restore
         dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
         dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
-    - name: cobertura-report
-      uses: 5monkeys/cobertura-action@v12
-      with:
-        path: test/test.bctklib\TestResults/*/coverage.cobertura.xml
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        minimum_coverage: 0
+    - name: Code Coverage Summary
+      uses: irongut/CodeCoverageSummary@v1.3.0
+      filename: test/test.bctklib/TestResults/*/coverage.cobertura.xml
+      format: markdown
+
   package:
     needs: build
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         source-url: ${{ env.AZURE_ARTIFACTS_FEED_URL }}
