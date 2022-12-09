@@ -33,7 +33,7 @@ jobs:
         dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
         dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
     - name: Upload Coverage
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: coverage
         path: ./test/test.bctklib/TestResults/*/coverage.cobertura.xml
