@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Reflection;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
@@ -83,6 +83,7 @@ namespace Neo.BlockchainToolkit.SmartContract
         readonly Dictionary<UInt160, Dictionary<int, int>> hitMaps = new();
         readonly Dictionary<UInt160, Dictionary<int, (int branchCount, int continueCount)>> branchMaps = new();
         readonly WitnessChecker witnessChecker;
+        readonly IFileSystem? fileSystem;
         BranchInstructionInfo? branchInstructionInfo = null;
         CoverageWriter? coverageWriter = null;
 
@@ -91,25 +92,63 @@ namespace Neo.BlockchainToolkit.SmartContract
         public new event EventHandler<LogEventArgs>? Log;
         public new event EventHandler<NotifyEventArgs>? Notify;
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings)
-            : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings? settings = null)
+            : this(snapshot, container: null, settings: settings)
         {
         }
 
+        public TestApplicationEngine(DataCache snapshot, Transaction transaction, ProtocolSettings? settings = null)
+            : this(snapshot, container: transaction, settings: settings)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot, Signer signer, ProtocolSettings? settings = null)
+            : this(snapshot, container: CreateTestTransaction(signer), settings: settings)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry, ProtocolSettings? settings = null)
+            : this(snapshot, container: CreateTestTransaction(signer, witnessScope), settings: settings)
+        {
+        }
+
+        [Obsolete("Use (DataCache, UInt160, WitnessScope?, ProtocolSettings?) ctor instead")]
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry)
             : this(TriggerType.Application, CreateTestTransaction(signer, witnessScope), snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
+        [Obsolete("Use (DataCache, Transaction, ProtocolSettings?) ctor instead")]
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, Transaction transaction)
-            : this(TriggerType.Application, transaction, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+            : this(snapshot, container: transaction, settings: settings)
         {
         }
 
+        // for back compat
         public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas, WitnessChecker? witnessChecker, IDiagnostic? diagnostic = null)
-            : base(trigger, container ?? CreateTestTransaction(), snapshot, persistingBlock, settings, gas, diagnostic)
+            : this(snapshot, trigger, container, persistingBlock, settings, gas, diagnostic, witnessChecker)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot,
+                                     TriggerType trigger = TriggerType.Application,
+                                     IVerifiable? container = null,
+                                     Block? persistingBlock = null,
+                                     ProtocolSettings? settings = null,
+                                     long gas = TestModeGas,
+                                     IDiagnostic? diagnostic = null,
+                                     WitnessChecker? witnessChecker = null,
+                                     IFileSystem? fileSystem = null)
+            : base(trigger, 
+                container ?? CreateTestTransaction(), 
+                snapshot, 
+                persistingBlock, 
+                settings ?? ProtocolSettings.Default, 
+                gas, 
+                diagnostic)
         {
             this.witnessChecker = witnessChecker ?? CheckWitness;
+            this.fileSystem = fileSystem;
             ApplicationEngine.Log += OnLog;
             ApplicationEngine.Notify += OnNotify;
         }
@@ -146,7 +185,9 @@ namespace Neo.BlockchainToolkit.SmartContract
         public override VMState Execute()
         {
             var coveragePath = Environment.GetEnvironmentVariable(envName);
-            coverageWriter = string.IsNullOrEmpty(coveragePath) ? null : new CoverageWriter(coveragePath);
+            coverageWriter = string.IsNullOrEmpty(coveragePath) 
+                ? null 
+                : new CoverageWriter(coveragePath, fileSystem);
             coverageWriter?.WriteContext(CurrentContext);
 
             return base.Execute();
