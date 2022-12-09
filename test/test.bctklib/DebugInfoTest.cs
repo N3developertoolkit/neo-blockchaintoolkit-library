@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.IO.Compression;
@@ -27,7 +26,7 @@ namespace test.bctklib
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
             fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
-            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
+            var debugInfo = await DebugInfo.LoadContractDebugInfoAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
@@ -40,7 +39,7 @@ namespace test.bctklib
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
             fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
-            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
+            var debugInfo = await DebugInfo.LoadContractDebugInfoAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
@@ -54,7 +53,7 @@ namespace test.bctklib
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
             fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.nefdbgnfo"), new MockFileData(compressedDebugInfo));
-            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
+            var debugInfo = await DebugInfo.LoadContractDebugInfoAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT0);
         }
 
@@ -64,7 +63,7 @@ namespace test.bctklib
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
-            var debugInfo = await DebugInfo.LoadAsync(nefPath, null, fileSystem);
+            var debugInfo = await DebugInfo.LoadContractDebugInfoAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT1);
         }
 
@@ -73,7 +72,7 @@ namespace test.bctklib
         {
             var json = new JObject(new JProperty("hash", TEST_HASH));
 
-            var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
+            var debugInfo = DebugInfo.Parse(json);
             Assert.Equal(UInt160.Parse(TEST_HASH), debugInfo.ScriptHash);
             Assert.Empty(debugInfo.Documents);
             Assert.Empty(debugInfo.Events);
@@ -88,7 +87,7 @@ namespace test.bctklib
             var json = JObject.Parse(debugInfoJson);
             json.Remove("hash");
 
-            var ex = Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
+            var ex = Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
             Assert.Equal("Missing hash value", ex.Message);
         }
 
@@ -103,9 +102,10 @@ namespace test.bctklib
             fileSystem.AddFile(apocPath, new MockFileData(string.Empty));
             fileSystem.AddFile(fileSystem.Path.Combine(srcPath, "Apoc.Crowdsale.cs"), new MockFileData(string.Empty));
 
-            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
-            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
+            var testPath = @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs";
+            var sourceMap = new Dictionary<string, string>();
 
+            var actual = DebugInfo.ResolveDocument(testPath, sourceMap, fileSystem);
             Assert.Equal(apocPath, actual);
         }
 
@@ -118,10 +118,9 @@ namespace test.bctklib
             fileSystem.Directory.SetCurrentDirectory(srcPath);
             var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
             fileSystem.AddFile(apocPath, new MockFileData(string.Empty));
+            var sourceMap = new Dictionary<string, string>();
 
-            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
-            var actual = resolver.ResolveDocument(apocPath);
-
+            var actual = DebugInfo.ResolveDocument(apocPath, sourceMap, fileSystem);
             Assert.Equal(apocPath, actual);
         }
 
@@ -133,10 +132,9 @@ namespace test.bctklib
             var srcPath = fileSystem.Path.Combine(rootPath, "neo", "token-sample", "src");
             fileSystem.Directory.SetCurrentDirectory(srcPath);
             var apocPath = fileSystem.Path.Combine(srcPath, "Apoc.cs");
+            var sourceMap = new Dictionary<string, string>();
 
-            var resolver = new DebugInfo.DocumentResolver(ImmutableDictionary<string, string>.Empty, fileSystem);
-            var actual = resolver.ResolveDocument(apocPath);
-
+            var actual = DebugInfo.ResolveDocument(apocPath, sourceMap, fileSystem);
             Assert.Equal(apocPath, actual);
         }
 
@@ -153,9 +151,7 @@ namespace test.bctklib
             {
                 { @"c:\Users\harry\Source\neo\seattle\samples\token-sample\src", srcPath}
             };
-            var resolver = new DebugInfo.DocumentResolver(sourceMap, fileSystem);
-            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
-
+            var actual = DebugInfo.ResolveDocument(apocPath, sourceMap, fileSystem);
             Assert.Equal(apocPath, actual);
         }
 
@@ -172,9 +168,7 @@ namespace test.bctklib
             {
                 { @"c:\Users\harry\Source\neo\seattle\samples\token-sample", tokenSamplePath}
             };
-            var resolver = new DebugInfo.DocumentResolver(sourceMap, fileSystem);
-            var actual = resolver.ResolveDocument(@"c:\Users\harry\Source\neo\seattle\samples\token-sample\src\Apoc.cs");
-
+            var actual = DebugInfo.ResolveDocument(apocPath, sourceMap, fileSystem);
             Assert.Equal(apocPath, actual);
         }
 
@@ -188,7 +182,7 @@ namespace test.bctklib
                         "testStatic1,String",
                         "testStatic2,Hash160")));
 
-            var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
+            var debugInfo = DebugInfo.Parse(json);
 
             Assert.Collection(debugInfo.StaticVariables,
                 s =>
@@ -215,7 +209,7 @@ namespace test.bctklib
                         "testStatic1,String,1",
                         "testStatic2,Hash160,3")));
 
-            var debugInfo = DebugInfo.Load(json, t => t.Value<string>()!);
+            var debugInfo = DebugInfo.Parse(json);
 
             Assert.Collection(debugInfo.StaticVariables,
                 s =>
@@ -242,7 +236,7 @@ namespace test.bctklib
                         "testStatic1,String,1",
                         "testStatic2,Hash160")));
 
-            Assert.Throws<FormatException>(() => DebugInfo.Load(json, t => t.Value<string>()!));
+            Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
         }
 
         [Fact]
@@ -250,7 +244,7 @@ namespace test.bctklib
         {
             var debugInfoJson = Utility.GetResource("invalidSequencePoints.json");
             var json = JObject.Parse(debugInfoJson);
-            var debug = DebugInfo.Load(json, t => t.Value<string>()!);
+            var debug = DebugInfo.Parse(json);
         }
 
         static byte[] CreateCompressedDebugInfo(string contractName, string debugInfo)
