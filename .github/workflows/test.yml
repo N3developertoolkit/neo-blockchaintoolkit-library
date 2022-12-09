@@ -37,3 +37,6 @@ jobs:
       with:
         name: coverage
         path: ./test/test.bctklib/TestResults/*/coverage.cobertura.xml
+  report:
+    needs: build
+    uses: ./.github/workflows/rpt_coverage.yml

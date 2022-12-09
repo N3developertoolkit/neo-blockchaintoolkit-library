@@ -1,0 +1,20 @@
+name: Coverage Report
+
+on:
+  workflow_call:
+
+# Factored into a separate workflow because irongut/CodeCoverageSummary only works on linux
+jobs:
+  coverage-report:
+    runs-on: ubuntu-latest
+      - uses: actions/download-artifact@v3
+    steps:
+      - name: Download Coverage Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+          path: ./coverage
+      - name: Code Coverage Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: ./coverage/**/coverage.cobertura.xml
