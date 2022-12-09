@@ -22,7 +22,13 @@ namespace Neo.BlockchainToolkit.Models
         public IReadOnlyList<SlotVariable> StaticVariables { get; set; }
             = ImmutableList<SlotVariable>.Empty;
 
-        public static async Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
+        [Obsolete($"use {nameof(LoadContractDebugInfoAsync)} instead")]
+        public static Task<OneOf<DebugInfo, NotFound>> LoadAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
+        {
+            return LoadContractDebugInfoAsync(nefFileName, sourceFileMap, fileSystem);
+        }
+
+        public static async Task<OneOf<DebugInfo, NotFound>> LoadContractDebugInfoAsync(string nefFileName, IReadOnlyDictionary<string, string>? sourceFileMap = null, IFileSystem? fileSystem = null)
         {
             fileSystem ??= new FileSystem();
             sourceFileMap ??= ImmutableDictionary<string, string>.Empty;
