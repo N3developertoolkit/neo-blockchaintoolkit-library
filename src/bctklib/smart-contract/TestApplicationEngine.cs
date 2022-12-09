@@ -77,6 +77,7 @@ namespace Neo.BlockchainToolkit.SmartContract
         };
 
         const string envName = "NEO_TEST_APP_ENGINE_COVERAGE_PATH";
+        record BranchInstructionInfo(UInt160 ContractHash, int InstructionPointer, int BranchOffset);
 
         readonly Dictionary<UInt160, OneOf<ContractState, Script>> executedScripts = new();
         readonly Dictionary<UInt160, Dictionary<int, int>> hitMaps = new();
@@ -145,8 +146,7 @@ namespace Neo.BlockchainToolkit.SmartContract
         public override VMState Execute()
         {
             var coveragePath = Environment.GetEnvironmentVariable(envName);
-            coverageWriter = coveragePath is null ? null : new CoverageWriter(coveragePath);
-
+            coverageWriter = string.IsNullOrEmpty(coveragePath) ? null : new CoverageWriter(coveragePath);
             coverageWriter?.WriteContext(CurrentContext);
 
             return base.Execute();
@@ -155,7 +155,6 @@ namespace Neo.BlockchainToolkit.SmartContract
         protected override void LoadContext(ExecutionContext context)
         {
             base.LoadContext(context);
-
             coverageWriter?.WriteContext(context);
 
             var ecs = context.GetState<ExecutionContextState>();
@@ -166,13 +165,10 @@ namespace Neo.BlockchainToolkit.SmartContract
             }
         }
 
-        record BranchInstructionInfo(UInt160 ContractHash, int InstructionPointer, int BranchOffset);
-
         protected override void PreExecuteInstruction(Instruction instruction)
         {
-            base.PreExecuteInstruction(instruction);
-
             branchInstructionInfo = null;
+            base.PreExecuteInstruction(instruction);
 
             // if there's no current context, there's no instruction pointer to record
             if (CurrentContext is null) return;
@@ -189,12 +185,13 @@ namespace Neo.BlockchainToolkit.SmartContract
                 hitMap = new Dictionary<int, int>();
                 hitMaps.Add(hash, hitMap);
             }
-            hitMap[ip] = hitMap.TryGetValue(ip, out var _hitCount) ? _hitCount  + 1 : 1;
+            hitMap[ip] = hitMap.TryGetValue(ip, out var _hitCount) ? _hitCount + 1 : 1;
 
             var offset = GetBranchOffset(instruction);
-            branchInstructionInfo = offset != 0
-                ? branchInstructionInfo = new BranchInstructionInfo(hash, ip, ip + offset)
-                : null;
+            if (offset != 0)
+            {
+                branchInstructionInfo = new BranchInstructionInfo(hash, ip, ip + offset);
+            }
 
             static int GetBranchOffset(Instruction instruction)
                 => instruction.OpCode switch
@@ -216,9 +213,9 @@ namespace Neo.BlockchainToolkit.SmartContract
             base.PostExecuteInstruction(instruction);
 
             // if branchInstructionInfo is null, instruction is not a branch instruction
-            if (branchInstructionInfo is null) return;
+            if (branchInstructionInfo is null 
             // if there's no current context, there's no instruction pointer to record
-            if (CurrentContext == null) return;
+                || CurrentContext == null) return;
 
             var (hash, branchIP, offsetIP) = branchInstructionInfo;
             var currentIP = CurrentContext.InstructionPointer;
