@@ -14,7 +14,6 @@ env:
 
 jobs:
   pack:
-    if: startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     outputs:
       PrereleaseVersion: ${{ steps.nbgv.outputs.PrereleaseVersion }}
