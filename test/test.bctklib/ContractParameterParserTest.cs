@@ -301,7 +301,7 @@ namespace test.bctklib
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
-            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.GetDirectoryName(someFakePath));
+            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.GetDirectoryName(someFakePath) ?? throw new Exception());
             var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
             fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 
@@ -317,7 +317,7 @@ namespace test.bctklib
             var fileSystem = new MockFileSystem();
             var rootPath = fileSystem.AllDirectories.First();
             var someFakePath = fileSystem.Path.Combine(rootPath, "some", "fake", "path");
-            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.GetDirectoryName(someFakePath));
+            fileSystem.Directory.SetCurrentDirectory(fileSystem.Path.GetDirectoryName(someFakePath) ?? throw new Exception());
             var mockFile = new MockFileData("2a333738-c897-45db-ac76-67b66deb4c1f");
             fileSystem.AddFile(fileSystem.Path.Combine(someFakePath, "file.txt"), mockFile);
 

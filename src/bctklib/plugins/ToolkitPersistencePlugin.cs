@@ -200,7 +200,7 @@ namespace Neo.BlockchainToolkit.Plugins
                     }))
             };
 
-            static JToken StackItemsToJson(VM.Types.StackItem[] items) 
+            static JToken StackItemsToJson(VM.Types.StackItem[] items)
             {
                 try
                 {

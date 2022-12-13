@@ -32,7 +32,7 @@ namespace Neo.BlockchainToolkit.Models
 
         public static ToolkitWallet Load(JObject json, ProtocolSettings settings)
         {
-            var name = json.Value<string>("name");
+            var name = json.Value<string>("name") ?? "";
             var wallet = new ToolkitWallet(name, settings);
 
             IEnumerable<JToken> accountsJson = json["accounts"] as JArray ?? Enumerable.Empty<JToken>();
