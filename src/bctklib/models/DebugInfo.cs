@@ -16,18 +16,19 @@ namespace Neo.BlockchainToolkit.Models
 {
     public record DebugInfo(
         UInt160 ScriptHash,
+        string DocumentRoot,
         IReadOnlyList<string> Documents,
         IReadOnlyList<DebugInfo.Method> Methods,
         IReadOnlyList<DebugInfo.Event> Events,
         IReadOnlyList<DebugInfo.SlotVariable> StaticVariables)
     {
-        public record Event(
+        public readonly record struct Event(
             string Id,
             string Namespace,
             string Name,
             IReadOnlyList<SlotVariable> Parameters);
 
-        public record Method(
+        public readonly record struct Method(
             string Id,
             string Namespace,
             string Name,
@@ -37,13 +38,13 @@ namespace Neo.BlockchainToolkit.Models
             IReadOnlyList<SlotVariable> Variables,
             IReadOnlyList<SequencePoint> SequencePoints);
 
-        public record SequencePoint(
+        public readonly record struct SequencePoint(
             int Address,
             int Document,
             (int Line, int Column) Start,
             (int Line, int Column) End);
 
-        public record SlotVariable(
+        public readonly record struct SlotVariable(
             string Name,
             string Type,
             int Index);
@@ -55,116 +56,106 @@ namespace Neo.BlockchainToolkit.Models
         public static DebugInfo Parse(JObject json)
         {
             var hash = json.TryGetValue("hash", out var hashToken)
-                ? UInt160.TryParse(hashToken.ToObject<string>(), out var _hash)
-                    ? _hash
-                    : throw new FormatException("Invalid hash value")
+                ? UInt160.Parse(hashToken.Value<string>() ?? "")
                 : throw new FormatException("Missing hash value");
+
+            var docRoot = json.TryGetValue("document-root", out var docRootToken)
+                ? docRootToken.Value<string>() ?? ""
+                : "";
 
             var documents = json["documents"]?.Select(token => token.Value<string>() ?? "").ToArray() ?? Array.Empty<string>();
             var events = json["events"]?.Select(ParseEvent).ToArray() ?? Array.Empty<Event>();
             var methods = json["methods"]?.Select(ParseMethod).ToArray() ?? Array.Empty<Method>();
             var staticVars = ParseSlotVariables(json["static-variables"]).ToArray();
 
-            return new DebugInfo(hash, documents, methods, events, staticVars);
+            return new DebugInfo(hash, docRoot, documents, methods, events, staticVars);
+        }
 
-            static IEnumerable<SlotVariable> ParseSlotVariables(JToken? token)
+        static IEnumerable<SlotVariable> ParseSlotVariables(JToken? token)
+        {
+            if (token is null) return Enumerable.Empty<SlotVariable>();
+            var vars = token.Select(ParseType).ToList();
+
+            if (vars.Any(t => t.slotIndex.HasValue) && !vars.All(t => t.slotIndex.HasValue))
             {
-                if (token is null) return Enumerable.Empty<SlotVariable>();
-                var vars = token.Select(ParseType).ToList();
+                throw new FormatException("cannot mix and match optional slot index information");
+            }
 
-                // Work around https://github.com/neo-project/neo-devpack-dotnet/issues/637
-                // if a variable list has any slot indexes, but the first variable is "this,Any" remove it
-                if (vars.Any(t => t.slotIndex.HasValue)
-                    && vars.Count > 0
-                    && vars[0].name == "this"
-                    && vars[0].type == "Any"
-                    && !vars[0].slotIndex.HasValue)
+            return vars.Select((v, i) => new SlotVariable(v.name, v.type, v.slotIndex!.HasValue ? v.slotIndex.Value : i));
+
+            static (string name, string type, int? slotIndex) ParseType(JToken token)
+            {
+                var value = token.Value<string>() ?? throw new FormatException("invalid type token");
+                var values = value.Split(',');
+                if (values.Length == 2)
                 {
-                    vars.RemoveAt(0);
+                    return (values[0], values[1], null);
                 }
-                // end https://github.com/neo-project/neo-devpack-dotnet/issues/637 workaround
-
-                if (vars.Any(t => t.slotIndex.HasValue) && !vars.All(t => t.slotIndex.HasValue))
+                if (values.Length == 3
+                    && int.TryParse(values[2], out var slotIndex)
+                    && slotIndex >= 0)
                 {
-                    throw new FormatException("cannot mix and match optional slot index information");
+
+                    return (values[0], values[1], slotIndex);
                 }
 
-                return vars.Select((v, i) => new SlotVariable(v.name, v.type, v.slotIndex!.HasValue ? v.slotIndex.Value : i));
-
-                static (string name, string type, int? slotIndex) ParseType(JToken token)
-                {
-                    var value = token.Value<string>() ?? throw new FormatException("invalid type token");
-                    var values = value.Split(',');
-                    if (values.Length == 2)
-                    {
-                        return (values[0], values[1], null);
-                    }
-                    if (values.Length == 3
-                        && int.TryParse(values[2], out var slotIndex)
-                        && slotIndex >= 0)
-                    {
-
-                        return (values[0], values[1], slotIndex);
-                    }
-
-                    throw new FormatException($"invalid type string \"{value}\"");
-                }
+                throw new FormatException($"invalid type string \"{value}\"");
             }
+        }
 
-            static Event ParseEvent(JToken token)
-            {
-                var id = token.Value<string>("id") ?? throw new FormatException("Invalid event id");
-                var (@namespace, name) = ParseName(token["name"]);
-                var @params = ParseSlotVariables(token["params"]).ToImmutableList();
+        static Event ParseEvent(JToken token)
+        {
+            var id = token.Value<string>("id") ?? throw new FormatException("Invalid event id");
+            var (@namespace, name) = ParseName(token["name"]);
+            var @params = ParseSlotVariables(token["params"]).ToImmutableList();
 
-                return new Event(id, name, @namespace, @params);
-            }
+            return new Event(id, name, @namespace, @params);
+        }
 
-            static SequencePoint ParseSequencePoint(JToken token)
-            {
-                var value = token.Value<string>() ?? throw new FormatException("invalid Sequence Point token");
-                var match = spRegex.Match(value);
-                if (match.Groups.Count != 7) throw new FormatException($"Invalid Sequence Point \"{value}\"");
+        static SequencePoint ParseSequencePoint(JToken token)
+        {
+            var value = token.Value<string>() ?? throw new FormatException("invalid Sequence Point token");
+            var match = spRegex.Match(value);
+            if (match.Groups.Count != 7) throw new FormatException($"Invalid Sequence Point \"{value}\"");
 
-                var address = int.Parse(match.Groups[1].Value);
-                var document = int.Parse(match.Groups[2].Value);
-                var start = (int.Parse(match.Groups[3].Value), int.Parse(match.Groups[4].Value));
-                var end = (int.Parse(match.Groups[5].Value), int.Parse(match.Groups[6].Value));
+            var address = int.Parse(match.Groups[1].Value);
+            var document = int.Parse(match.Groups[2].Value);
+            var start = (int.Parse(match.Groups[3].Value), int.Parse(match.Groups[4].Value));
+            var end = (int.Parse(match.Groups[5].Value), int.Parse(match.Groups[6].Value));
 
-                return new SequencePoint(address, document, start, end);
-            }
+            return new SequencePoint(address, document, start, end);
+        }
 
-            static Method ParseMethod(JToken token)
-            {
-                var id = token.Value<string>("id") ?? throw new FormatException("Invalid method id");
-                var (@namespace, name) = ParseName(token["name"]);
-                var @return = token.Value<string>("return") ?? "Void";
-                var @params = ParseSlotVariables(token["params"]).ToArray();
-                var variables = ParseSlotVariables(token["variables"]).ToArray();
-                var sequencePoints = token["sequence-points"]?.Select(ParseSequencePoint).ToArray()
-                    ?? Array.Empty<SequencePoint>();
-                var range = ParseRange(token["range"]);
+        static Method ParseMethod(JToken token)
+        {
+            var id = token.Value<string>("id") ?? throw new FormatException("Invalid method id");
+            var (@namespace, name) = ParseName(token["name"]);
+            var @return = token.Value<string>("return") ?? "Void";
+            var @params = ParseSlotVariables(token["params"]).ToArray();
+            var variables = ParseSlotVariables(token["variables"]).ToArray();
+            var sequencePoints = token["sequence-points"]?.Select(ParseSequencePoint).ToArray()
+                ?? Array.Empty<SequencePoint>();
+            var range = ParseRange(token["range"]);
 
-                return new Method(id, name, @namespace, range, @return, @params, variables, sequencePoints);
-            }
+            return new Method(id, name, @namespace, range, @return, @params, variables, sequencePoints);
+        }
 
-            static (string, string) ParseName(JToken? token)
-            {
-                var name = token?.Value<string>() ?? throw new FormatException("Missing name");
-                var values = name.Split(',') ?? throw new FormatException($"Invalid name '{name}'");
-                return values.Length == 2
-                    ? (values[0], values[1])
-                    : throw new FormatException($"Invalid name '{name}'");
-            }
+        static (string, string) ParseName(JToken? token)
+        {
+            var name = token?.Value<string>() ?? throw new FormatException("Missing name");
+            var values = name.Split(',') ?? throw new FormatException($"Invalid name '{name}'");
+            return values.Length == 2
+                ? (values[0], values[1])
+                : throw new FormatException($"Invalid name '{name}'");
+        }
 
-            static (int, int) ParseRange(JToken? token)
-            {
-                var range = token?.Value<string>() ?? throw new FormatException("Missing range");
-                var values = range.Split('-') ?? throw new FormatException($"Invalid range '{range}'");
-                return values.Length == 2
-                    ? (int.Parse(values[0]), int.Parse(values[1]))
-                    : throw new FormatException($"Invalid range '{range}'");
-            }
+        static (int, int) ParseRange(JToken? token)
+        {
+            var range = token?.Value<string>() ?? throw new FormatException("Missing range");
+            var values = range.Split('-') ?? throw new FormatException($"Invalid range '{range}'");
+            return values.Length == 2
+                ? (int.Parse(values[0]), int.Parse(values[1]))
+                : throw new FormatException($"Invalid range '{range}'");
         }
 
         [Obsolete($"use {nameof(LoadContractDebugInfoAsync)} instead")]
