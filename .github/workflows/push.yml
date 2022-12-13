@@ -20,15 +20,21 @@ jobs:
     uses: ./.github/workflows/test.yml
   package:
     uses: ./.github/workflows/package.yml
-  release:
+  publish:
     needs: [test, package]
     runs-on: ubuntu-latest
     steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        source-url: ${{ env.AZURE_ARTIFACTS_FEED_URL }}
+      env:
+        NUGET_AUTH_TOKEN: ${{ secrets.AZURE_ARTIFACTS_PAT }} 
     - name: Download Packages
       uses: actions/download-artifact@v3
       with:
         name: packages
         path: ./out
-    - name: Push to Azure Artifacts
-      if: ${{ (github.event_name == 'push') }}
-      run: dotnet nuget push --source ${{ env.AZURE_ARTIFACTS_FEED_URL }} --api-key ${{ secrets.AZURE_ARTIFACTS_PAT }} out/*.nupkg
+    - name: Publish to Azure Artifacts
+      run: dotnet nuget push --api-key AzureArtifacts out/*.nupkg
