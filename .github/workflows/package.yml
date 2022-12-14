@@ -1,4 +1,4 @@
-name: Package
+name: Run Pack
 
 on:
   workflow_call:
