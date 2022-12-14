@@ -30,13 +30,18 @@ jobs:
     - name: Build and Test
       run: |
         dotnet restore
-        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal
+        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal --BinaryLogger:./msbuild.${{ matrix.os }}.binlog
         dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
     - name: Upload Coverage
       uses: actions/upload-artifact@v3
       with:
         name: coverage
         path: ./test/test.bctklib/TestResults/*/coverage.cobertura.xml
+    - name: Upload Build Log
+      uses: actions/upload-artifact@v3
+      with:
+        name: buildlog
+        path: ./msbuild.${{ matrix.os }}.binlog
   report:
     needs: build
     runs-on: ubuntu-latest
