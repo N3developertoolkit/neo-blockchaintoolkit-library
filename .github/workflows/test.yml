@@ -1,4 +1,4 @@
-name: Package
+name: Run Test
 
 on:
   workflow_call:
