@@ -30,16 +30,131 @@ namespace test.bctklib
         // }
 
         [Fact]
-        public async Task can_load_debug_json_nccs_rc3()
+        public void can_parse_no_docroot()
         {
-            var debugInfoJson = Utility.GetResource("nccs_rc3.json");
-            var fileSystem = new MockFileSystem();
-            var rootPath = fileSystem.AllDirectories.First();
-            string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
-            fileSystem.AddFile(nefPath, new MockFileData(string.Empty));
-            fileSystem.AddFile(fileSystem.Path.Combine(rootPath, "fakeContract.debug.json"), new MockFileData(debugInfoJson));
-            var debugInfo = await DebugInfo.LoadContractDebugInfoAsync(nefPath, null, fileSystem);
-            Assert.True(debugInfo.IsT0);
+            var text = Utility.GetResource("registrar-no-docroot.debug.json");
+            var json = JObject.Parse(text);
+            var debugInfo = DebugInfo.Parse(json);
+            Assert.Equal(UInt160.Parse(TEST_HASH), debugInfo.ScriptHash);
+            Assert.True(string.IsNullOrEmpty(debugInfo.DocumentRoot));
+        }
+
+        [Fact]
+        public void can_parse_with_docroot()
+        {
+            var text = Utility.GetResource("registrar.debug.json");
+            var json = JObject.Parse(text);
+            var debugInfo = DebugInfo.Parse(json);
+            Assert.Equal(UInt160.Parse(TEST_HASH), debugInfo.ScriptHash);
+            Assert.False(string.IsNullOrEmpty(debugInfo.DocumentRoot));
+        }
+
+        [Fact]
+        public void cant_parse_nccs_rc3()
+        {
+            var text = Utility.GetResource("nccs_rc3.json");
+            var json = JObject.Parse(text);
+            Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
+        }
+
+        [Fact]
+        public void can_parse_minimal_debug_info()
+        {
+            var json = new JObject(new JProperty("hash", TEST_HASH));
+
+            var debugInfo = DebugInfo.Parse(json);
+            Assert.Equal(UInt160.Parse(TEST_HASH), debugInfo.ScriptHash);
+            Assert.True(string.IsNullOrEmpty(debugInfo.DocumentRoot));
+            Assert.Empty(debugInfo.Documents);
+            Assert.Empty(debugInfo.Events);
+            Assert.Empty(debugInfo.Methods);
+            Assert.Empty(debugInfo.StaticVariables);
+        }
+
+        [Fact]
+        public void cant_parse_without_hash()
+        {
+            var debugInfoJson = Utility.GetResource("registrar.debug.json");
+            var json = JObject.Parse(debugInfoJson);
+            json.Remove("hash");
+
+            var ex = Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
+            Assert.Equal("Missing hash value", ex.Message);
+        }
+
+        [Fact]
+        public void can_parse_static_variables()
+        {
+            var json = new JObject(
+                new JProperty("hash", TEST_HASH),
+                new JProperty("static-variables",
+                    new JArray(
+                        "testStatic1,String",
+                        "testStatic2,Hash160")));
+
+            var debugInfo = DebugInfo.Parse(json);
+
+            Assert.Collection(debugInfo.StaticVariables,
+                s =>
+                {
+                    Assert.Equal("testStatic1", s.Name);
+                    Assert.Equal("String", s.Type);
+                    Assert.Equal(0, s.Index);
+                },
+                s =>
+                {
+                    Assert.Equal("testStatic2", s.Name);
+                    Assert.Equal("Hash160", s.Type);
+                    Assert.Equal(1, s.Index);
+                });
+        }
+
+        [Fact]
+        public void can_parse_static_variables_explicit_slot_indexes()
+        {
+            var json = new JObject(
+                new JProperty("hash", TEST_HASH),
+                new JProperty("static-variables",
+                    new JArray(
+                        "testStatic1,String,1",
+                        "testStatic2,Hash160,3")));
+
+            var debugInfo = DebugInfo.Parse(json);
+
+            Assert.Collection(debugInfo.StaticVariables,
+                s =>
+                {
+                    Assert.Equal("testStatic1", s.Name);
+                    Assert.Equal("String", s.Type);
+                    Assert.Equal(1, s.Index);
+                },
+                s =>
+                {
+                    Assert.Equal("testStatic2", s.Name);
+                    Assert.Equal("Hash160", s.Type);
+                    Assert.Equal(3, s.Index);
+                });
+        }
+
+        [Fact]
+        public void cant_parse_when_mix_and_match_optional_slot_index()
+        {
+            var json = new JObject(
+                new JProperty("hash", TEST_HASH),
+                new JProperty("static-variables",
+                    new JArray(
+                        "testStatic1,String,1",
+                        "testStatic2,Hash160")));
+
+            Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
+        }
+
+        [Fact]
+        public void can_parse_debug_info_with_invalid_sequence_points()
+        {
+            var debugInfoJson = Utility.GetResource("invalidSequencePoints.json");
+            var json = JObject.Parse(debugInfoJson);
+            var debug = DebugInfo.Parse(json);
         }
 
         [Fact]
@@ -77,30 +192,6 @@ namespace test.bctklib
             string nefPath = fileSystem.Path.Combine(rootPath, "fakeContract.nef");
             var debugInfo = await DebugInfo.LoadContractDebugInfoAsync(nefPath, null, fileSystem);
             Assert.True(debugInfo.IsT1);
-        }
-
-        [Fact]
-        public void can_load_minimal_debug_info()
-        {
-            var json = new JObject(new JProperty("hash", TEST_HASH));
-
-            var debugInfo = DebugInfo.Parse(json);
-            Assert.Equal(UInt160.Parse(TEST_HASH), debugInfo.ScriptHash);
-            Assert.Empty(debugInfo.Documents);
-            Assert.Empty(debugInfo.Events);
-            Assert.Empty(debugInfo.Methods);
-            Assert.Empty(debugInfo.StaticVariables);
-        }
-
-        [Fact]
-        public void cant_load_debug_info_without_hash()
-        {
-            var debugInfoJson = Utility.GetResource("Registrar.debug.json");
-            var json = JObject.Parse(debugInfoJson);
-            json.Remove("hash");
-
-            var ex = Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
-            Assert.Equal("Missing hash value", ex.Message);
         }
 
         [Fact]
@@ -182,81 +273,6 @@ namespace test.bctklib
             };
             var actual = DebugInfo.ResolveDocument(apocPath, sourceMap, fileSystem);
             Assert.Equal(apocPath, actual);
-        }
-
-        // [Fact]
-        // public void can_parse_static_variables()
-        // {
-        //     var json = new JObject(
-        //         new JProperty("hash", TEST_HASH),
-        //         new JProperty("static-variables",
-        //             new JArray(
-        //                 "testStatic1,String",
-        //                 "testStatic2,Hash160")));
-
-        //     var debugInfo = DebugInfo.Parse(json);
-
-        //     Assert.Collection(debugInfo.StaticVariables,
-        //         s =>
-        //         {
-        //             Assert.Equal("testStatic1", s.Name);
-        //             Assert.Equal(PrimitiveContractType.String, s.Type);
-        //             Assert.Equal(0, s.Index);
-        //         },
-        //         s =>
-        //         {
-        //             Assert.Equal("testStatic2", s.Name);
-        //             Assert.Equal(PrimitiveContractType.Hash160, s.Type);
-        //             Assert.Equal(1, s.Index);
-        //         });
-        // }
-
-        // [Fact]
-        // public void can_parse_static_variables_explicit_slot_indexes()
-        // {
-        //     var json = new JObject(
-        //         new JProperty("hash", TEST_HASH),
-        //         new JProperty("static-variables",
-        //             new JArray(
-        //                 "testStatic1,String,1",
-        //                 "testStatic2,Hash160,3")));
-
-        //     var debugInfo = DebugInfo.Parse(json);
-
-        //     Assert.Collection(debugInfo.StaticVariables,
-        //         s =>
-        //         {
-        //             Assert.Equal("testStatic1", s.Name);
-        //             Assert.Equal(PrimitiveContractType.String, s.Type);
-        //             Assert.Equal(1, s.Index);
-        //         },
-        //         s =>
-        //         {
-        //             Assert.Equal("testStatic2", s.Name);
-        //             Assert.Equal(PrimitiveContractType.Hash160, s.Type);
-        //             Assert.Equal(3, s.Index);
-        //         });
-        // }
-
-        [Fact]
-        public void throw_format_exception_when_mix_and_match_optional_slot_index()
-        {
-            var json = new JObject(
-                new JProperty("hash", TEST_HASH),
-                new JProperty("static-variables",
-                    new JArray(
-                        "testStatic1,String,1",
-                        "testStatic2,Hash160")));
-
-            Assert.Throws<FormatException>(() => DebugInfo.Parse(json));
-        }
-
-        [Fact]
-        public void can_load_debug_info_with_invalid_sequence_points()
-        {
-            var debugInfoJson = Utility.GetResource("invalidSequencePoints.json");
-            var json = JObject.Parse(debugInfoJson);
-            var debug = DebugInfo.Parse(json);
         }
 
         static byte[] CreateCompressedDebugInfo(string contractName, string debugInfo)

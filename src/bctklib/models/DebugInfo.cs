@@ -23,6 +23,7 @@ namespace Neo.BlockchainToolkit.Models
         uint Version,
         uint Checksum,
         UInt160 ScriptHash,
+        string DocumentRoot,
         IReadOnlyList<string> Documents,
         IReadOnlyList<DebugInfo.Method> Methods,
         IReadOnlyList<DebugInfo.Event> Events,
@@ -30,13 +31,13 @@ namespace Neo.BlockchainToolkit.Models
         IReadOnlyList<StructContractType> Structs,
         IReadOnlyList<StorageGroupDef> StorageGroups)
     {
-        public record Event(
+        public readonly record struct Event(
             string Id,
             string Namespace,
             string Name,
             IReadOnlyList<SlotVariable> Parameters);
 
-        public record Method(
+        public readonly record struct Method(
             string Id,
             string Namespace,
             string Name,
@@ -46,13 +47,13 @@ namespace Neo.BlockchainToolkit.Models
             IReadOnlyList<SlotVariable> Variables,
             IReadOnlyList<SequencePoint> SequencePoints);
 
-        public record SequencePoint(
+        public readonly record struct SequencePoint(
             int Address,
             int Document,
             (int Line, int Column) Start,
             (int Line, int Column) End);
 
-        public record SlotVariable(
+        public readonly record struct SlotVariable(
             string Name,
             string Type,
             int Index);
@@ -88,9 +89,16 @@ namespace Neo.BlockchainToolkit.Models
 
             var hash = json.TryGetValue("hash", out var hashToken)
                 ? UInt160.Parse(hashToken.Value<string>() ?? "")
-                : throw new JsonException("Missing hash value");
+                : throw new FormatException("Missing hash value");
 
-            var structMap = BindStructs(SelectList(version == 1 ? null : json["structs"], ParseStruct));
+            var docRoot = json.TryGetValue("document-root", out var docRootToken)
+                ? docRootToken.Value<string>() ?? ""
+                : "";
+
+            var unboundStructs = version == 1 
+                ? null 
+                : json["structs"]?.Select(ParseStruct).ToArray();
+            var structMap = BindStructs(unboundStructs);
 
             ParseTypeFunc parseType = version == 1
                 ? TryParseContractParameterType
@@ -100,35 +108,20 @@ namespace Neo.BlockchainToolkit.Models
                         ? type
                         : default(NotFound);
 
-            var documents = SelectList(json["documents"], token => token.Value<string>() ?? "");
-            var events = SelectList(json["events"], ParseEvent);
-            var methods = SelectList(json["methods"], ParseMethod);
+            var documents = json["documents"]?.Select(token => token.Value<string>() ?? "").ToArray() ?? Array.Empty<string>();
+            var events = json["events"]?.Select(ParseEvent).ToArray() ?? Array.Empty<Event>();
+            var methods = json["methods"]?.Select(ParseMethod).ToArray() ?? Array.Empty<Method>();
             var staticVars = ParseSlotVariables(json["static-variables"]).ToArray();
             var structs = structMap.Values.ToArray();
-            var storages = SelectList(version == 1 ? null : json["storages"], s => ParseStorage(s, structMap));
+            var storages = json["storages"]?.Select(s => ParseStorage(s, structMap)).ToArray() ?? Array.Empty<StorageGroupDef>();
 
-            return new DebugInfo(version, checksum, hash, documents, methods, events, staticVars, structs, storages);
+            return new DebugInfo(version, checksum, hash, docRoot, documents, methods, events, staticVars, structs, storages);
         }
-
-        static IReadOnlyList<T> SelectList<T>(JToken? token, Func<JToken, T> func) 
-            => token?.Select(func).ToArray() ?? Array.Empty<T>();
 
         static IEnumerable<SlotVariable> ParseSlotVariables(JToken? token)
         {
             if (token is null) return Enumerable.Empty<SlotVariable>();
             var vars = token.Select(ParseType).ToList();
-
-            // Work around https://github.com/neo-project/neo-devpack-dotnet/issues/637
-            // if a variable list has any slot indexes, but the first variable is "this,Any" remove it
-            if (vars.Any(t => t.slotIndex.HasValue)
-                && vars.Count > 0
-                && vars[0].name == "this"
-                && vars[0].type == "Any"
-                && !vars[0].slotIndex.HasValue)
-            {
-                vars.RemoveAt(0);
-            }
-            // end https://github.com/neo-project/neo-devpack-dotnet/issues/637 workaround
 
             if (vars.Any(t => t.slotIndex.HasValue) && !vars.All(t => t.slotIndex.HasValue))
             {
@@ -192,6 +185,24 @@ namespace Neo.BlockchainToolkit.Models
             var range = ParseRange(token["range"]);
 
             return new Method(id, name, @namespace, range, @return, @params, variables, sequencePoints);
+        }
+
+        static (string, string) ParseName(JToken? token)
+        {
+            var name = token?.Value<string>() ?? throw new FormatException("Missing name");
+            var values = name.Split(',') ?? throw new FormatException($"Invalid name '{name}'");
+            return values.Length == 2
+                ? (values[0], values[1])
+                : throw new FormatException($"Invalid name '{name}'");
+        }
+
+        static (int, int) ParseRange(JToken? token)
+        {
+            var range = token?.Value<string>() ?? throw new FormatException("Missing range");
+            var values = range.Split('-') ?? throw new FormatException($"Invalid range '{range}'");
+            return values.Length == 2
+                ? (int.Parse(values[0]), int.Parse(values[1]))
+                : throw new FormatException($"Invalid range '{range}'");
         }
 
         static UnboundStruct ParseStruct(JToken token)
@@ -265,24 +276,6 @@ namespace Neo.BlockchainToolkit.Models
             }) ?? Array.Empty<KeySegment>();
 
             return new StorageGroupDef(name, prefix.AsMemory(), segments.ToArray(), type);
-        }
-
-        static (string, string) ParseName(JToken? token)
-        {
-            var name = token?.Value<string>() ?? throw new FormatException("Missing name");
-            var values = name.Split(',') ?? throw new FormatException($"Invalid name '{name}'");
-            return values.Length == 2
-                ? (values[0], values[1])
-                : throw new FormatException($"Invalid name '{name}'");
-        }
-
-        static (int, int) ParseRange(JToken? token)
-        {
-            var range = token?.Value<string>() ?? throw new FormatException("Missing range");
-            var values = range.Split('-') ?? throw new FormatException($"Invalid range '{range}'");
-            return values.Length == 2
-                ? (int.Parse(values[0]), int.Parse(values[1]))
-                : throw new FormatException($"Invalid range '{range}'");
         }
 
         internal static ParsedType TryParseContractParameterType(string type)
