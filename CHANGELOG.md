@@ -13,20 +13,22 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [Unreleased]
+## [3.5.30] - 2302-01-03
 
 ### Added
 
 * `ToolkitWallet` a shared implementation of Neo Wallet for developer scenarios
 * `BranchInfo` model type
-* Diagnostic model types
+* Diagnostic record model types
 * `EnableAnsiEscapeSequences` utility method
 * `ResolveFileName` extension method
 * `JsonWriterExtensions` extension methods
-* worknet extension constants
+* WorkNet extension constants
 
 ### Changed
 
+* Updated `DebugInfo` model types to use C# `record` / `record struct`
+* Marked `DebugInfo.LoadAsync` obsolete
 * PersistentTrackingStore class uses column family named `PersistentTrackingStore` by default
 * Reworked `StateServiceStore` to load as much info asyncronously ahead of time (using `BranchInfo` record),
   handle remote logic directly and redefined `ICacheClient` to only handle caching responsibilities
@@ -35,6 +37,9 @@ may not exactly match a publicly released version.
 
 * RocksDB extension methods that have recently been encorporated into [rocksdb-sharp library](https://github.com/curiosity-ai/rocksdb-sharp)
 
+### Engineering Systems
+
+* Reworked GitHub Action workflows into reusable pieces (`test` & `package`) and action specific workflows (`pr`, `push` & `release`).
 
 ## [3.4.13] - 2202-08-17
 
