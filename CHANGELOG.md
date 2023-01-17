@@ -13,7 +13,14 @@ will not have contiguous patch numbers. Initial major and minor releases will be
 in this file without a patch number. Patch version will be included for bug fixes, but
 may not exactly match a publicly released version.
 
-## [3.5.30] - 2302-01-03
+## [Unreleased]
+
+### Added
+
+* `TestApplicationEngine` emits raw code coverage data to folder specified in `NEO_TEST_APP_ENGINE_COVERAGE_PATH`
+  environment variable when set. 
+
+## [3.5.30] - 2023-01-03
 
 ### Added
 
