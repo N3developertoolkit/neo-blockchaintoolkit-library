@@ -4,7 +4,10 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
   package:
+    needs: test
     uses: ./.github/workflows/package.yml
   release:
     needs: package
@@ -21,7 +24,7 @@ jobs:
         repo_token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: ${{ needs.package.outputs.PrereleaseVersion != '' }}
         title: Release ${{ needs.package.outputs.NuGetPackageVersion }}
-        automatic_release_tag: ${{ needs.nbgv.outputs.NuGetPackageVersion }}
+        automatic_release_tag: ${{ needs.package.outputs.NuGetPackageVersion }}
         files: |
           ./out/*
     - name: Push to Nuget.org

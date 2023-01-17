@@ -3,19 +3,21 @@
     "documents": [
         "C:\\Users\\harry\\Source\\neo\\seattle\\samples\\registrar-sample\\src\\Registrar.cs"
     ],
-    "static-variables": [],
+    "static-variables": [
+        "staticvar1,String",
+        "anotherStaticVar,Hash160"
+    ],
     "methods": [
         {
             "id": "DevHawk.Contracts.Registrar.Query(string)",
             "name": "DevHawk.Contracts.Registrar,Query",
             "range": "0-59",
             "params": [
-                "this,Any",
-                "domain,String,0"
+                "domain,String"
             ],
             "return": "Hash160",
             "variables": [
-                "currentOwner,Hash160,0"
+                "currentOwner,Hash160"
             ],
             "sequence-points": [
                 "3[0]19:9-19:10",
@@ -33,8 +35,7 @@
             "name": "DevHawk.Contracts.DomainStorage,Get",
             "range": "60-129",
             "params": [
-                "this,Any",
-                "domain,String,0"
+                "domain,String"
             ],
             "return": "Hash160",
             "variables": [],
@@ -47,8 +48,7 @@
             "name": "DevHawk.Contracts.DomainStorage,.ctor",
             "range": "212-230",
             "params": [
-                "this,Any",
-                "prefix,String,0"
+                "prefix,String"
             ],
             "return": "Void",
             "variables": [],
@@ -63,13 +63,12 @@
             "name": "DevHawk.Contracts.Registrar,Register",
             "range": "244-377",
             "params": [
-                "this,Any",
-                "domain,String,0",
-                "owner,Hash160,1"
+                "domain,String",
+                "owner,Hash160"
             ],
             "return": "Boolean",
             "variables": [
-                "currentOwner,Hash160,0"
+                "currentOwner,Hash160"
             ],
             "sequence-points": [
                 "247[0]30:9-30:10",
@@ -94,9 +93,8 @@
             "name": "DevHawk.Contracts.DomainStorage,Put",
             "range": "384-406",
             "params": [
-                "this,Any",
-                "domain,String,0",
-                "owner,Hash160,1"
+                "domain,String",
+                "owner,Hash160"
             ],
             "return": "Void",
             "variables": [],
@@ -109,13 +107,12 @@
             "name": "DevHawk.Contracts.Registrar,Transfer",
             "range": "422-630",
             "params": [
-                "this,Any",
-                "domain,String,0",
-                "to,Hash160,1"
+                "domain,String",
+                "to,Hash160"
             ],
             "return": "Boolean",
             "variables": [
-                "currentOwner,Hash160,0"
+                "currentOwner,Hash160"
             ],
             "sequence-points": [
                 "425[0]48:9-48:10",
@@ -145,12 +142,11 @@
             "name": "DevHawk.Contracts.Registrar,Delete",
             "range": "631-776",
             "params": [
-                "this,Any",
-                "domain,String,0"
+                "domain,String"
             ],
             "return": "Boolean",
             "variables": [
-                "currentOwner,Hash160,0"
+                "currentOwner,Hash160"
             ],
             "sequence-points": [
                 "634[0]71:9-71:10",
@@ -175,8 +171,7 @@
             "name": "DevHawk.Contracts.DomainStorage,Delete",
             "range": "777-797",
             "params": [
-                "this,Any",
-                "domain,String,0"
+                "domain,String"
             ],
             "return": "Void",
             "variables": [],
@@ -189,13 +184,12 @@
             "name": "DevHawk.Contracts.Registrar,Deploy",
             "range": "812-858",
             "params": [
-                "this,Any",
-                "data,Any,0",
-                "update,Boolean,1"
+                "data,Any",
+                "update,Boolean"
             ],
             "return": "Void",
             "variables": [
-                "tx,Any,0"
+                "tx,Any"
             ],
             "sequence-points": [
                 "815[0]90:9-90:10",
@@ -211,13 +205,13 @@
             "name": "DevHawk.Contracts.Registrar,Update",
             "range": "871-973",
             "params": [
-                "nefFile,ByteArray,0",
-                "manifest,String,1"
+                "nefFile,ByteArray",
+                "manifest,String"
             ],
             "return": "Void",
             "variables": [
-                "tx,Any,0",
-                "contractOwner,ByteArray,1"
+                "tx,Any",
+                "contractOwner,ByteArray"
             ],
             "sequence-points": [
                 "874[0]98:9-98:10",
