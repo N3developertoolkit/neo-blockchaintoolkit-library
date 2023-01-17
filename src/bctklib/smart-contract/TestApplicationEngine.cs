@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
+using System.IO.Abstractions;
 using System.Reflection;
 using Neo.Network.P2P.Payloads;
 using Neo.Persistence;
@@ -32,8 +32,9 @@ namespace Neo.BlockchainToolkit.SmartContract
             }
         }
 
-        public static Block CreateDummyBlock(DataCache snapshot, ProtocolSettings settings)
+        public static Block CreateDummyBlock(DataCache snapshot, ProtocolSettings? settings = null)
         {
+            settings ??= ProtocolSettings.Default;
             var hash = NativeContract.Ledger.CurrentHash(snapshot);
             var currentBlock = NativeContract.Ledger.GetBlock(snapshot, hash);
 
@@ -43,7 +44,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                 {
                     Version = 0,
                     PrevHash = hash,
-                    MerkleRoot = new UInt256(),
+                    MerkleRoot = UInt256.Zero,
                     Timestamp = currentBlock.Timestamp + settings.MillisecondsPerBlock,
                     Index = currentBlock.Index + 1,
                     NextConsensus = currentBlock.NextConsensus,
@@ -66,7 +67,7 @@ namespace Neo.BlockchainToolkit.SmartContract
                 AllowedGroups = Array.Empty<Neo.Cryptography.ECC.ECPoint>()
             });
 
-        public static Transaction CreateTestTransaction(Signer? signer = null) => new Transaction
+        public static Transaction CreateTestTransaction(Signer? signer = null) => new()
         {
             Nonce = (uint)new Random().Next(),
             Script = Array.Empty<byte>(),
@@ -75,18 +76,39 @@ namespace Neo.BlockchainToolkit.SmartContract
             Witnesses = Array.Empty<Witness>(),
         };
 
+        const string COVERAGE_ENV_NAME = "NEO_TEST_APP_ENGINE_COVERAGE_PATH";
+        record BranchInstructionInfo(UInt160 ContractHash, int InstructionPointer, int BranchOffset);
+
         readonly Dictionary<UInt160, OneOf<ContractState, Script>> executedScripts = new();
         readonly Dictionary<UInt160, Dictionary<int, int>> hitMaps = new();
         readonly Dictionary<UInt160, Dictionary<int, (int branchCount, int continueCount)>> branchMaps = new();
         readonly WitnessChecker witnessChecker;
+        readonly IFileSystem? fileSystem;
+        BranchInstructionInfo? branchInstructionInfo = null;
+        CoverageWriter? coverageWriter = null;
 
         public IReadOnlyDictionary<UInt160, OneOf<ContractState, Script>> ExecutedScripts => executedScripts;
 
         public new event EventHandler<LogEventArgs>? Log;
         public new event EventHandler<NotifyEventArgs>? Notify;
 
-        public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings)
-            : this(TriggerType.Application, null, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+        public TestApplicationEngine(DataCache snapshot, ProtocolSettings? settings = null)
+            : this(snapshot, container: null, settings: settings)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot, Transaction transaction, ProtocolSettings? settings = null)
+            : this(snapshot, container: transaction, settings: settings)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot, Signer signer, ProtocolSettings? settings = null)
+            : this(snapshot, container: CreateTestTransaction(signer), settings: settings)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry, ProtocolSettings? settings = null)
+            : this(snapshot, container: CreateTestTransaction(signer, witnessScope), settings: settings)
         {
         }
 
@@ -96,20 +118,41 @@ namespace Neo.BlockchainToolkit.SmartContract
         }
 
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, Transaction transaction)
-            : this(TriggerType.Application, transaction, snapshot, null, settings, ApplicationEngine.TestModeGas, null)
+            : this(snapshot, container: transaction, settings: settings)
         {
         }
 
         public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas, WitnessChecker? witnessChecker, IDiagnostic? diagnostic = null)
-            : base(trigger, container ?? CreateTestTransaction(), snapshot, persistingBlock, settings, gas, diagnostic)
+            : this(snapshot, trigger, container, persistingBlock, settings, gas, diagnostic, witnessChecker)
+        {
+        }
+
+        public TestApplicationEngine(DataCache snapshot,
+                                     TriggerType trigger = TriggerType.Application,
+                                     IVerifiable? container = null,
+                                     Block? persistingBlock = null,
+                                     ProtocolSettings? settings = null,
+                                     long gas = TestModeGas,
+                                     IDiagnostic? diagnostic = null,
+                                     WitnessChecker? witnessChecker = null,
+                                     IFileSystem? fileSystem = null)
+            : base(trigger, 
+                container ?? CreateTestTransaction(), 
+                snapshot, 
+                persistingBlock, 
+                settings ?? ProtocolSettings.Default, 
+                gas, 
+                diagnostic)
         {
             this.witnessChecker = witnessChecker ?? CheckWitness;
+            this.fileSystem = fileSystem;
             ApplicationEngine.Log += OnLog;
             ApplicationEngine.Notify += OnNotify;
         }
 
         public override void Dispose()
         {
+            coverageWriter?.Dispose();
             ApplicationEngine.Log -= OnLog;
             ApplicationEngine.Notify -= OnNotify;
             base.Dispose();
@@ -136,128 +179,103 @@ namespace Neo.BlockchainToolkit.SmartContract
             return ImmutableDictionary<int, (int, int)>.Empty;
         }
 
+        public override VMState Execute()
+        {
+            var coveragePath = Environment.GetEnvironmentVariable(COVERAGE_ENV_NAME);
+            coverageWriter = string.IsNullOrEmpty(coveragePath) 
+                ? null 
+                : new CoverageWriter(coveragePath, fileSystem);
+            coverageWriter?.WriteContext(CurrentContext);
+
+            return base.Execute();
+        }
+
         protected override void LoadContext(ExecutionContext context)
         {
             base.LoadContext(context);
+            coverageWriter?.WriteContext(context);
 
             var ecs = context.GetState<ExecutionContextState>();
-            if (ecs.ScriptHash == null) throw new InvalidOperationException("ExecutionContextState.ScriptHash is null");
-            if (!executedScripts.ContainsKey(ecs.ScriptHash))
+            if (ecs.ScriptHash != null 
+                && !executedScripts.ContainsKey(ecs.ScriptHash))
             {
-                if (ecs.Contract == null)
-                {
-                    executedScripts.Add(ecs.ScriptHash, context.Script);
-                }
-                else
-                {
-                    executedScripts.Add(ecs.ScriptHash, ecs.Contract);
-                }
+                executedScripts.Add(ecs.ScriptHash, ecs.Contract is null ? context.Script : ecs.Contract);
             }
         }
-
-        static int CalculateBranchOffset(Instruction instruction, ExecutionContext context)
-        {
-            Debug.Assert(instruction.IsBranchInstruction());
-
-            switch (instruction.OpCode)
-            {
-                case OpCode.JMPIF_L:
-                case OpCode.JMPIFNOT_L:
-                case OpCode.JMPEQ_L:
-                case OpCode.JMPNE_L:
-                case OpCode.JMPGT_L:
-                case OpCode.JMPGE_L:
-                case OpCode.JMPLT_L:
-                case OpCode.JMPLE_L:
-                    return context.InstructionPointer + instruction.TokenI32;
-                case OpCode.JMPIF:
-                case OpCode.JMPIFNOT:
-                case OpCode.JMPEQ:
-                case OpCode.JMPNE:
-                case OpCode.JMPGT:
-                case OpCode.JMPGE:
-                case OpCode.JMPLT:
-                case OpCode.JMPLE:
-                    return context.InstructionPointer + instruction.TokenI8;
-                default:
-                    throw new InvalidOperationException($"CalculateBranchOffsets:GetOffset Unexpected OpCode {instruction.OpCode}");
-            }
-        }
-
-        record BranchInstructionInfo
-        {
-            public UInt160 ContractHash { get; init; } = UInt160.Zero;
-            public int InstructionPointer { get; init; }
-            public int BranchOffset { get; init; }
-        }
-
-        BranchInstructionInfo? branchInstructionInfo = null;
 
         protected override void PreExecuteInstruction(Instruction instruction)
         {
+            branchInstructionInfo = null;
             base.PreExecuteInstruction(instruction);
 
-            if (CurrentContext == null) return;
+            // if there's no current context, there's no instruction pointer to record
+            if (CurrentContext is null) return;
 
-            var hash = CurrentContext.GetScriptHash()
-                ?? throw new InvalidOperationException("CurrentContext.GetScriptHash returned null");
+            var ip = CurrentContext.InstructionPointer;
+            coverageWriter?.WriteAddress(ip);
 
-            if (instruction.IsBranchInstruction())
-            {
-                var branchOffset = CalculateBranchOffset(instruction, CurrentContext);
-                branchInstructionInfo = new BranchInstructionInfo()
-                {
-                    ContractHash = hash,
-                    InstructionPointer = CurrentContext.InstructionPointer,
-                    BranchOffset = branchOffset,
-                };
-            }
-            else
-            {
-                branchInstructionInfo = null;
-            }
+            var hash = CurrentContext.GetScriptHash();
+            // if the current context has no script hash, there's no key for the hit or branch map
+            if (hash is null) return;
 
             if (!hitMaps.TryGetValue(hash, out var hitMap))
             {
                 hitMap = new Dictionary<int, int>();
                 hitMaps.Add(hash, hitMap);
             }
+            hitMap[ip] = hitMap.TryGetValue(ip, out var _hitCount) ? _hitCount + 1 : 1;
 
-            var hitCount = hitMap.TryGetValue(CurrentContext.InstructionPointer, out var _hitCount) ? _hitCount : 0;
-            hitMap[CurrentContext.InstructionPointer] = hitCount + 1;
+            var offset = GetBranchOffset(instruction);
+            if (offset != 0)
+            {
+                branchInstructionInfo = new BranchInstructionInfo(hash, ip, ip + offset);
+            }
+
+            static int GetBranchOffset(Instruction instruction)
+                => instruction.OpCode switch
+                {
+                    OpCode.JMPIF_L or OpCode.JMPIFNOT_L or
+                    OpCode.JMPEQ_L or OpCode.JMPNE_L or
+                    OpCode.JMPGT_L or OpCode.JMPGE_L or
+                    OpCode.JMPLT_L or OpCode.JMPLE_L => instruction.TokenI32,
+                    OpCode.JMPIF or OpCode.JMPIFNOT or
+                    OpCode.JMPEQ or OpCode.JMPNE or
+                    OpCode.JMPGT or OpCode.JMPGE or
+                    OpCode.JMPLT or OpCode.JMPLE => instruction.TokenI8,
+                    _ => 0
+                };
         }
 
         protected override void PostExecuteInstruction(Instruction instruction)
         {
             base.PostExecuteInstruction(instruction);
 
-            if (CurrentContext == null) return;
+            // if branchInstructionInfo is null, instruction is not a branch instruction
+            if (branchInstructionInfo is null 
+            // if there's no current context, there's no instruction pointer to record
+                || CurrentContext == null) return;
 
-            if (branchInstructionInfo != null)
+            var (hash, branchIP, offsetIP) = branchInstructionInfo;
+            var currentIP = CurrentContext.InstructionPointer;
+
+            coverageWriter?.WriteBranch(branchIP, offsetIP, currentIP);
+
+            if (!branchMaps.TryGetValue(hash, out var branchMap))
             {
-                if (!branchMaps.TryGetValue(branchInstructionInfo.ContractHash, out var branchMap))
-                {
-                    branchMap = new Dictionary<int, (int, int)>();
-                    branchMaps.Add(branchInstructionInfo.ContractHash, branchMap);
-                }
+                branchMap = new Dictionary<int, (int, int)>();
+                branchMaps.Add(branchInstructionInfo.ContractHash, branchMap);
+            }
 
-                var branchHit = branchMap.TryGetValue(branchInstructionInfo.InstructionPointer, out var _branchCount)
-                    ? _branchCount : (branchCount: 0, continueCount: 0);
+            var (branchCount, continueCount) = branchMap.TryGetValue(offsetIP, out var value)
+                ? value : (0, 0);
 
-                if (CurrentContext.InstructionPointer == branchInstructionInfo.BranchOffset)
-                {
-                    branchHit = (branchCount: branchHit.branchCount + 1, continueCount: branchHit.continueCount);
-                }
-                else if (CurrentContext.InstructionPointer == branchInstructionInfo.InstructionPointer)
-                {
-                    branchHit = (branchCount: branchHit.branchCount, continueCount: branchHit.continueCount + 1);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Unexpected InstructionPointer {CurrentContext.InstructionPointer}");
-                }
-
-                branchMap[branchInstructionInfo.InstructionPointer] = branchHit;
+            if (currentIP == offsetIP)
+            {
+                branchMap[branchIP] = (branchCount + 1, continueCount);
+            }
+            else if (currentIP == branchIP)
+            {
+                branchMap[branchIP] = (branchCount, continueCount + 1);
             }
         }
 
