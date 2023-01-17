@@ -11,6 +11,7 @@ using IOException = System.IO.IOException;
 using Stream = System.IO.Stream;
 using StreamWriter = System.IO.StreamWriter;
 using TextWriter = System.IO.TextWriter;
+using System.Collections.Generic;
 
 namespace Neo.BlockchainToolkit.SmartContract
 {
@@ -22,6 +23,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             readonly Stream stream;
             readonly TextWriter writer;
             readonly IFileSystem fileSystem;
+            readonly Dictionary<UInt160, UInt160> scriptHashCache = new();
             bool disposed = false;
 
             public CoverageWriter(string coveragePath, IFileSystem? fileSystem = null)
@@ -60,8 +62,18 @@ namespace Neo.BlockchainToolkit.SmartContract
                 }
                 else 
                 {
+                    // Note, ExecutionContextState.ScriptHash is the contract hash used to invoke the contract. 
+                    // That value is derived from the raw script hash, the contract name and the account that deployed the contract.
+                    // The raw script hash is used in coverage files so that it can be tied back to the original contract
+                    // independently of the deployment account.  
+
                     var state = context.GetState<ExecutionContextState>();
-                    var hash = context.Script.CalculateScriptHash(); 
+                    if (!scriptHashCache.TryGetValue(state.ScriptHash, out var hash))
+                    {
+                        hash = context.Script.CalculateScriptHash(); 
+                        scriptHashCache.Add(state.ScriptHash, hash);
+                    }
+
                     writer.WriteLine($"{hash}");
 
                     if (state.Contract?.Nef is null)

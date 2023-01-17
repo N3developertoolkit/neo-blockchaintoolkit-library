@@ -76,7 +76,7 @@ namespace Neo.BlockchainToolkit.SmartContract
             Witnesses = Array.Empty<Witness>(),
         };
 
-        const string envName = "NEO_TEST_APP_ENGINE_COVERAGE_PATH";
+        const string COVERAGE_ENV_NAME = "NEO_TEST_APP_ENGINE_COVERAGE_PATH";
         record BranchInstructionInfo(UInt160 ContractHash, int InstructionPointer, int BranchOffset);
 
         readonly Dictionary<UInt160, OneOf<ContractState, Script>> executedScripts = new();
@@ -112,19 +112,16 @@ namespace Neo.BlockchainToolkit.SmartContract
         {
         }
 
-        [Obsolete("Use (DataCache, UInt160, WitnessScope?, ProtocolSettings?) ctor instead")]
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, UInt160 signer, WitnessScope witnessScope = WitnessScope.CalledByEntry)
             : this(TriggerType.Application, CreateTestTransaction(signer, witnessScope), snapshot, null, settings, ApplicationEngine.TestModeGas, null)
         {
         }
 
-        [Obsolete("Use (DataCache, Transaction, ProtocolSettings?) ctor instead")]
         public TestApplicationEngine(DataCache snapshot, ProtocolSettings settings, Transaction transaction)
             : this(snapshot, container: transaction, settings: settings)
         {
         }
 
-        // for back compat
         public TestApplicationEngine(TriggerType trigger, IVerifiable? container, DataCache snapshot, Block? persistingBlock, ProtocolSettings settings, long gas, WitnessChecker? witnessChecker, IDiagnostic? diagnostic = null)
             : this(snapshot, trigger, container, persistingBlock, settings, gas, diagnostic, witnessChecker)
         {
@@ -184,7 +181,7 @@ namespace Neo.BlockchainToolkit.SmartContract
 
         public override VMState Execute()
         {
-            var coveragePath = Environment.GetEnvironmentVariable(envName);
+            var coveragePath = Environment.GetEnvironmentVariable(COVERAGE_ENV_NAME);
             coverageWriter = string.IsNullOrEmpty(coveragePath) 
                 ? null 
                 : new CoverageWriter(coveragePath, fileSystem);
@@ -199,8 +196,8 @@ namespace Neo.BlockchainToolkit.SmartContract
             coverageWriter?.WriteContext(context);
 
             var ecs = context.GetState<ExecutionContextState>();
-            if (ecs.ScriptHash == null) throw new InvalidOperationException("ExecutionContextState.ScriptHash is null");
-            if (!executedScripts.ContainsKey(ecs.ScriptHash))
+            if (ecs.ScriptHash != null 
+                && !executedScripts.ContainsKey(ecs.ScriptHash))
             {
                 executedScripts.Add(ecs.ScriptHash, ecs.Contract is null ? context.Script : ecs.Contract);
             }
@@ -272,11 +269,14 @@ namespace Neo.BlockchainToolkit.SmartContract
             var (branchCount, continueCount) = branchMap.TryGetValue(offsetIP, out var value)
                 ? value : (0, 0);
 
-            branchMap[branchIP] = currentIP == offsetIP
-                ? (branchCount + 1, continueCount)
-                : currentIP == branchIP
-                    ? (branchCount, continueCount + 1)
-                    : throw new InvalidOperationException($"Unexpected InstructionPointer {currentIP}");
+            if (currentIP == offsetIP)
+            {
+                branchMap[branchIP] = (branchCount + 1, continueCount);
+            }
+            else if (currentIP == branchIP)
+            {
+                branchMap[branchIP] = (branchCount, continueCount + 1);
+            }
         }
 
         private void OnLog(object? sender, LogEventArgs args)
