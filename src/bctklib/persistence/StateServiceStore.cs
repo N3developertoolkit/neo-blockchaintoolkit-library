@@ -337,6 +337,12 @@ namespace Neo.BlockchainToolkit.Persistence
                 cacheClient.CacheStorage(contractHash, key, result);
                 return result;
             }
+            catch (RpcException ex) when (ex.HResult == -100)
+            {
+                // if the getstorage method throws an RPC Exception w/ HResult == -100, it means the 
+                // storage key could not be found. At the storage layer, this means returning a null byte arrray. 
+                return null;
+            }
             finally
             {
                 stopwatch.Stop();
