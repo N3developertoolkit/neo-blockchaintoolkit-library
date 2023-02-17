@@ -399,7 +399,13 @@ namespace Neo.BlockchainToolkit.Persistence
                 return Array.Empty<(byte[], byte[])>();
             }
 
-            var contractHash = contractMap[contractId];
+            if (!contractMap.TryGetValue(contractId, out var contractHash))
+            {
+                // if contractId isn't in contractMap, the state service has no record of it at the
+                // branch index height. Return empty enumerable directly.
+                return Enumerable.Empty<(byte[] Key, byte[] Value)>();
+            }
+
             if (contractId < 0)
             {
                 var prefix = key.Span[0];
@@ -426,7 +432,7 @@ namespace Neo.BlockchainToolkit.Persistence
             }
 
             {
-                var states = FindStates(contractMap[contractId], null);
+                var states = FindStates(contractHash, null);
                 return ConvertStates(key, states);
             }
 
