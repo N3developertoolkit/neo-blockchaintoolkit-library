@@ -1,0 +1,7 @@
+<!-- https://github.com/microsoft/MSBuildSdks/tree/main/src/Traversal -->
+<Project Sdk="Microsoft.Build.Traversal/3.2.0">
+  <ItemGroup>
+    <ProjectReference Include="src\bctklib\bctklib.csproj" />
+    <ProjectReference Include="test\test.bctklib\test.bctklib.csproj" />
+  </ItemGroup>
+</Project>
