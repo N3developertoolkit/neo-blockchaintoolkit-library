@@ -61,15 +61,15 @@ namespace Neo.BlockchainToolkit.Models
 
         public static WorknetChain Parse(JObject json)
         {
-            var uri = json.Value<string>("uri") ?? throw new JsonException();
-            var branchInfoJson = (json["branch-info"] as JObject) ?? throw new JsonException();
+            var uri = json.Value<string>("uri") ?? throw new JsonException("invalid uri property");
+            var branchInfoJson = (json["branch-info"] as JObject) ?? throw new JsonException("invalid branch-info property");
             var branchInfo = BranchInfo.Parse(branchInfoJson);
             var settings = ProtocolSettings.Default with
             {
                 Network = branchInfo.Network,
                 AddressVersion = branchInfo.AddressVersion,
             };
-            var node = (json["consensus-nodes"] ?? throw new JsonException())
+            var node = (json["consensus-nodes"] ?? throw new JsonException("invalid consensus-nodes property"))
                 .Cast<JObject>()
                 .Select(n => ToolkitConsensusNode.Parse(n, settings))
                 .First();
