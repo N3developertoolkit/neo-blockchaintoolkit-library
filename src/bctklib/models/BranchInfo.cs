@@ -1,16 +1,15 @@
 using System.Collections.Generic;
-using Neo.SmartContract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Neo.BlockchainToolkit.Models
 {
-    public readonly record struct ContractInfo(
+    public record ContractInfo(
         int Id,
         UInt160 Hash,
         string Name);
 
-    public readonly record struct BranchInfo(
+    public record BranchInfo(
         uint Network,
         byte AddressVersion,
         uint Index,
@@ -24,7 +23,7 @@ namespace Neo.BlockchainToolkit.Models
             Network = Network,
         };
 
-        public static BranchInfo Load(JObject json)
+        public static BranchInfo Parse(JObject json)
         {
             var network = json.Value<uint>("network");
             var addressVersion = json.Value<byte>("address-version");
@@ -49,20 +48,26 @@ namespace Neo.BlockchainToolkit.Models
 
         public void WriteJson(JsonWriter writer)
         {
-            using var _ = writer.WriteObject();
+            writer.WriteStartObject();
             writer.WriteProperty("network", Network);
             writer.WriteProperty("address-version", AddressVersion);
             writer.WriteProperty("index", Index);
             writer.WriteProperty("index-hash", $"{IndexHash}");
             writer.WriteProperty("root-hash", $"{RootHash}");
-            using var __ = writer.WritePropertyArray("contracts");
+
+            writer.WritePropertyName("contracts");
+            writer.WriteStartArray();
             foreach (var contract in Contracts)
             {
-                using var _c = writer.WriteObject();
+                writer.WriteStartObject();
                 writer.WriteProperty("id", contract.Id);
                 writer.WriteProperty("hash", $"{contract.Hash}");
                 writer.WriteProperty("name", contract.Name);
+                writer.WriteEndObject();
             }
+            writer.WriteEndArray();
+            
+            writer.WriteEndObject();
         }
     }
 }

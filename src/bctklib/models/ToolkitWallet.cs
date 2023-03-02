@@ -30,7 +30,7 @@ namespace Neo.BlockchainToolkit.Models
             }
         }
 
-        public static ToolkitWallet Load(JObject json, ProtocolSettings settings)
+        public static ToolkitWallet Parse(JObject json, ProtocolSettings settings)
         {
             var name = json.Value<string>("name") ?? "";
             var wallet = new ToolkitWallet(name, settings);
@@ -38,7 +38,7 @@ namespace Neo.BlockchainToolkit.Models
             IEnumerable<JToken> accountsJson = json["accounts"] as JArray ?? Enumerable.Empty<JToken>();
             foreach (var accountToken in accountsJson.Cast<JObject>())
             {
-                var account = Account.Load(accountToken, settings);
+                var account = Account.Parse(accountToken, settings);
                 wallet.accounts.Add(account.ScriptHash, account);
             }
             return wallet;
@@ -46,13 +46,16 @@ namespace Neo.BlockchainToolkit.Models
 
         public void WriteJson(JsonWriter writer)
         {
-            using var _ = writer.WriteObject();
+            writer.WriteStartObject();
             writer.WriteProperty("name", Name);
-            using var __ = writer.WritePropertyArray("accounts");
+            writer.WritePropertyName("accounts");
+            writer.WriteStartArray();
             foreach (var account in accounts.Values)
             {
                 account.WriteJson(writer);
             }
+            writer.WriteEndArray();
+            writer.WriteEndObject();
         }
 
         public override bool Contains(UInt160 scriptHash) => accounts.ContainsKey(scriptHash);
