@@ -15,6 +15,7 @@ namespace Neo.BlockchainToolkit.Models
         IReadOnlyList<ToolkitWallet> Wallets)
     {
         public ToolkitWallet ConsensusWallet => ConsensusNode.Wallet;
+        public ProtocolSettings ProtocolSettings => BranchInfo.ProtocolSettings;
  
         public WorknetChain(Uri uri, BranchInfo branchInfo, ToolkitConsensusNode consensusNode, IEnumerable<ToolkitWallet>? wallets = null)
             : this(uri, branchInfo, consensusNode, (wallets ?? Enumerable.Empty<ToolkitWallet>()).ToList())
