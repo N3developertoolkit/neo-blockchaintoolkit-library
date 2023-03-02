@@ -27,6 +27,19 @@ public class ToolkitWalletTests
         return ToolkitWallet.Parse(_json, ProtocolSettings.Default);
     }
 
+    [Fact]
+    static void testExpressChain2()
+    {
+        using var stream = GetResourceStream("4node.neo-express.json");
+        using var textReader = new StreamReader(stream);
+        using var reader = new JsonTextReader(textReader);
+        var json = JObject.Load(reader);
+        var chain = ExpressChain.Parse(json);
+
+        var expected = Neo.Wallets.Helper.ToScriptHash("NbFNZHzmrgKedG4ZYicDQW3n2E6c52yfJS", ProtocolSettings.Default.AddressVersion);
+        Assert.Equal(expected, chain.ConsensusContract.ScriptHash);
+    }
+
     [Theory]
     [InlineData("devhawk", true)]
     [InlineData("mintest", false)]

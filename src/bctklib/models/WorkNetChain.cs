@@ -64,19 +64,14 @@ namespace Neo.BlockchainToolkit.Models
             var uri = json.Value<string>("uri") ?? throw new JsonException();
             var branchInfoJson = (json["branch-info"] as JObject) ?? throw new JsonException();
             var branchInfo = BranchInfo.Parse(branchInfoJson);
-            var settings = ProtocolSettings.Default with
-            {
-                Network = branchInfo.Network,
-                AddressVersion = branchInfo.AddressVersion,
-            };
             var node = (json["consensus-nodes"] ?? throw new JsonException())
                 .Cast<JObject>()
-                .Select(n => ToolkitConsensusNode.Parse(n, settings))
+                .Select(n => ToolkitConsensusNode.Parse(n, branchInfo.ProtocolSettings))
                 .First();
 
             var wallets = (json["wallets"] ?? Enumerable.Empty<JToken>())
                 .Cast<JObject>()
-                .Select(w => ToolkitWallet.Parse(w, settings));
+                .Select(w => ToolkitWallet.Parse(w, branchInfo.ProtocolSettings));
 
             return new(new Uri(uri), branchInfo, node, wallets);
         }

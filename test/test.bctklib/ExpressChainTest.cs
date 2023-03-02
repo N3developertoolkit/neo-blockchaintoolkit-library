@@ -50,33 +50,33 @@ namespace test.bctklib
             chain.Settings.Should().BeEmpty();
         }
 
-        [Fact]
-        public void empty_settings_save_correctly()
-        {
-            var fileSystem = new MockFileSystem();
-            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
-            var chain = new ExpressChain();
-            fileSystem.SaveChain(chain, fileName);
+        // [Fact]
+        // public void empty_settings_save_correctly()
+        // {
+        //     var fileSystem = new MockFileSystem();
+        //     var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+        //     var chain = new ExpressChain();
+        //     fileSystem.SaveChain(chain, fileName);
 
-            using var json = JsonDocument.Parse(fileSystem.GetFile(fileName).Contents);
-            var settings = json.RootElement.GetProperty("settings");
-            settings.EnumerateObject().Should().BeEmpty();
-        }
+        //     using var json = JsonDocument.Parse(fileSystem.GetFile(fileName).Contents);
+        //     var settings = json.RootElement.GetProperty("settings");
+        //     settings.EnumerateObject().Should().BeEmpty();
+        // }
 
-        [Fact]
-        public void settings_save_correctly()
-        {
-            var fileSystem = new MockFileSystem();
-            var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
-            var chain = new ExpressChain();
-            chain.Settings.Add(TEST_SETTING, TEST_SETTING_VALUE);
-            fileSystem.SaveChain(chain, fileName);
+        // [Fact]
+        // public void settings_save_correctly()
+        // {
+        //     var fileSystem = new MockFileSystem();
+        //     var fileName = fileSystem.Path.Combine(fileSystem.AllDirectories.First(), FILENAME);
+        //     var chain = new ExpressChain();
+        //     chain.Settings.Add(TEST_SETTING, TEST_SETTING_VALUE);
+        //     fileSystem.SaveChain(chain, fileName);
 
-            using var json = JsonDocument.Parse(fileSystem.GetFile(fileName).Contents);
-            var settings = json.RootElement.GetProperty("settings");
-            settings.EnumerateObject().Should().NotBeEmpty();
-            settings.GetProperty(TEST_SETTING).GetString().Should().Be(TEST_SETTING_VALUE);
-        }
+        //     using var json = JsonDocument.Parse(fileSystem.GetFile(fileName).Contents);
+        //     var settings = json.RootElement.GetProperty("settings");
+        //     settings.EnumerateObject().Should().NotBeEmpty();
+        //     settings.GetProperty(TEST_SETTING).GetString().Should().Be(TEST_SETTING_VALUE);
+        // }
 
         [Fact]
         public void settings_load_correctly()

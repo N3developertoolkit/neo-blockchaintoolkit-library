@@ -39,7 +39,10 @@ namespace Neo.BlockchainToolkit.Models
             foreach (var accountToken in accountsJson.Cast<JObject>())
             {
                 var account = Account.Parse(accountToken, settings);
-                wallet.accounts.Add(account.ScriptHash, account);
+                if (wallet.GetAccount(account.ScriptHash) == null)
+                {
+                    wallet.accounts.Add(account.ScriptHash, account);
+                }
             }
             return wallet;
         }
