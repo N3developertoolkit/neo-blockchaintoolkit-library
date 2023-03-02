@@ -107,5 +107,5 @@ namespace Neo.BlockchainToolkit.Models
 
             writer.WriteEndObject();
         }
-    };
+    }
 }
