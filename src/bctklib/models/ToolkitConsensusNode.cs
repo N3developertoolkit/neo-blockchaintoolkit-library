@@ -10,7 +10,7 @@ namespace Neo.BlockchainToolkit.Models
             var tcp = json.Value<ushort>("tcp-port");
             var ws = json.Value<ushort>("ws-port");
             var rpc = json.Value<ushort>("rpc-port");
-            var walletJson = (json["wallet"] as JObject) ?? throw new JsonException();
+            var walletJson = (json["wallet"] as JObject) ?? throw new JsonException("invalid wallet property");
             var wallet = ToolkitWallet.Parse(walletJson, settings);
             return new(wallet, tcp, ws, rpc);
         }
