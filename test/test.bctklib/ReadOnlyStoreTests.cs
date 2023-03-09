@@ -14,7 +14,7 @@ using static Utility;
 [SuppressMessage("IClassFixture", "xUnit1033")]
 public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixture<RocksDbFixture>, IDisposable
 {
-    public enum StoreType { Checkpoint, Memory, NeoRocksDb, RocksDb }
+    public enum StoreType { Checkpoint, Memory, RocksDb }
 
     readonly CheckpointFixture checkpointFixture;
     readonly RocksDbFixture rocksDbFixture;
@@ -107,10 +107,12 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         test_tryget_value_for_valid_key(store);
     }
 
-    internal static void test_tryget_value_for_valid_key(IReadOnlyStore store, int index = 0)
+    internal static void test_tryget_value_for_valid_key(IReadOnlyStore store, byte[]? key = null)
     {
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
+
         using var _ = store as IDisposable;
-        var (key, value) = TestData.ElementAt(index);
         store.TryGet(key).Should().BeEquivalentTo(value);
     }
 
@@ -121,10 +123,11 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         test_tryget_null_for_missing_value(store);
     }
 
-    internal static void test_tryget_null_for_missing_value(IReadOnlyStore store)
+    internal static void test_tryget_null_for_missing_value(IReadOnlyStore store, byte[]? key = null)
     {
+        key ??= Bytes(0);
         using var _ = store as IDisposable;
-        store.TryGet(Bytes(0)).Should().BeNull();
+        store.TryGet(key).Should().BeNull();
     }
 
     [Theory, CombinatorialData]
@@ -134,10 +137,10 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         test_contains_true_for_valid_key(store);
     }
 
-    internal static void test_contains_true_for_valid_key(IReadOnlyStore store, int index = 0)
+    internal static void test_contains_true_for_valid_key(IReadOnlyStore store, byte[]? key = null)
     {
+        key ??= TestData.ElementAt(0).Key;
         using var _ = store as IDisposable;
-        var (key, value) = TestData.ElementAt(index);
         store.Contains(key).Should().BeTrue();
     }
 
@@ -148,11 +151,11 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
         test_contains_false_for_missing_key(store);
     }
 
-
-    internal static void test_contains_false_for_missing_key(IReadOnlyStore store)
+    internal static void test_contains_false_for_missing_key(IReadOnlyStore store, byte[]? key = null)
     {
+        key ??= Bytes(0);
         using var _ = store as IDisposable;
-        store.Contains(Bytes(0)).Should().BeFalse();
+        store.Contains(key).Should().BeFalse();
     }
 
     [Theory, CombinatorialData]
@@ -165,8 +168,11 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
     internal static void test_can_seek_forward_no_prefix(IReadOnlyStore store)
     {
         using var _ = store as IDisposable;
-        store.Seek(Array.Empty<byte>(), SeekDirection.Forward)
-            .Should().BeEquivalentTo(TestData);
+        var expected = TestData
+            .OrderBy(kvp => kvp.Key, ByteArrayEqualityComparer.Default)
+            .Select(kvp => (kvp.Key, kvp.Value));
+        var actual = store.Seek(Array.Empty<byte>(), SeekDirection.Forward);
+        actual.Should().BeEquivalentTo(expected);
     }
 
     [Theory, CombinatorialData]
@@ -192,10 +198,25 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
     internal static void test_seek_forwards_with_prefix(IReadOnlyStore store)
     {
         using var _ = store as IDisposable;
-        var key = new byte[] { 1, 0 };
-        var expected = TestData
-            .Where(kvp => MemorySequenceComparer.Default.Compare(kvp.key, key) >= 0);
-        store.Seek(key, SeekDirection.Forward).Should().BeEquivalentTo(expected);
+
+        for (int i = 0; i < GreekLetters.Count; i++)
+        {
+            var key = Bytes(i + 1);
+            var expected = TestData
+                .Where(kvp => ByteArrayEqualityComparer.Default.Compare(kvp.Key, key) >= 0)
+                .OrderBy(kvp => kvp.Key, ByteArrayEqualityComparer.Default)
+                .Select(kvp => (kvp.Key, kvp.Value));
+            var actual = store.Seek(key, SeekDirection.Forward);
+            actual.Should().BeEquivalentTo(expected);
+
+            key = Bytes((i + 1) * -1);
+            expected = TestData
+                .Where(kvp => ByteArrayEqualityComparer.Default.Compare(kvp.Key, key) >= 0)
+                .OrderBy(kvp => kvp.Key, ByteArrayEqualityComparer.Default)
+                .Select(kvp => (kvp.Key, kvp.Value));
+            actual = store.Seek(key, SeekDirection.Forward);
+            actual.Should().BeEquivalentTo(expected);
+        }
     }
 
     [Theory, CombinatorialData]
@@ -208,18 +229,33 @@ public class ReadOnlyStoreTests : IClassFixture<CheckpointFixture>, IClassFixtur
     internal static void test_seek_backwards_with_prefix(IReadOnlyStore store)
     {
         using var _ = store as IDisposable;
-        var key = new byte[] { 2, 0 };
-        var expected = TestData
-            .Where(kvp => MemorySequenceComparer.Reverse.Compare(kvp.key, key) >= 0)
-            .Reverse();
-        store.Seek(key, SeekDirection.Backward).Should().BeEquivalentTo(expected);
+
+        for (int i = 0; i < GreekLetters.Count; i++)
+        {
+            var key = Bytes(i + 1);
+            var expected = TestData
+                .Where(kvp => ByteArrayEqualityComparer.Default.Compare(kvp.Key, key) <= 0)
+                .OrderBy(kvp => kvp.Key, ByteArrayEqualityComparer.Default)
+                .Reverse()
+                .Select(kvp => (kvp.Key, kvp.Value));
+            var actual = store.Seek(key, SeekDirection.Backward);
+            actual.Should().BeEquivalentTo(expected);
+
+            key = Bytes((i + 1) * -1);
+            expected = TestData
+                .Where(kvp => ByteArrayEqualityComparer.Default.Compare(kvp.Key, key) <= 0)
+                .OrderBy(kvp => kvp.Key, ByteArrayEqualityComparer.Default)
+                .Reverse()
+                .Select(kvp => (kvp.Key, kvp.Value));
+            actual = store.Seek(key, SeekDirection.Backward);
+            actual.Should().BeEquivalentTo(expected);
+        }
     }
 
     IReadOnlyStore GetStore(StoreType type) => type switch
     {
         StoreType.Checkpoint => new CheckpointStore(checkpointFixture.CheckpointPath),
         StoreType.Memory => GetPopulatedMemoryStore(),
-        StoreType.NeoRocksDb => CreateNeoRocksDb(rocksDbFixture.DbPath),
         StoreType.RocksDb => new RocksDbStore(RocksDbUtility.OpenDb(rocksDbFixture.DbPath), readOnly: true),
         _ => throw new Exception($"Invalid {nameof(StoreType)}")
     };

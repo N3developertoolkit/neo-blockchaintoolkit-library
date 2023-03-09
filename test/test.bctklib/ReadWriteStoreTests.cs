@@ -14,7 +14,7 @@ public class ReadWriteStoreTests : IDisposable
     // include Neo.Persistence MemoryStore and Neo.Plugins.Storage.RocksDBStore for comparison
     public enum StoreType { Memory, NeoRocksDb, RocksDb }
 
-    readonly CleanupPath path = new CleanupPath();
+    readonly CleanupPath path = new();
 
     public void Dispose()
     {
@@ -29,9 +29,9 @@ public class ReadWriteStoreTests : IDisposable
         test_put_new_value(store);
     }
 
-    internal static void test_put_new_value(IStore store)
+    internal static void test_put_new_value(IStore store, byte[]? key = null)
     {
-        var key = Bytes(0);
+        key ??= Bytes(0);
         var value = Bytes("test-value");
         store.TryGet(key).Should().BeNull();
         store.Put(key, value);
@@ -45,9 +45,10 @@ public class ReadWriteStoreTests : IDisposable
         test_put_overwrite_existing_value(store);
     }
 
-    internal static void test_put_overwrite_existing_value(IStore store, int index = 0)
+    internal static void test_put_overwrite_existing_value(IStore store, byte[]? key = null)
     {
-        var (key, value) = TestData.ElementAt(index);
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
         var newValue = Bytes("test-value");
         store.TryGet(key).Should().BeEquivalentTo(value);
         store.Put(key, newValue);
@@ -61,9 +62,10 @@ public class ReadWriteStoreTests : IDisposable
         test_tryget_return_null_for_deleted_key(store);
     }
 
-    internal static void test_tryget_return_null_for_deleted_key(IStore store, int index = 0)
+    internal static void test_tryget_return_null_for_deleted_key(IStore store, byte[]? key = null)
     {
-        var (key, value) = TestData.ElementAt(index);
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
         store.TryGet(key).Should().BeEquivalentTo(value);
         store.Delete(key);
         store.TryGet(key).Should().BeNull();
@@ -76,9 +78,9 @@ public class ReadWriteStoreTests : IDisposable
         test_contains_false_for_deleted_key(store);
     }
 
-    internal static void test_contains_false_for_deleted_key(IStore store, int index = 0)
+    internal static void test_contains_false_for_deleted_key(IStore store, byte[]? key = null)
     {
-        var (key, value) = TestData.ElementAt(index);
+        key ??= TestData.ElementAt(0).Key;
         store.Contains(key).Should().BeTrue();
         store.Delete(key);
         store.Contains(key).Should().BeFalse();
@@ -91,9 +93,9 @@ public class ReadWriteStoreTests : IDisposable
         test_snapshot_commit_add(store);
     }
 
-    internal static void test_snapshot_commit_add(IStore store)
+    internal static void test_snapshot_commit_add(IStore store, byte[]? key = null)
     {
-        var key = Bytes(0);
+        key ??= Bytes(0);
         var value = Bytes("test-value");
 
         using var snapshot = store.GetSnapshot();
@@ -111,9 +113,10 @@ public class ReadWriteStoreTests : IDisposable
         test_snapshot_commit_update(store);
     }
 
-    internal static void test_snapshot_commit_update(IStore store, int index = 0)
+    internal static void test_snapshot_commit_update(IStore store, byte[]? key = null)
     {
-        var (key, value) = TestData.ElementAt(index);
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
         var newValue = Bytes("test-value");
 
         using var snapshot = store.GetSnapshot();
@@ -131,9 +134,10 @@ public class ReadWriteStoreTests : IDisposable
         test_snapshot_commit_delete(store);
     }
 
-    internal static void test_snapshot_commit_delete(IStore store, int index = 0)
+    internal static void test_snapshot_commit_delete(IStore store, byte[]? key = null)
     {
-        var (key, value) = TestData.ElementAt(index);
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
         using var snapshot = store.GetSnapshot();
         snapshot.Delete(key);
 
@@ -149,11 +153,11 @@ public class ReadWriteStoreTests : IDisposable
         test_snapshot_isolation_addition(store);
     }
 
-    internal static void test_snapshot_isolation_addition(IStore store)
+    internal static void test_snapshot_isolation_addition(IStore store, byte[]? key = null)
     {
-        using var snapshot = store.GetSnapshot();
-        var key = Bytes(0);
+        key ??= Bytes(0);
         var newValue = Bytes("test-value");
+        using var snapshot = store.GetSnapshot();
         store.Put(key, newValue);
         snapshot.Contains(key).Should().BeFalse();
         snapshot.TryGet(key).Should().BeNull();
@@ -166,10 +170,11 @@ public class ReadWriteStoreTests : IDisposable
         test_snapshot_isolation_update(store);
     }
 
-    internal static void test_snapshot_isolation_update(IStore store, int index = 0)
+    internal static void test_snapshot_isolation_update(IStore store, byte[]? key = null)
     {
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
         using var snapshot = store.GetSnapshot();
-        var (key, value) = TestData.ElementAt(index);
         var newValue = Bytes("test-value");
         store.Put(key, newValue);
         snapshot.Contains(key).Should().BeTrue();
@@ -183,10 +188,11 @@ public class ReadWriteStoreTests : IDisposable
         test_snapshot_isolation_delete(store);
     }
 
-    internal static void test_snapshot_isolation_delete(IStore store, int index = 0)
+    internal static void test_snapshot_isolation_delete(IStore store, byte[]? key = null)
     {
+        key ??= TestData.ElementAt(0).Key;
+        var value = TestData[key];
         using var snapshot = store.GetSnapshot();
-        var (key, value) = TestData.ElementAt(index);
         store.Delete(key);
         snapshot.Contains(key).Should().BeTrue();
         snapshot.TryGet(key).Should().BeEquivalentTo(value);
@@ -271,9 +277,9 @@ public class ReadWriteStoreTests : IDisposable
         test_delete_missing_value_no_effect(store);
     }
 
-    internal static void test_delete_missing_value_no_effect(IStore store)
+    internal static void test_delete_missing_value_no_effect(IStore store, byte[]? key = null)
     {
-        var key = Bytes(0);
+        key ??= Bytes(0);
         store.TryGet(key).Should().BeNull();
         store.Delete(key);
         store.TryGet(key).Should().BeNull();

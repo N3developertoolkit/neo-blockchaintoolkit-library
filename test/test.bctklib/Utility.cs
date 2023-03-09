@@ -1,9 +1,12 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using Neo.BlockchainToolkit.Persistence;
+using Neo.BlockchainToolkit.Utilities;
 using Neo.Cryptography.MPTTrie;
 using Neo.IO;
 using Neo.Persistence;
@@ -17,7 +20,7 @@ static class Utility
     public static byte[] Bytes(int value) => BitConverter.GetBytes(value);
     public static byte[] Bytes(string value) => System.Text.Encoding.UTF8.GetBytes(value);
 
-    public struct CleanupPath : IDisposable
+    public class CleanupPath : IDisposable
     {
         public readonly string Path;
 
@@ -31,17 +34,8 @@ static class Utility
         public void Dispose()
         {
             if (Directory.Exists(Path)) Directory.Delete(Path, true);
+            GC.SuppressFinalize(this);
         }
-    }
-
-    public static IStore CreateNeoRocksDb(string path)
-    {
-        const string storeTypeName = "Neo.Plugins.Storage.Store";
-        var storeType = typeof(Neo.Plugins.Storage.RocksDBStore).Assembly.GetType(storeTypeName);
-        var storeCtor = storeType?.GetConstructor(new[] { typeof(string) });
-        var store = storeCtor?.Invoke(new object[] { (string)path }) as IStore;
-        if (store == null) throw new Exception($"Failed to create {storeTypeName} instance");
-        return store;
     }
 
     public static Stream GetResourceStream(string name)
@@ -67,23 +61,79 @@ static class Utility
         return streamReader.ReadToEnd();
     }
 
-    static readonly IReadOnlyList<string> GreekLetters = new[]
+    public static readonly IReadOnlyList<string> GreekLetters = new[]
     {
         "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta", "Iota", "Kappa",
         "Lambda", "Mu", "Nu", "Xi", "Omicron", "Pi", "Rho", "Sigma", "Tau", "Upsilon",
         "Phi", "Chi", "Psi", "Omega"
     };
 
-    static byte[] IndexToKey(int i)
+    public class ByteArrayEqualityComparer : IEqualityComparer<byte[]>, IComparer<byte[]>
     {
-        Debug.Assert(i > 0 && i < 100);
-        var tens = i / 10;
-        var ones = i % 10;
-        return new byte[] { (byte)tens, (byte)ones };
+        public static ByteArrayEqualityComparer Default { get; } = new ByteArrayEqualityComparer();
+
+        private ByteArrayEqualityComparer() { }
+
+        public bool Equals(byte[]? x, byte[]? y)
+        {
+            if (ReferenceEquals(x, y)) return true;
+            if (x == null || y == null) return false;
+            if (x.Length != y.Length) return false;
+            return x.AsSpan().SequenceEqual(y.AsSpan());
+        }
+
+        public int GetHashCode([DisallowNull] byte[] obj)
+        {
+            HashCode hash = default;
+            hash.AddBytes(obj);
+            return hash.ToHashCode();
+        }
+
+        public int Compare(byte[]? x, byte[]? y)
+        {
+            if (ReferenceEquals(x, y)) return 0;
+            if (x is null) return 1;
+            if (y is null) return -1;
+            return x.AsSpan().SequenceCompareTo(y.AsSpan());
+        }
     }
 
-    public static IEnumerable<(byte[] key, byte[] value)> TestData =>
-        GreekLetters.Select((s, i) => (IndexToKey(i + 1), Bytes(s)));
+    public static IReadOnlyDictionary<byte[], byte[]> TestData => testData.Value;
+
+    static readonly Lazy<IReadOnlyDictionary<byte[], byte[]>> testData =
+         new(() =>
+         {
+             return new Dictionary<byte[], byte[]>(GetTestData(), ByteArrayEqualityComparer.Default);
+
+             static IEnumerable<KeyValuePair<byte[], byte[]>> GetTestData()
+             {
+                 for (var i = 0; i < GreekLetters.Count; i++)
+                 {
+                     var key = Bytes(i + 1);
+                     var value = Bytes(GreekLetters[i].ToUpper());
+                     yield return KVP(key, value);
+
+                     for (byte j = 0; j < 5; j++)
+                     {
+                         yield return KVP(key.Append(j), value.Append(j));
+                     }
+
+                     key = Bytes((i + 1) * -1);
+                     value = Bytes(GreekLetters[i].ToLower());
+                     yield return KVP(key, value);
+
+                     for (byte j = 0; j < 5; j++)
+                     {
+                         yield return KVP(key.Append(j), value.Append(j));
+                     }
+                 }
+             }
+
+             static KeyValuePair<byte[], byte[]> KVP(IEnumerable<byte> key, IEnumerable<byte> value)
+             {
+                 return KeyValuePair.Create(key.ToArray(), value.ToArray());
+             }
+         });
 
 
     public static void PutSeekData(this IStore store, (byte start, byte end) one, (byte start, byte end) two)

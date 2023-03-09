@@ -8,7 +8,7 @@ using static Utility;
 
 public class RocksDbFixture : IDisposable
 {
-    CleanupPath dbPath = new();
+    readonly CleanupPath dbPath = new();
 
     public string DbPath => dbPath;
 

@@ -16,7 +16,7 @@ public class TrackingStoreTests : IDisposable
 {
     public enum StoreType { MemoryTracking, PersistentTracking }
 
-    readonly CleanupPath path = new CleanupPath();
+    readonly CleanupPath path = new();
 
     public void Dispose()
     {
@@ -41,31 +41,31 @@ public class TrackingStoreTests : IDisposable
     //    and an updated value in the tracking store
 
     [Theory, CombinatorialData]
-    public void tryget_value_for_valid_key(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void tryget_value_for_valid_key(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         var store = GetStore(storeType);
-        test_tryget_value_for_valid_key(store, index);
+        test_tryget_value_for_valid_key(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void contains_false_for_missing_key(StoreType storeType)
+    public void contains_false_for_missing_key(StoreType storeType, [CombinatorialValues(0, 100)] int id)
     {
         var store = GetStore(storeType);
-        test_contains_false_for_missing_key(store);
+        test_contains_false_for_missing_key(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void tryget_null_for_missing_value(StoreType storeType)
+    public void tryget_null_for_missing_value(StoreType storeType, [CombinatorialValues(0, 100)] int id)
     {
         var store = GetStore(storeType);
-        test_tryget_null_for_missing_value(store);
+        test_tryget_null_for_missing_value(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void contains_true_for_valid_key(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void contains_true_for_valid_key(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         var store = GetStore(storeType);
-        test_contains_true_for_valid_key(store, index);
+        test_contains_true_for_valid_key(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
@@ -97,73 +97,73 @@ public class TrackingStoreTests : IDisposable
     }
 
     [Theory, CombinatorialData]
-    public void put_new_value(StoreType storeType)
+    public void put_new_value(StoreType storeType, [CombinatorialValues(0, 100)] int id)
     {
         using var store = GetStore(storeType);
-        test_put_new_value(store);
+        test_put_new_value(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void put_overwrite_existing_value(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void put_overwrite_existing_value(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_put_overwrite_existing_value(store, index);
+        test_put_overwrite_existing_value(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void tryget_return_null_for_deleted_key(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void tryget_return_null_for_deleted_key(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_tryget_return_null_for_deleted_key(store, index);
+        test_tryget_return_null_for_deleted_key(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void contains_false_for_deleted_key(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void contains_false_for_deleted_key(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_contains_false_for_deleted_key(store, index);
+        test_contains_false_for_deleted_key(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void snapshot_commit_add(StoreType storeType)
+    public void snapshot_commit_add(StoreType storeType, [CombinatorialValues(0, 100)] int id)
     {
         using var store = GetStore(storeType);
-        test_snapshot_commit_add(store);
+        test_snapshot_commit_add(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void snapshot_commit_update(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void snapshot_commit_update(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_snapshot_commit_update(store, index);
+        test_snapshot_commit_update(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void snapshot_commit_delete(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void snapshot_commit_delete(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_snapshot_commit_delete(store, index);
+        test_snapshot_commit_delete(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void snapshot_isolation_addition(StoreType storeType)
+    public void snapshot_isolation_addition(StoreType storeType, [CombinatorialValues(0, 100)] int id)
     {
         using var store = GetStore(storeType);
-        test_snapshot_isolation_addition(store);
+        test_snapshot_isolation_addition(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void snapshot_isolation_update(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void snapshot_isolation_update(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_snapshot_isolation_update(store, index);
+        test_snapshot_isolation_update(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
-    public void snapshot_isolation_delete(StoreType storeType, [CombinatorialValues(0, 1, 5)] int index)
+    public void snapshot_isolation_delete(StoreType storeType, [CombinatorialValues(-2, -1, 1, 2)] int id)
     {
         using var store = GetStore(storeType);
-        test_snapshot_isolation_delete(store, index);
+        test_snapshot_isolation_delete(store, Bytes(id));
     }
 
     [Theory, CombinatorialData]
@@ -195,28 +195,43 @@ public class TrackingStoreTests : IDisposable
     }
 
     [Theory, CombinatorialData]
-    public void delete_missing_value_no_effect(StoreType storeType)
+    public void delete_missing_value_no_effect(StoreType storeType, [CombinatorialValues(0, 100)] int id)
     {
         using var store = GetStore(storeType);
-        test_delete_missing_value_no_effect(store);
+        test_delete_missing_value_no_effect(store, Bytes(id));
     }
 
     internal IStore GetStore(StoreType type)
     {
         var memoryStore = new MemoryStore();
         var trackingStore = GetTrackingStore(type, memoryStore);
-        var array = TestData.ToArray();
-        var overwritten = Bytes("overwritten");
 
-        for (var i = 0; i < array.Length; i++)
+        foreach (var kvp in TestData)
         {
-            // put value to be overwritten to underlying store for odd, factor of five indexes
-            if (i % 2 == 1 && i % 5 == 0) memoryStore.Put(array[i].key, overwritten);
-
-            // put value to underlying store for even indexes, tracking store for odd indexes
-            IStore store = i % 2 == 0 ? memoryStore : trackingStore;
-            store.Put(array[i].key, array[i].value);
+            var id = BitConverter.ToInt32(kvp.Key);
+            if (id < 0)
+            {
+                // put all kvp's with a negative ID *only* in the underlying store
+                memoryStore.Put(kvp.Key, kvp.Value);
+            }
+            else
+            {
+                // put an incorrect value for half the kvp's with a positive ID in the underlying store
+                if (id % 2 == 0)
+                {
+                    memoryStore.Put(kvp.Key, Array.Empty<byte>());
+                }
+                // put all the correct value for all the KVPs with a positive ID in the tracking store
+                trackingStore.Put(kvp.Key, kvp.Value);
+            }
         }
+
+        // put a value for Bytes(0) in the underlying store and delete it in the tracking store
+        var key = Bytes(0);
+        memoryStore.Put(key, Array.Empty<byte>());
+        trackingStore.Delete(key);
+
+        // keys above GreekLetters.Count have no value in either store
 
         return trackingStore;
     }
