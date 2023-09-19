@@ -18,27 +18,22 @@
     <RepositoryUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</RepositoryUrl>
     <RootNamespace>Neo.BlockchainToolkit</RootNamespace>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
-
   <PropertyGroup>
-    <NeoVersion>3.5.0</NeoVersion>
+    <NeoVersion>3.6.0</NeoVersion>
     <!-- <NeoVersion>local</NeoVersion> -->
     <NeoMonorepoPath>..\..\..\..\official\3neo-monorepo</NeoMonorepoPath>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(CI)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
-
   <ItemGroup>
     <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="test.bctklib" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="2.4.59" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
@@ -47,7 +42,6 @@
     <PackageReference Include="rocksdb" Version="7.7.3.33461" />
     <PackageReference Include="System.IO.Abstractions" Version="19.1.1" />
   </ItemGroup>
-
   <Choose>
     <When Condition=" '$(NeoVersion)' == 'local'">
       <ItemGroup>
@@ -57,8 +51,8 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="Neo.Cryptography.MPT" Version="3.5.0" />
-        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="3.5.0" />
+        <PackageReference Include="Neo.Cryptography.MPT" Version="3.6.0" />
+        <PackageReference Include="Neo.Network.RPC.RpcClient" Version="3.6.0" />
       </ItemGroup>
     </Otherwise>
   </Choose>
