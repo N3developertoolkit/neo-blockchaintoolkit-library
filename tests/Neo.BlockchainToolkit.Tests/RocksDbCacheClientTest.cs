@@ -1,12 +1,10 @@
-// using System;
-// using Neo;
-// using Neo.BlockchainToolkit.Persistence;
-// using Neo.Json;
-// using Neo.Network.RPC;
-// using RocksDbSharp;
-// using Xunit;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
 
-// namespace test.bctklib;
+// namespace Neo.BlockchainToolkit.Tests;
 
 // using static Utility;
 

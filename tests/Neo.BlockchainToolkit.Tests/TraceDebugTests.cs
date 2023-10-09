@@ -1,20 +1,22 @@
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
-using System.Linq;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
 using MessagePack;
 using MessagePack.Resolvers;
-using Neo;
 using Neo.BlockchainToolkit.TraceDebug;
 using Neo.IO;
 using Neo.SmartContract;
 using Neo.VM;
-using Nerdbank.Streams;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 
-namespace test.bctklib
+namespace Neo.BlockchainToolkit.Tests
 {
     public class TraceDebugTests
     {
@@ -117,7 +119,8 @@ namespace test.bctklib
             IEnumerable<(StorageKey key, StorageItem item)> storages)
         {
             var count = storages.Count();
-            if (count <= 0) return;
+            if (count <= 0)
+                return;
 
             var byteArrayFormatter = options.Resolver.GetFormatterWithVerify<byte[]>();
             var storageItemFormatter = options.Resolver.GetFormatterWithVerify<StorageItem>();

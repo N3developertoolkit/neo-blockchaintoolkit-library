@@ -1,9 +1,15 @@
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
+using Neo.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Neo.Json;
 
-namespace test.bctklib
+namespace Neo.BlockchainToolkit.Tests
 {
     class TestableRpcClient : Neo.Network.RPC.RpcClient
     {

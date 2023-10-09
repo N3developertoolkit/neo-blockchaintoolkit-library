@@ -1,16 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Cryptography.MPTTrie;
 using Neo.IO;
 using Neo.Persistence;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
-namespace test.bctklib;
+namespace Neo.BlockchainToolkit.Tests;
 
 static class Utility
 {
@@ -30,7 +36,8 @@ static class Utility
 
         public void Dispose()
         {
-            if (Directory.Exists(Path)) Directory.Delete(Path, true);
+            if (Directory.Exists(Path))
+                Directory.Delete(Path, true);
         }
     }
 
@@ -40,7 +47,8 @@ static class Utility
         var storeType = typeof(Neo.Plugins.Storage.RocksDBStore).Assembly.GetType(storeTypeName);
         var storeCtor = storeType?.GetConstructor(new[] { typeof(string) });
         var store = storeCtor?.Invoke(new object[] { (string)path }) as IStore;
-        if (store == null) throw new Exception($"Failed to create {storeTypeName} instance");
+        if (store == null)
+            throw new Exception($"Failed to create {storeTypeName} instance");
         return store;
     }
 

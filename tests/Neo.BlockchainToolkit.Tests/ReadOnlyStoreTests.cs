@@ -1,13 +1,19 @@
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
 using FluentAssertions;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.BlockchainToolkit.Utilities;
 using Neo.Persistence;
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using Xunit;
 
-namespace test.bctklib;
+namespace Neo.BlockchainToolkit.Tests;
 
 using static Utility;
 

@@ -1,7 +1,9 @@
-using System;
-using System.Linq;
-using System.Numerics;
-using Neo;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
 using Neo.BlockchainToolkit.SmartContract;
 using Neo.IO;
 using Neo.Network.P2P.Payloads;
@@ -10,8 +12,11 @@ using Neo.SmartContract;
 using Neo.SmartContract.Manifest;
 using Neo.SmartContract.Native;
 using Neo.VM;
+using System;
+using System.Linq;
+using System.Numerics;
 
-namespace test.bctklib;
+namespace Neo.BlockchainToolkit.Tests;
 
 using static Utility;
 
@@ -111,8 +116,10 @@ public class DeployedContractFixture : IDisposable
             var hash = Neo.SmartContract.Helper.GetContractHash(deploySigner.Account, nefFile.CheckSum, manifest.Name);
             var key = new KeyBuilder(NativeContract.ContractManagement.Id, Prefix_Contract).Add(hash);
 
-            if (snapshot.Contains(key)) throw new InvalidOperationException($"Contract Already Exists: {hash}");
-            if (!manifest.IsValid(hash)) throw new InvalidOperationException($"Invalid Manifest Hash: {hash}");
+            if (snapshot.Contains(key))
+                throw new InvalidOperationException($"Contract Already Exists: {hash}");
+            if (!manifest.IsValid(hash))
+                throw new InvalidOperationException($"Invalid Manifest Hash: {hash}");
 
             var contract = new ContractState
             {
@@ -140,7 +147,8 @@ public class DeployedContractFixture : IDisposable
                     var context = engine.LoadContract(contract, deployMethod, CallFlags.All);
                     context.EvaluationStack.Push(Neo.VM.Types.StackItem.Null);
                     context.EvaluationStack.Push(update ? Neo.VM.Types.StackItem.True : Neo.VM.Types.StackItem.False);
-                    if (engine.Execute() != Neo.VM.VMState.HALT) throw new InvalidOperationException("_deploy operation failed", engine.FaultException);
+                    if (engine.Execute() != Neo.VM.VMState.HALT)
+                        throw new InvalidOperationException("_deploy operation failed", engine.FaultException);
                 }
             }
         }

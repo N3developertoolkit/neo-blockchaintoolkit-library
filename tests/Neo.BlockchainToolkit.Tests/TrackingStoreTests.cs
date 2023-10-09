@@ -1,16 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
 using FluentAssertions;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 
-namespace test.bctklib;
+namespace Neo.BlockchainToolkit.Tests;
 
-using static Utility;
 using static ReadOnlyStoreTests;
 using static ReadWriteStoreTests;
+using static Utility;
 
 public class TrackingStoreTests : IDisposable
 {
@@ -211,7 +217,8 @@ public class TrackingStoreTests : IDisposable
         for (var i = 0; i < array.Length; i++)
         {
             // put value to be overwritten to underlying store for odd, factor of five indexes
-            if (i % 2 == 1 && i % 5 == 0) memoryStore.Put(array[i].key, overwritten);
+            if (i % 2 == 1 && i % 5 == 0)
+                memoryStore.Put(array[i].key, overwritten);
 
             // put value to underlying store for even indexes, tracking store for odd indexes
             IStore store = i % 2 == 0 ? memoryStore : trackingStore;

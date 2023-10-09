@@ -1,11 +1,17 @@
-using System;
-using System.Linq;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
+
 using FluentAssertions;
 using Neo.BlockchainToolkit.Persistence;
 using Neo.Persistence;
+using System;
+using System.Linq;
 using Xunit;
 
-namespace test.bctklib;
+namespace Neo.BlockchainToolkit.Tests;
 
 using static Utility;
 
@@ -308,7 +314,8 @@ public class ReadWriteStoreTests : IDisposable
             .GetType("Neo.Plugins.Storage.Store");
         var storeCtor = storeType?.GetConstructor(new[] { typeof(string) });
         var store = storeCtor?.Invoke(new object[] { (string)path }) as IStore;
-        if (store is null) throw new NullReferenceException(nameof(Neo.Plugins.Storage.RocksDBStore));
+        if (store is null)
+            throw new NullReferenceException(nameof(Neo.Plugins.Storage.RocksDBStore));
         return store;
     }
 }

@@ -1,19 +1,10 @@
-// using System;
-// using System.Buffers.Binary;
-// using System.Collections.Generic;
-// using System.IO;
-// using System.Linq;
-// using Neo;
-// using Neo.BlockchainToolkit;
-// using Neo.BlockchainToolkit.Persistence;
-// using Neo.Cryptography.MPTTrie;
-// using Neo.IO;
-// using Neo.Json;
-// using Neo.Network.RPC;
-// using Neo.SmartContract;
-// using Xunit;
+// Copyright (C) 2023 neo-project
+//
+// neo-blockchaintoolkit-library is free software distributed under the
+// MIT software license, see the accompanying file LICENSE in
+// the main directory of the project for more details.
 
-// namespace test.bctklib
+// namespace Neo.BlockchainToolkit.Tests
 // {
 //     public class RpcClientExtensionsTest
 //     {
