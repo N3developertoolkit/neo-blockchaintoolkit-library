@@ -32,8 +32,8 @@ jobs:
     - name: Build and Test
       run: |
         dotnet restore
-        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity detailed --BinaryLogger:./msbuild.${{ matrix.os }}.binlog
-        dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity detailed --collect:"XPlat Code Coverage"
+        dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal --BinaryLogger:./msbuild.${{ matrix.os }}.binlog
+        dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage"
     - name: Upload Coverage
       uses: actions/upload-artifact@v3
       with:

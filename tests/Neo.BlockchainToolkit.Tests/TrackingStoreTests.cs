@@ -246,9 +246,9 @@ public class TrackingStoreTests : IDisposable
             Disposed = true;
         }
 
-        byte[]? IReadOnlyStore.TryGet(byte[]? key) => null;
-        bool IReadOnlyStore.Contains(byte[]? key) => false;
-        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[]? key, SeekDirection direction)
+        byte[] IReadOnlyStore.TryGet(byte[] key) => null;
+        bool IReadOnlyStore.Contains(byte[] key) => false;
+        IEnumerable<(byte[] Key, byte[] Value)> IReadOnlyStore.Seek(byte[] key, SeekDirection direction)
             => Enumerable.Empty<(byte[], byte[])>();
     }
 }

@@ -17,6 +17,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C15C005C-2B77-458B-93F3-763AA7144D28}"
+	ProjectSection(SolutionItems) = preProject
+		tests\runsettings.xml = tests\runsettings.xml
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Neo.BlockchainToolkit", "src\Neo.BlockchainToolkit\Neo.BlockchainToolkit.csproj", "{51986055-2B21-4958-BCBB-ADFB03893265}"
 EndProject
