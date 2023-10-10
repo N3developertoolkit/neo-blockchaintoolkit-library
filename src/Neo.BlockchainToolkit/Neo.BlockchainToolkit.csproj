@@ -3,14 +3,14 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Authors>The Neo Project</Authors>
     <Copyright>2015-2023 The Neo Project</Copyright>
-    
+
     <PackageId>Neo.BlockchainToolkit.Library</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</PackageProjectUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/N3developertoolkit/neo-blockchaintoolkit-library.git</RepositoryUrl>
-    
+
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
 
