@@ -1,0 +1,3 @@
+* merge=binary
+
+*.cs diff=csharp
