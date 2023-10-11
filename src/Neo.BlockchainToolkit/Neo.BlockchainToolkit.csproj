@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Authors>The Neo Project</Authors>
     <Copyright>2015-2023 The Neo Project</Copyright>
 
     <PackageId>Neo.BlockchainToolkit.Library</PackageId>
+    <PackageIcon>ngdsea.png</PackageIcon>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ngdenterprise/neo-blockchaintoolkit-library</PackageProjectUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -12,10 +12,25 @@
     <RepositoryUrl>https://github.com/N3developertoolkit/neo-blockchaintoolkit-library.git</RepositoryUrl>
 
     <TargetFramework>net7.0</TargetFramework>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>neo-bctklib</AssemblyName>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IncludeSymbols>true</IncludeSymbols>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>Embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Neo.BlockchainToolkit.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../ngdsea.png" Pack="true" Visible="false" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
