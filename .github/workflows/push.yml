@@ -12,7 +12,7 @@ on:
       - 'docs/**'
 
 env:
-  AZURE_ARTIFACTS_FEED_URL: https://pkgs.dev.azure.com/ngdenterprise/Build/_packaging/public/nuget/v3/index.json
+  AZURE_ARTIFACTS_FEED_URL: https://nuget.pkg.github.com/N3developertoolkit/index.json
   DOTNET_VERSION: '7.0.x'
 
 jobs:
@@ -30,11 +30,11 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         source-url: ${{ env.AZURE_ARTIFACTS_FEED_URL }}
       env:
-        NUGET_AUTH_TOKEN: ${{ secrets.AZURE_ARTIFACTS_PAT }} 
+        NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
     - name: Download Packages
       uses: actions/download-artifact@v3
       with:
         name: packages
         path: ./out
     - name: Publish to Azure Artifacts
-      run: dotnet nuget push --api-key AzureArtifacts out/*.nupkg
+      run: dotnet nuget push out/*.nupkg
