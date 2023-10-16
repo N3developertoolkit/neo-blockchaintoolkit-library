@@ -1,0 +1,70 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34031.279
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{5CB64F80-0D71-4E40-9338-20DBCDD1FF55}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{6F55E47E-EEBE-422F-9A86-6D098BAA0DC2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{B8219D9E-8C36-41CD-B3A7-2E26D0F5CA14}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\package.yml = .github\workflows\package.yml
+		.github\workflows\pr.yml = .github\workflows\pr.yml
+		.github\workflows\push.yml = .github\workflows\push.yml
+		.github\workflows\release.yml = .github\workflows\release.yml
+		.github\workflows\test.yml = .github\workflows\test.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C15C005C-2B77-458B-93F3-763AA7144D28}"
+	ProjectSection(SolutionItems) = preProject
+		tests\runsettings.xml = tests\runsettings.xml
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Neo.BlockchainToolkit", "src\Neo.BlockchainToolkit\Neo.BlockchainToolkit.csproj", "{51986055-2B21-4958-BCBB-ADFB03893265}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{97F74C17-3393-41E1-9830-A17CD3346AF0}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		nuget.config = nuget.config
+		version.json = version.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{9115D9B6-9924-48BF-A21A-95B448800FE7}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Neo.BlockchainToolkit.Tests", "tests\Neo.BlockchainToolkit.Tests\Neo.BlockchainToolkit.Tests.csproj", "{230331DC-59B5-42F6-93E2-03A8C7917DC5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{51986055-2B21-4958-BCBB-ADFB03893265}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51986055-2B21-4958-BCBB-ADFB03893265}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51986055-2B21-4958-BCBB-ADFB03893265}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51986055-2B21-4958-BCBB-ADFB03893265}.Release|Any CPU.Build.0 = Release|Any CPU
+		{230331DC-59B5-42F6-93E2-03A8C7917DC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{230331DC-59B5-42F6-93E2-03A8C7917DC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{230331DC-59B5-42F6-93E2-03A8C7917DC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{230331DC-59B5-42F6-93E2-03A8C7917DC5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B8219D9E-8C36-41CD-B3A7-2E26D0F5CA14} = {6F55E47E-EEBE-422F-9A86-6D098BAA0DC2}
+		{51986055-2B21-4958-BCBB-ADFB03893265} = {5CB64F80-0D71-4E40-9338-20DBCDD1FF55}
+		{230331DC-59B5-42F6-93E2-03A8C7917DC5} = {C15C005C-2B77-458B-93F3-763AA7144D28}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {510843C6-891F-42EA-8721-2A1D90A409FE}
+	EndGlobalSection
+EndGlobal

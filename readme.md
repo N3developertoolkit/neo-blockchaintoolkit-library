@@ -6,7 +6,7 @@ This repo projects for code shared between managed projects in the Neo Blockchai
 In particular, these libraries are used in [Neo-Express](https://github.com/neo-project/neo-express)
 and the [Neo Smart Contract Debugger for VS Code](https://github.com/neo-project/neo-debugger).
 
-Continutious Integration build packages are available via
+Continuous Integration build packages are available via
 [Azure Artifacts](https://dev.azure.com/ngdenterprise/Build/_packaging?_a=feed&feed=public).
 
 ## Models

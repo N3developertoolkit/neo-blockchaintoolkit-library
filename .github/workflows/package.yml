@@ -35,7 +35,6 @@ jobs:
         dotnet restore
         dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore --verbosity normal --BinaryLogger:./msbuild.binlog
         dotnet pack --configuration ${{ env.CONFIGURATION }} --output ./out --no-build --verbosity normal
-        rm ./out/*.snupkg
     - name: Upload Package
       uses: actions/upload-artifact@v3
       with:
