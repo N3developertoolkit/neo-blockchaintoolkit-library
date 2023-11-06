@@ -39,4 +39,4 @@ jobs:
     - name: Publish to Github Package
       run: dotnet nuget push out/*.nupkg
     - name: Publish to Myget
-      run: dotnet nuget push out/*.nupkg ${{ secrets.MYGET_TOKEN }} --source https://www.myget.org/F/ngd/api/v2/package
+      run: dotnet nuget push out/*.nupkg --api-key ${{ secrets.MYGET_TOKEN }} --source https://www.myget.org/F/ngd/api/v2/package
